@@ -1,0 +1,53 @@
+[project]
+name = "open-ct600"
+version = "0.1.0"
+description = "API for Open CT600: UK Corporation Tax computation and CT600 return preparation."
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "email-validator==2.3.0",
+    "fastapi==0.141.1",
+    "httpx2==2.13.1",
+    "pydantic==2.13.5",
+    "pydantic-settings==2.15.0",
+    "uvicorn==0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.9",
+    "ty==0.0.84",
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C90", "PL", "RUF", "TID", "D"]
+ignore = ["D100", "D104", "D105", "D107", "PLR2004"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "PLR0913"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pylint]
+max-args = 5
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["error"]

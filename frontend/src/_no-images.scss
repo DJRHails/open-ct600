@@ -1,0 +1,5 @@
+// The only image GOV.UK Frontend's styles reference is the GOV.UK crest, which services
+// outside GOV.UK must not use. Resolve every image URL to `none` instead of a missing file.
+@function image-url($filename) {
+  @return none;
+}
