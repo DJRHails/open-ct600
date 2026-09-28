@@ -1,0 +1,333 @@
+import { type ButtonHTMLAttributes, type ReactNode, useEffect, useRef } from "react";
+import { Link } from "react-router";
+
+/** An error to list in the summary: ``#field-id`` on this page, or ``/path`` to another page. */
+export type ErrorItem = { href: string; text: string };
+
+/** GOV.UK error summary. Takes focus whenever the list of errors changes. */
+export function ErrorSummary({ errors }: { errors: ErrorItem[] }) {
+  const root = useRef<HTMLDivElement>(null);
+  const signature = errors.map((error) => error.href + error.text).join("|");
+
+  useEffect(() => {
+    if (signature) root.current?.focus();
+  }, [signature]);
+
+  if (errors.length === 0) return null;
+  return (
+    <div className="govuk-error-summary" ref={root} tabIndex={-1} role="alert">
+      <h2 className="govuk-error-summary__title">There is a problem</h2>
+      <div className="govuk-error-summary__body">
+        <ul className="govuk-list govuk-error-summary__list">
+          {errors.map((error) => (
+            <li key={error.href + error.text}>
+              {error.href.startsWith("/") ? (
+                <Link to={error.href}>{error.text}</Link>
+              ) : (
+                <a
+                  href={error.href}
+                  onClick={(event) => {
+                    const target = document.getElementById(error.href.slice(1));
+                    if (!target) return;
+                    event.preventDefault();
+                    target.scrollIntoView({ block: "center" });
+                    target.focus();
+                  }}
+                >
+                  {error.text}
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function ErrorMessage({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="govuk-error-message">
+      <span className="govuk-visually-hidden">Error:</span> {children}
+    </p>
+  );
+}
+
+function Hint({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <div id={id} className="govuk-hint">
+      {children}
+    </div>
+  );
+}
+
+function describedBy(id: string, hint: ReactNode, error: string | undefined) {
+  const ids = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean);
+  return ids.length > 0 ? ids.join(" ") : undefined;
+}
+
+function groupClass(error: string | undefined) {
+  return error ? "govuk-form-group govuk-form-group--error" : "govuk-form-group";
+}
+
+type TextInputProps = {
+  id: string;
+  label: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: ReactNode;
+  error?: string | undefined;
+  width?: "2" | "3" | "4" | "5" | "10" | "20" | "30";
+  type?: "text" | "email";
+  inputMode?: "numeric" | "text" | "email";
+  autoComplete?: string;
+  spellCheck?: boolean;
+  prefix?: string;
+};
+
+export function TextInput(props: TextInputProps) {
+  const { id, label, value, onChange, hint, error, width, prefix } = props;
+  const classes = [
+    "govuk-input",
+    width ? `govuk-input--width-${width}` : "",
+    error ? "govuk-input--error" : "",
+  ].filter(Boolean);
+  const input = (
+    <input
+      className={classes.join(" ")}
+      id={id}
+      name={id}
+      type={props.type ?? "text"}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      inputMode={props.inputMode}
+      autoComplete={props.autoComplete}
+      spellCheck={props.spellCheck}
+      aria-describedby={describedBy(id, hint, error)}
+    />
+  );
+
+  return (
+    <div className={groupClass(error)}>
+      <label className="govuk-label" htmlFor={id}>
+        {label}
+      </label>
+      {hint ? <Hint id={`${id}-hint`}>{hint}</Hint> : null}
+      {error ? <ErrorMessage id={`${id}-error`}>{error}</ErrorMessage> : null}
+      {prefix ? (
+        <div className="govuk-input__wrapper">
+          <div className="govuk-input__prefix" aria-hidden="true">
+            {prefix}
+          </div>
+          {input}
+        </div>
+      ) : (
+        input
+      )}
+    </div>
+  );
+}
+
+type MoneyInputProps = Omit<TextInputProps, "prefix" | "inputMode" | "width" | "type">;
+
+/** A whole-pounds amount, with a £ prefix and a numeric keyboard on mobile. */
+export function MoneyInput(props: MoneyInputProps) {
+  return <TextInput {...props} prefix="£" inputMode="numeric" width="10" spellCheck={false} />;
+}
+
+export type DateParts = { day: string; month: string; year: string };
+
+type DateInputProps = {
+  id: string;
+  legend: ReactNode;
+  value: DateParts;
+  onChange: (value: DateParts) => void;
+  hint?: ReactNode;
+  error?: string | undefined;
+};
+
+export function DateInput({ id, legend, value, onChange, hint, error }: DateInputProps) {
+  const parts = [
+    { key: "day", label: "Day", width: "2" },
+    { key: "month", label: "Month", width: "2" },
+    { key: "year", label: "Year", width: "4" },
+  ] as const;
+
+  return (
+    <div className={groupClass(error)}>
+      <fieldset
+        className="govuk-fieldset"
+
+        aria-describedby={describedBy(id, hint, error)}
+      >
+        <legend className="govuk-fieldset__legend govuk-fieldset__legend--s">{legend}</legend>
+        {hint ? <Hint id={`${id}-hint`}>{hint}</Hint> : null}
+        {error ? <ErrorMessage id={`${id}-error`}>{error}</ErrorMessage> : null}
+        <div className="govuk-date-input" id={id}>
+          {parts.map((part) => {
+            const inputId = `${id}-${part.key}`;
+            const classes = [
+              "govuk-input",
+              "govuk-date-input__input",
+              `govuk-input--width-${part.width}`,
+              error ? "govuk-input--error" : "",
+            ].filter(Boolean);
+            return (
+              <div className="govuk-date-input__item" key={part.key}>
+                <div className="govuk-form-group">
+                  <label className="govuk-label govuk-date-input__label" htmlFor={inputId}>
+                    {part.label}
+                  </label>
+                  <input
+                    className={classes.join(" ")}
+                    id={inputId}
+                    name={inputId}
+                    type="text"
+                    inputMode="numeric"
+                    value={value[part.key]}
+                    onChange={(event) => onChange({ ...value, [part.key]: event.target.value })}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+type RadiosProps<T extends string> = {
+  name: string;
+  legend: ReactNode;
+  options: { value: T; label: string; hint?: string }[];
+  value: T | "";
+  onChange: (value: T) => void;
+  hint?: ReactNode;
+  error?: string | undefined;
+  inline?: boolean;
+};
+
+export function Radios<T extends string>(props: RadiosProps<T>) {
+  const { name, legend, options, value, onChange, hint, error } = props;
+
+  return (
+    <div className={groupClass(error)}>
+      <fieldset className="govuk-fieldset" aria-describedby={describedBy(name, hint, error)}>
+        <legend className="govuk-fieldset__legend govuk-fieldset__legend--s">{legend}</legend>
+        {hint ? <Hint id={`${name}-hint`}>{hint}</Hint> : null}
+        {error ? <ErrorMessage id={`${name}-error`}>{error}</ErrorMessage> : null}
+        <div className={props.inline ? "govuk-radios govuk-radios--inline" : "govuk-radios"}>
+          {options.map((option, index) => {
+            const inputId = index === 0 ? name : `${name}-${option.value}`;
+            return (
+              <div className="govuk-radios__item" key={option.value}>
+                <input
+                  className="govuk-radios__input"
+                  id={inputId}
+                  name={name}
+                  type="radio"
+                  value={option.value}
+                  checked={value === option.value}
+                  onChange={() => onChange(option.value)}
+                  aria-describedby={option.hint ? `${inputId}-hint` : undefined}
+                />
+                <label className="govuk-label govuk-radios__label" htmlFor={inputId}>
+                  {option.label}
+                </label>
+                {option.hint ? (
+                  <div id={`${inputId}-hint`} className="govuk-hint govuk-radios__hint">
+                    {option.hint}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
+type CheckboxProps = {
+  id: string;
+  label: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  error?: string | undefined;
+};
+
+export function Checkbox({ id, label, checked, onChange, error }: CheckboxProps) {
+  return (
+    <div className={groupClass(error)}>
+      {error ? <ErrorMessage id={`${id}-error`}>{error}</ErrorMessage> : null}
+      <div className="govuk-checkboxes">
+        <div className="govuk-checkboxes__item">
+          <input
+            className="govuk-checkboxes__input"
+            id={id}
+            name={id}
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => onChange(event.target.checked)}
+            aria-describedby={error ? `${id}-error` : undefined}
+          />
+          <label className="govuk-label govuk-checkboxes__label" htmlFor={id}>
+            {label}
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "warning";
+};
+
+export function Button({ variant = "primary", className, ...rest }: ButtonProps) {
+  const classes = [
+    "govuk-button",
+    variant === "primary" ? "" : `govuk-button--${variant}`,
+    className ?? "",
+  ];
+  return (
+    <button
+      type="submit"
+      className={classes.filter(Boolean).join(" ")}
+      data-module="govuk-button"
+      {...rest}
+    />
+  );
+}
+
+/** A GOV.UK start button: a link styled as a button, with an arrow. */
+export function StartButton({ to, children = "Start now" }: { to: string; children?: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      draggable={false}
+      className="govuk-button govuk-button--start"
+      data-module="govuk-button"
+    >
+      {children}
+      <StartButtonArrow />
+    </Link>
+  );
+}
+
+function StartButtonArrow() {
+  return (
+    <svg
+      className="govuk-button__start-icon"
+      xmlns="http://www.w3.org/2000/svg"
+      width="17.5"
+      height="19"
+      viewBox="0 0 33 40"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path fill="currentColor" d="M0 0h13l20 20-20 20H0l20-20z" />
+    </svg>
+  );
+}

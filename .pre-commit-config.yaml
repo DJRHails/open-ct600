@@ -1,0 +1,44 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project backend ruff format --check backend
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project backend ruff check backend
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      - id: ty
+        name: ty check
+        entry: bash -c 'cd backend && uv run ty check'
+        language: system
+        files: ^backend/
+        pass_filenames: false
+      - id: oxlint
+        name: oxlint
+        entry: pnpm --dir frontend lint
+        language: system
+        files: ^frontend/src/
+        pass_filenames: false
+      - id: oxfmt
+        name: oxfmt
+        entry: pnpm --dir frontend format:check
+        language: system
+        files: ^frontend/src/
+        pass_filenames: false
+      - id: tsc
+        name: tsc
+        entry: pnpm --dir frontend typecheck
+        language: system
+        files: ^frontend/
+        pass_filenames: false
+      - id: gitleaks
+        name: gitleaks
+        entry: gitleaks git --staged --redact --no-banner
+        language: system
+        pass_filenames: false

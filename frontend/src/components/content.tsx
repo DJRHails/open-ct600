@@ -1,0 +1,88 @@
+import { type ReactNode, useEffect } from "react";
+import { Link } from "react-router";
+
+import { SERVICE_NAME } from "@/components/Layout";
+
+/** Set the document title in GOV.UK style: "Error: Page – Service". */
+export function usePageTitle(title: string, hasErrors = false) {
+  useEffect(() => {
+    document.title = `${hasErrors ? "Error: " : ""}${title} – ${SERVICE_NAME}`;
+  }, [title, hasErrors]);
+}
+
+export type SummaryRow = {
+  key: ReactNode;
+  value: ReactNode;
+  change?: { to: string; label: string };
+};
+
+export function SummaryList({ rows, noBorder }: { rows: SummaryRow[]; noBorder?: boolean }) {
+  return (
+    <dl
+      className={
+        noBorder ? "govuk-summary-list govuk-summary-list--no-border" : "govuk-summary-list"
+      }
+    >
+      {rows.map((row, index) => (
+        <div
+          className={
+            row.change
+              ? "govuk-summary-list__row"
+              : "govuk-summary-list__row govuk-summary-list__row--no-actions"
+          }
+          key={index}
+        >
+          <dt className="govuk-summary-list__key">{row.key}</dt>
+          <dd className="govuk-summary-list__value">{row.value}</dd>
+          {row.change ? (
+            <dd className="govuk-summary-list__actions">
+              <Link className="govuk-link" to={row.change.to}>
+                Change<span className="govuk-visually-hidden"> {row.change.label}</span>
+              </Link>
+            </dd>
+          ) : null}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+export function Panel({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div className="govuk-panel govuk-panel--confirmation">
+      <h1 className="govuk-panel__title">{title}</h1>
+      {children ? <div className="govuk-panel__body">{children}</div> : null}
+    </div>
+  );
+}
+
+export function WarningText({ children }: { children: ReactNode }) {
+  return (
+    <div className="govuk-warning-text">
+      <span className="govuk-warning-text__icon" aria-hidden="true">
+        !
+      </span>
+      <strong className="govuk-warning-text__text">
+        <span className="govuk-visually-hidden">Warning</span>
+        {children}
+      </strong>
+    </div>
+  );
+}
+
+export function BackLink({ to, children = "Back" }: { to: string; children?: ReactNode }) {
+  return (
+    <Link to={to} className="govuk-back-link app-no-print">
+      {children}
+    </Link>
+  );
+}
+
+/** A two-thirds column, the standard GOV.UK reading width. */
+export function TwoThirds({ children }: { children: ReactNode }) {
+  return (
+    <div className="govuk-grid-row">
+      <div className="govuk-grid-column-two-thirds">{children}</div>
+    </div>
+  );
+}
