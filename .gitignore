@@ -1,0 +1,16 @@
+# Local state
+.data/
+.env
+.claude/settings.local.json
+.agents/settings.local.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+frontend/dist/
