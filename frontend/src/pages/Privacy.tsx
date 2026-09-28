@@ -4,30 +4,6 @@ import { TwoThirds, usePageTitle } from "@/components/content";
 import { REPOSITORY_URL } from "@/components/Layout";
 import { ExternalLink } from "@/content/guides";
 
-function SignUpDetails() {
-  return (
-    <>
-      <h2 className="govuk-heading-l">If you sign up</h2>
-      <p className="govuk-body">The sign-up form asks for your:</p>
-      <ul className="govuk-list govuk-list--bullet">
-        <li>name</li>
-        <li>email address</li>
-        <li>company name</li>
-      </ul>
-      <p className="govuk-body">We do not ask for a password. There are no user accounts.</p>
-      <p className="govuk-body">
-        Your details are sent to{" "}
-        <ExternalLink href="https://webhook.site">webhook.site</ExternalLink>, a third-party
-        service. The person who runs this copy of Open CT600 reads them there. Anyone who has the
-        private webhook address could also read them, so do not enter anything sensitive.
-      </p>
-      <p className="govuk-body">
-        Your details are only used to contact you about Open CT600. They are not sold.
-      </p>
-    </>
-  );
-}
-
 function FiguresAndDrafts() {
   return (
     <>
@@ -74,7 +50,6 @@ export function PrivacyPage() {
         Open CT600 is a demonstration. Do not enter your company’s real tax references or anything
         you would not want someone else to see.
       </p>
-      <SignUpDetails />
       <FiguresAndDrafts />
       <h2 className="govuk-heading-l">Technical logs</h2>
       <p className="govuk-body">

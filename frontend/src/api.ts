@@ -107,15 +107,6 @@ export type SubmissionReceipt = {
   computation: ReturnComputation;
 };
 
-export type SignupRequest = {
-  full_name: string;
-  email: string;
-  company_name: string;
-  accept_terms: true;
-};
-
-export type SignupReceipt = { reference: string; email: string };
-
 export type CalculatorRequest = {
   period_start: string;
   period_end: string;
@@ -175,5 +166,4 @@ export const api = {
   computeReturn: (ct600: CT600Return) => post<ReturnComputation>("/returns/compute", ct600),
   submitReturn: (ct600: CT600Return, declaration: Declaration) =>
     post<SubmissionReceipt>("/returns/submit", { ct600, declaration }),
-  signUp: (request: SignupRequest) => post<SignupReceipt>("/signup", request),
 };

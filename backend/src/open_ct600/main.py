@@ -1,14 +1,10 @@
 """FastAPI application: the Open CT600 API and, optionally, the built frontend."""
 
-import logging
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import PurePosixPath
 from typing import Annotated, Self
 
-import httpx2 as httpx
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
+from fastapi import APIRouter, FastAPI, status
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -18,10 +14,7 @@ from starlette.types import Scope
 from open_ct600.config import Settings
 from open_ct600.ct600 import CT600Return, Pounds, ReturnComputation, Submission, compute_return
 from open_ct600.filing import SubmissionReceipt, submit_return
-from open_ct600.signup import SignupReceipt, SignupRequest, WebhookDeliveryError, deliver_signup
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
-
-logger = logging.getLogger(__name__)
 
 
 class CalculatorRequest(BaseModel):
@@ -48,14 +41,6 @@ class Health(BaseModel):
     """Liveness response."""
 
     status: str
-
-
-def _http_client(request: Request) -> httpx.AsyncClient:
-    return request.app.state.http_client
-
-
-def _settings(request: Request) -> Settings:
-    return request.app.state.settings
 
 
 api = APIRouter(prefix="/api")
@@ -91,22 +76,6 @@ def submit(submission: Submission) -> SubmissionReceipt:
     return submit_return(submission)
 
 
-@api.post("/signup", status_code=status.HTTP_201_CREATED)
-async def signup(
-    request: SignupRequest,
-    client: Annotated[httpx.AsyncClient, Depends(_http_client)],
-    settings: Annotated[Settings, Depends(_settings)],
-) -> SignupReceipt:
-    """Register interest by delivering the details to the sign-up webhook."""
-    try:
-        return await deliver_signup(request, client, str(settings.signup_webhook_url))
-    except WebhookDeliveryError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Sorry, we could not create your account right now. Try again later.",
-        ) from error
-
-
 class SinglePageApp(StaticFiles):
     """Static files that fall back to ``index.html`` so client-side routes load."""
 
@@ -125,30 +94,17 @@ class SinglePageApp(StaticFiles):
             return await super().get_response("index.html", scope)
 
 
-def create_app(
-    settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None
-) -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the application.
 
     Args:
         settings: Configuration; read from the environment when omitted.
-        transport: HTTP transport for outbound calls, for tests.
 
     Returns:
         The configured FastAPI application.
     """
     resolved = settings or Settings()
-
-    @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        async with httpx.AsyncClient(
-            timeout=resolved.webhook_timeout_seconds, transport=transport
-        ) as client:
-            app.state.http_client = client
-            yield
-
-    app = FastAPI(title="Open CT600", version="0.1.0", lifespan=lifespan)
-    app.state.settings = resolved
+    app = FastAPI(title="Open CT600", version="0.1.0")
     app.include_router(api)
     if resolved.static_dir is not None:
         if not (resolved.static_dir / "index.html").is_file():
@@ -157,5 +113,4 @@ def create_app(
                 "Build the frontend with `pnpm build` or unset STATIC_DIR."
             )
         app.mount("/", SinglePageApp(directory=resolved.static_dir, html=True), name="app")
-    logger.info("Sign-ups are delivered to %s", resolved.signup_webhook_url.host)
     return app

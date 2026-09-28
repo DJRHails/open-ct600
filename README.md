@@ -6,8 +6,7 @@ old online filing service for small companies, which closed on 31 March 2026, an
 
 - **Frontend:** React 19 + TypeScript (Vite), built on the [GOV.UK Design System](https://design-system.service.gov.uk/)
   (`govuk-frontend` 6).
-- **Backend:** Python 3.13 + FastAPI. It computes Corporation Tax and the CT600 boxes, and delivers
-  sign-ups to a [webhook.site](https://webhook.site/) URL.
+- **Backend:** Python 3.13 + FastAPI. It computes Corporation Tax and the CT600 boxes.
 
 > **This is a demonstration.** It does not submit returns to HMRC and is not HMRC-recognised software.
 > Use it to prepare and check your figures, then file with
@@ -22,7 +21,6 @@ old online filing service for small companies, which closed on 31 March 2026, an
 | --- | --- |
 | Filing service (`/file`) | Uses the GOV.UK start page, task list and one-topic-per-page patterns: company details, accounting period, profit and loss account, tax adjustments and micro-entity balance sheet. Check your answers shows every CT600 box, the tax computation and the accounts. After a declaration, it issues a demo receipt with a submission reference and a fingerprint of the return. |
 | Tax calculator (`/calculator`) | Corporation Tax for any period from 1 April 2017 to 31 March 2027, with marginal relief, associated companies, short periods and periods that span 1 April. |
-| Sign-up (`/sign-up`) | Name, email and company name, validated by the API and posted as JSON to your webhook.site URL. It asks for no password, because anyone who has a webhook.site URL can read what is posted to it. |
 | Content | Home, pricing (free), HMRC free-filing closure explainer, guides, help/FAQ, privacy, cookies (none are used), accessibility statement and terms. |
 
 Drafts are kept only in the user's browser (`localStorage`). The API stores nothing.
@@ -57,8 +55,6 @@ Transaction Engine), group relief, R&D relief, and the supplementary pages (CT60
 You need Python 3.13 with [uv](https://docs.astral.sh/uv/), Node 22 and pnpm 12.
 
 ```sh
-cp .env.example backend/.env   # then set SIGNUP_WEBHOOK_URL to your https://webhook.site/<token>
-
 # API on :8000
 cd backend && uv sync && uv run uvicorn --factory open_ct600.main:create_app --reload
 
@@ -66,22 +62,13 @@ cd backend && uv sync && uv run uvicorn --factory open_ct600.main:create_app --r
 cd frontend && pnpm install && pnpm dev
 ```
 
-To get a webhook URL, open https://webhook.site and copy "Your unique URL". Each sign-up then
-shows up there as a JSON `POST`:
-
-```json
-{"event": "signup", "reference": "sgn_…", "received_at": "…", "full_name": "…", "email": "…", "company_name": "…"}
-```
-
-If `SIGNUP_WEBHOOK_URL` is not set, the API refuses to start.
-
 ### Docker
 
 One image serves both the API and the built frontend:
 
 ```sh
 docker build -t open-ct600 .
-docker run --rm -p 8000:8000 -e SIGNUP_WEBHOOK_URL=https://webhook.site/<token> open-ct600
+docker run --rm -p 8000:8000 open-ct600
 ```
 
 ## API
@@ -92,7 +79,6 @@ docker run --rm -p 8000:8000 -e SIGNUP_WEBHOOK_URL=https://webhook.site/<token> 
 | `POST` | `/api/calculator` | Corporation Tax for `period_start`, `period_end`, `taxable_profits`, `associated_companies` |
 | `POST` | `/api/returns/compute` | CT600 boxes, tax computation and micro-entity accounts for a full return |
 | `POST` | `/api/returns/submit` | Takes a return plus a declaration and issues a demo receipt. Nothing is sent to HMRC. |
-| `POST` | `/api/signup` | Validates the registration and forwards it to `SIGNUP_WEBHOOK_URL` |
 
 Interactive docs are at `/docs` while the API is running. Validation errors are FastAPI's standard
 `422` responses, with messages written in GOV.UK style.

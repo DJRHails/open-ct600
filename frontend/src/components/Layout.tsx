@@ -11,7 +11,6 @@ const NAVIGATION = [
   { to: "/pricing", label: "Pricing" },
   { to: "/guides", label: "Guides" },
   { to: "/hmrc-free-filing", label: "HMRC free filing" },
-  { to: "/sign-up", label: "Sign up" },
 ];
 
 function Header() {
