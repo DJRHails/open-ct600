@@ -126,6 +126,7 @@ async function completeEverySection(user: UserEvent) {
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Tax adjustments" }));
+  for (const no of screen.getAllByRole("radio", { name: "No" })) await user.click(no);
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Balance sheet" }));
@@ -372,6 +373,9 @@ describe("filing a return", () => {
     const user = renderApp("/file/tax-adjustments");
 
     expect(screen.queryByLabelText(pre2017)).toBeNull();
+    for (const no of screen.getAllByRole("radio", { name: "No" })) await user.click(no);
+    const losses = screen.getByRole("group", { name: /trading losses from earlier periods/ });
+    await user.click(within(losses).getByRole("radio", { name: "Yes" }));
     await user.type(screen.getByLabelText("Trading losses brought forward"), "10,000");
     const question = screen.getByLabelText(pre2017);
     expect(question).toHaveAccessibleDescription(/only be set against profits of the same trade/);

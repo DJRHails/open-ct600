@@ -87,6 +87,8 @@ type TextInputProps = {
   spellCheck?: boolean;
   prefix?: string;
   suffix?: string;
+  /** Help about the question, like a details component, shown after the input. */
+  help?: ReactNode;
 };
 
 export function TextInput(props: TextInputProps) {
@@ -135,6 +137,7 @@ export function TextInput(props: TextInputProps) {
       ) : (
         input
       )}
+      {props.help}
     </div>
   );
 }
@@ -147,10 +150,12 @@ type SelectProps = {
   onChange: (value: string) => void;
   hint?: ReactNode;
   error?: string | undefined;
+  help?: ReactNode;
 };
 
 /** A GOV.UK select, for choosing one of more options than radios can comfortably show. */
-export function Select({ id, label, options, value, onChange, hint, error }: SelectProps) {
+export function Select(props: SelectProps) {
+  const { id, label, options, value, onChange, hint, error, help } = props;
   return (
     <div className={groupClass(error)}>
       <label className="govuk-label" htmlFor={id}>
@@ -173,6 +178,7 @@ export function Select({ id, label, options, value, onChange, hint, error }: Sel
           </option>
         ))}
       </select>
+      {help}
     </div>
   );
 }
@@ -193,9 +199,11 @@ type DateInputProps = {
   onChange: (value: DateParts) => void;
   hint?: ReactNode;
   error?: string | undefined;
+  help?: ReactNode;
 };
 
-export function DateInput({ id, legend, value, onChange, hint, error }: DateInputProps) {
+export function DateInput(props: DateInputProps) {
+  const { id, legend, value, onChange, hint, error, help } = props;
   const parts = [
     { key: "day", label: "Day", width: "2" },
     { key: "month", label: "Month", width: "2" },
@@ -242,6 +250,7 @@ export function DateInput({ id, legend, value, onChange, hint, error }: DateInpu
           })}
         </div>
       </fieldset>
+      {help}
     </div>
   );
 }
@@ -263,6 +272,7 @@ type RadiosProps<T extends string> = {
   hint?: ReactNode;
   error?: string | undefined;
   inline?: boolean;
+  help?: ReactNode;
 };
 
 export function Radios<T extends string>(props: RadiosProps<T>) {
@@ -319,6 +329,7 @@ export function Radios<T extends string>(props: RadiosProps<T>) {
           })}
         </div>
       </fieldset>
+      {props.help}
     </div>
   );
 }
@@ -330,9 +341,11 @@ type CheckboxProps = {
   onChange: (checked: boolean) => void;
   hint?: ReactNode;
   error?: string | undefined;
+  help?: ReactNode;
 };
 
-export function Checkbox({ id, label, checked, onChange, hint, error }: CheckboxProps) {
+export function Checkbox(props: CheckboxProps) {
+  const { id, label, checked, onChange, hint, error, help } = props;
   return (
     <div className={groupClass(error)}>
       {error ? <ErrorMessage id={`${id}-error`}>{error}</ErrorMessage> : null}
@@ -357,6 +370,7 @@ export function Checkbox({ id, label, checked, onChange, hint, error }: Checkbox
           ) : null}
         </div>
       </div>
+      {help}
     </div>
   );
 }

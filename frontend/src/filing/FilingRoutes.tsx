@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router";
 
+import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
 import { AccountingPeriodPage } from "@/filing/AccountingPeriodPage";
 import { AccountsDetailsPage } from "@/filing/AccountsDetailsPage";
+import { AmountQuestionsPage } from "@/filing/AmountQuestionsPage";
 import { AmountSectionPage } from "@/filing/AmountSectionPage";
 import { CheckAnswersPage } from "@/filing/CheckAnswersPage";
 import { CompanyDetailsPage } from "@/filing/CompanyDetailsPage";
@@ -51,7 +53,13 @@ function FilingPages() {
       />
       <Route
         path={TAX_ADJUSTMENTS.slug}
-        element={<AmountSectionPage key="adjustments" section={TAX_ADJUSTMENTS} />}
+        element={
+          <AmountQuestionsPage
+            key="adjustments"
+            section={TAX_ADJUSTMENTS}
+            help={TAX_ADJUSTMENTS_HELP}
+          />
+        }
       />
       <Route
         path={BALANCE_SHEET.slug}
