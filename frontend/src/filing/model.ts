@@ -15,6 +15,12 @@ import type {
   TradingStatus,
 } from "@/api";
 import type { DateParts } from "@/components/forms";
+import type {
+  CreativeAnswers,
+  LoanDatesAnswers,
+  ResearchAnswers,
+  SurrendererAnswers,
+} from "@/filing/reliefs";
 import { convertPage, type RawTree } from "@/filing/supplementary/answers";
 import {
   formatDate,
@@ -45,7 +51,11 @@ export type AccountsAnswers = {
   approval_date: DateParts;
   average_employees: string;
   trading_status: TradingStatus | "";
+  dormant: YesNo;
 };
+
+/** A yes or no question's answer; blank until answered. */
+export type YesNo = "yes" | "no" | "";
 
 export type Draft = {
   company?: CompanyAnswers;
@@ -58,6 +68,12 @@ export type Draft = {
   chosen_pages?: PageCode[];
   /** Each chosen page's answers as typed, saved screen by screen. */
   supplementary_pages?: Partial<Record<PageCode, RawTree>>;
+  research_and_development?: ResearchAnswers;
+  /** When CT600A's loans were made, asked only if the s455 rate changes in the period. */
+  participator_loan_dates?: LoanDatesAnswers;
+  /** Figures from CT600C's surrendering companies, by tax reference. */
+  group_relief_surrenderers?: SurrendererAnswers;
+  creative_industries?: CreativeAnswers;
 };
 
 export type FieldErrors = Record<string, string>;
@@ -357,6 +373,7 @@ export const EMPTY_ACCOUNTS: AccountsAnswers = {
   approval_date: { day: "", month: "", year: "" },
   average_employees: "",
   trading_status: "",
+  dormant: "",
 };
 
 /** The director fields' ids, so errors can link to the right input. */
@@ -409,7 +426,7 @@ export function validateAccounts(
       "The date the accounts were approved must be after the end of the accounting period";
   }
   if (!employees.ok) errors.average_employees = employees.error;
-  if (!tradingStatus) errors.trading_status = "Select whether the company traded";
+  Object.assign(errors, activityErrors(values));
   if (!standard || !tradingStatus || !approval.ok || !employees.ok) return { ok: false, errors };
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
@@ -421,8 +438,22 @@ export function validateAccounts(
       signing_director: values.signing_director,
       average_employees: employees.value,
       trading_status: tradingStatus,
+      dormant: values.dormant === "yes",
     },
   };
+}
+
+/** Whether the company was dormant, and whether it traded: a dormant company cannot trade. */
+function activityErrors(values: AccountsAnswers): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!values.dormant) errors.dormant = "Select yes if the company was dormant during this period";
+  if (!values.trading_status) errors.trading_status = "Select whether the company traded";
+  else if (values.dormant === "yes" && values.trading_status === "trading") {
+    errors.trading_status =
+      "A dormant company cannot be trading: select whether it has never traded or has " +
+      "stopped trading, or say it was not dormant";
+  }
+  return errors;
 }
 
 export function validatePeriod(
@@ -467,9 +498,14 @@ export function validateAmounts<K extends AmountSectionKey>(
 
 /** The saved period's end date, if the period section is complete. */
 export function periodEnd(draft: Draft): string | undefined {
+  return savedPeriod(draft)?.end;
+}
+
+/** The saved accounting period, if the period section is complete. */
+export function savedPeriod(draft: Draft): CT600Return["period"] | undefined {
   if (!draft.period) return undefined;
   const period = validatePeriod(draft.period);
-  return period.ok ? period.value.end : undefined;
+  return period.ok ? period.value : undefined;
 }
 
 type SectionValues = {
@@ -535,10 +571,11 @@ function supplementaryPages(
 }
 
 /**
- * Build the API payload, or ``null`` if any section is not yet completed. ``pages`` are HMRC's
- * page definitions, needed to check the answers to any supplementary pages chosen.
+ * The return's sections and supplementary pages, or ``null`` if any is not yet completed.
+ * ``pages`` are HMRC's page definitions, needed to check the answers to any pages chosen.
+ * ``toReturn`` in ``filing/payload`` adds the relief answers the pages have no box for.
  */
-export function toReturn(draft: Draft, pages?: SchemaPage[]): CT600Return | null {
+export function sectionsReturn(draft: Draft, pages?: SchemaPage[]): CT600Return | null {
   const supplementary = supplementaryPages(draft, pages);
   const company = validateSection(draft, "company");
   const period = validateSection(draft, "period");
@@ -591,6 +628,11 @@ export const STANDARD_OPTIONS = (["micro", "small"] as const).map((value) => ({
 export const TRADING_STATUS_OPTIONS = (
   ["trading", "never_traded", "no_longer_trading"] as const
 ).map((value) => ({ value, label: TRADING_STATUS_LABELS[value] }));
+
+export const YES_NO: { value: "yes" | "no"; label: string }[] = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+];
 
 function companyTypeLabel(code: number): string {
   return COMPANY_TYPES.find((type) => type.value === String(code))?.label ?? String(code);
@@ -656,6 +698,7 @@ function accountsRows(accounts: AccountsDetails): AnswerRow[] {
       label: "Average number of employees",
       value: String(accounts.average_employees),
     },
+    { key: "dormant", label: "Dormant during the period", value: accounts.dormant ? "Yes" : "No" },
     {
       key: "trading_status",
       label: "Trading",

@@ -166,6 +166,40 @@ export type AccountsDetails = {
   signing_director: string;
   average_employees: number;
   trading_status: TradingStatus;
+  /** Dormant throughout the period: no turnover, expenses, income or gains, and not trading. */
+  dormant: boolean;
+};
+
+/** ``sme`` and ``rdec`` (large companies) before 1 April 2024; ``rdec`` (merged) and ``eris`` after. */
+export type ResearchAndDevelopmentClaimScheme = "sme" | "rdec" | "eris";
+
+/** The R&D claim's answers that CT600L has no box for; see backend ``reliefs.research_and_development``. */
+export type ResearchAndDevelopment = {
+  scheme: ResearchAndDevelopmentClaimScheme;
+  company_is_sme: boolean;
+  qualifying_expenditure: number;
+  rdec_expenditure: number;
+  intensity: string | null;
+  claim_payable_credit: boolean;
+  rd_workers_paye_and_nic: number | null;
+  claimed_in_previous_three_years: boolean;
+  claim_notification_submitted: boolean;
+  additional_information_submitted: boolean;
+};
+
+/** Figures from a group relief surrendering company's own return (CT600C). */
+export type SurrenderingCompany = {
+  tax_reference: string;
+  surrenderable_amount: number;
+  surrendered_to_others: number;
+  consortium_share: string | null;
+};
+
+/** When each loan on CT600A was made, one ISO date per row of each part, in order. */
+export type ParticipatorLoanDates = {
+  loans: string[];
+  repaid_within_nine_months: string[];
+  repaid_later: string[];
 };
 
 /** How a schema node's value is entered; see backend ``open_ct600.schema.spec.Kind``. */
@@ -219,9 +253,9 @@ export type SchemaPage = {
   node: SpecNode;
   /**
    * The box ids the service calculates; a group whose every box is calculated is calculated
-   * as a whole. Absent from services older than the page calculations, where none are.
+   * as a whole. Answers must leave them out.
    */
-  computed?: string[];
+  computed: string[];
 };
 
 export type CT600Return = {
@@ -257,6 +291,10 @@ export type CT600Return = {
   };
   accounts: AccountsDetails;
   supplementary_pages?: Partial<Record<PageCode, ElementTree>>;
+  research_and_development?: ResearchAndDevelopment | null;
+  group_relief_surrenderers?: SurrenderingCompany[];
+  participator_loan_dates?: ParticipatorLoanDates | null;
+  creative_industries?: { additional_information_submitted: boolean } | null;
 };
 
 export type SignatoryCapacity = "director" | "company_secretary" | "authorised_agent";
@@ -477,28 +515,19 @@ function post<T>(path: string, body: unknown): Promise<T> {
 /** A document the service generates from the return. */
 export type ReturnDocument = "accounts" | "computations" | "ct600";
 
-/**
- * Where each document comes from, the file name to use if the service does not give one, and
- * the request body: the iXBRL routes take the return itself, the XML route ``{ct600}``.
- */
-const DOCUMENTS: Record<
-  ReturnDocument,
-  { path: string; filename: string; body: (ct600: CT600Return) => unknown }
-> = {
-  accounts: { path: "/returns/accounts.xhtml", filename: "accounts.xhtml", body: (ct600) => ct600 },
-  computations: {
-    path: "/returns/computations.xhtml",
-    filename: "computations.xhtml",
-    body: (ct600) => ct600,
-  },
-  ct600: { path: "/returns/ct600.xml", filename: "ct600.xml", body: (ct600) => ({ ct600 }) },
+/** Where each document comes from, and the file name to use if the service gives none. */
+const DOCUMENTS: Record<ReturnDocument, { path: string; filename: string }> = {
+  accounts: { path: "/returns/accounts.xhtml", filename: "accounts.xhtml" },
+  computations: { path: "/returns/computations.xhtml", filename: "computations.xhtml" },
+  ct600: { path: "/returns/ct600.xml", filename: "ct600.xml" },
 };
 
 const FILENAME = /filename="?(?<name>[^";]+)"?/;
 
+/** Every route that works on a whole return (downloads and validation) takes ``{ct600}``. */
 async function download(document: ReturnDocument, ct600: CT600Return) {
-  const { path, filename, body } = DOCUMENTS[document];
-  const response = await request(path, jsonRequest(body(ct600)));
+  const { path, filename } = DOCUMENTS[document];
+  const response = await request(path, jsonRequest({ ct600 }));
   const disposition = response.headers.get("Content-Disposition") ?? "";
   const named = FILENAME.exec(disposition)?.groups?.name;
   return { blob: await response.blob(), filename: named ?? filename };

@@ -47,6 +47,26 @@ export function SummaryList({ rows, noBorder }: { rows: SummaryRow[]; noBorder?:
   );
 }
 
+/** A GOV.UK summary card: a titled group of answers with a link to change them. */
+export function Card(props: { title: string; change: string; children: ReactNode }) {
+  return (
+    <div className="govuk-summary-card">
+      <div className="govuk-summary-card__title-wrapper">
+        <h2 className="govuk-summary-card__title">{props.title}</h2>
+        <ul className="govuk-summary-card__actions">
+          <li className="govuk-summary-card__action">
+            <Link className="govuk-link" to={props.change}>
+              {"Change "}
+              <span className="govuk-visually-hidden">{props.title.toLowerCase()}</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+      <div className="govuk-summary-card__content">{props.children}</div>
+    </div>
+  );
+}
+
 export function Panel({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <div className="govuk-panel govuk-panel--confirmation">

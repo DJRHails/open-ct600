@@ -13,6 +13,7 @@ import {
   STANDARD_OPTIONS,
   TRADING_STATUS_OPTIONS,
   validateAccounts,
+  YES_NO,
 } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
@@ -101,6 +102,7 @@ export function AccountsDetailsPage() {
         "signing_director",
         "approval_date",
         "average_employees",
+        "dormant",
         "trading_status",
       ]}
       inputId={(field) => (field === "approval_date" ? "approval_date-day" : field)}
@@ -142,6 +144,16 @@ export function AccountsDetailsPage() {
         error={errors.average_employees}
         width="5"
         inputMode="numeric"
+      />
+      <Radios
+        name="dormant"
+        legend="Was the company dormant during this period?"
+        hint="A dormant company had no significant accounting transactions: no turnover, expenses, income or gains. It files dormant accounts and has no Corporation Tax to pay."
+        options={YES_NO}
+        value={values.dormant}
+        onChange={(dormant) => setValues({ ...values, dormant })}
+        error={errors.dormant}
+        inline
       />
       <Radios
         name="trading_status"

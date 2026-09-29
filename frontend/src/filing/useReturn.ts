@@ -2,7 +2,8 @@ import { useMemo } from "react";
 
 import type { CT600Return, SchemaPage } from "@/api";
 import { useDraft } from "@/filing/draft";
-import { needsSchema, toReturn } from "@/filing/model";
+import { needsSchema } from "@/filing/model";
+import { toReturn } from "@/filing/payload";
 import { useSchemaPages } from "@/filing/supplementary/schema";
 
 export type ReturnState =

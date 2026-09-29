@@ -64,7 +64,7 @@ describe("pageScreens", () => {
   });
 
   it("asks everything when the service calculates nothing", () => {
-    const page = withComputed(CT600A);
+    const page = withComputed({ ...CT600A, computed: [] });
 
     expect(formItems(page.node)).toHaveLength(CT600A.node.children.length);
   });
