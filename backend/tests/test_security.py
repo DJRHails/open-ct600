@@ -1,5 +1,7 @@
 """Security properties of the API as a whole (review .data/review/security.md)."""
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -149,3 +151,91 @@ def test_static_pages_carry_security_headers(tmp_path):
 
     assert response.status_code == 200
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+
+
+def with_answer(section, field, value):
+    return {**CT600, section: {**CT600[section], field: value}}
+
+
+@pytest.mark.parametrize(
+    ("path", "body", "location"),
+    [
+        (
+            "/api/returns/validate",
+            {"ct600": with_answer("company", "name", "Acme\x01 Ltd")},
+            ["body", "ct600", "company", "name"],
+        ),
+        (
+            "/api/returns/ct600.xml",
+            {"ct600": with_answer("accounts", "directors", ["Ada Lovelace", "Charles\x0bBabbage"])},
+            ["body", "ct600", "accounts", "directors"],
+        ),
+        (
+            "/api/returns/accounts.xhtml",
+            {"ct600": with_answer("company", "principal_activity", "Widgets\x00")},
+            ["body", "ct600", "company", "principal_activity"],
+        ),
+        (
+            "/api/returns/validate",
+            {
+                "ct600": {
+                    **CT600,
+                    "supplementary_pages": {
+                        "J": {
+                            "AvoidanceSchemes": [
+                                {
+                                    "ReferenceNumber": "1234\x1f5678",
+                                    "AccountingPeriod": "2025-03-31",
+                                }
+                            ]
+                        }
+                    },
+                }
+            },
+            ["body", "ct600", "supplementary_pages"],
+        ),
+        (
+            "/api/returns/submit-to-hmrc",
+            {**SUBMIT, "gateway_user_id": "user\x07"},
+            ["body", "gateway_user_id"],
+        ),
+        (
+            "/api/returns/submit-to-hmrc",
+            {**SUBMIT, "gateway_password": PASSWORD + "\x1b"},
+            ["body", "gateway_password"],
+        ),
+        (
+            "/api/returns/submit-to-hmrc",
+            {**SUBMIT, "declaration": {**SUBMIT["declaration"], "name": "Ada\x02"}},
+            ["body", "declaration", "name"],
+        ),
+    ],
+)
+def test_control_characters_are_a_validation_error_not_a_crash(path, body, location):
+    with client_for() as client:
+        response = client.post(path, json=body)
+
+    assert response.status_code == 422
+    assert location in [problem["loc"][: len(location)] for problem in response.json()["detail"]]
+    assert PASSWORD not in response.text
+
+
+def test_unpaired_surrogates_are_a_validation_error():
+    body = '{"ct600": ' + json.dumps(CT600).replace("Acme Widgets", "Acme \\ud800") + "}"
+
+    with client_for() as client:
+        response = client.post(
+            "/api/returns/validate", content=body, headers={"content-type": "application/json"}
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "ct600", "company", "name"]
+
+
+def test_tabs_and_line_breaks_are_still_accepted():
+    ct600 = with_answer("company", "principal_activity", "Widgets\tand\ngadgets")
+
+    with client_for() as client:
+        response = client.post("/api/returns/compute", json=ct600)
+
+    assert response.status_code == 200

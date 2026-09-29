@@ -53,6 +53,7 @@ from open_ct600.hmrc.xmldoc import serialise
 from open_ct600.ixbrl.accounts import render_accounts
 from open_ct600.ixbrl.computations import render_computations
 from open_ct600.ixbrl.layout import IxbrlRenderError
+from open_ct600.model import XmlTextModel
 from open_ct600.schema.spec import PAGE_DEFINITIONS, RETURN_PATH, PageCode, load_spec
 
 PRODUCT = "Open CT600"
@@ -68,7 +69,9 @@ _HMRC_LOCATION_NOISE = re.compile(
 _PAGE_BY_ELEMENT: dict[str, PageCode] = {page.element: page.code for page in PAGE_DEFINITIONS}
 
 
-class _Request(BaseModel):
+class _Request(XmlTextModel):
+    """A request body. Not ``StrictModel``: trimming would change a password."""
+
     model_config = ConfigDict(extra="forbid")
 
 
