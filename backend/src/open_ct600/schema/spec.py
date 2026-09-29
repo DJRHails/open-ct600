@@ -8,6 +8,7 @@ membership and the XSD's value constraints. ``python -m open_ct600.schema.genera
 import json
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 from functools import cache
 from pathlib import Path
@@ -84,8 +85,8 @@ class SpecNode:
         patterns: XSD regular expressions the whole value must match (all of them).
         min_length: Minimum length of a text value.
         max_length: Maximum length of a text value.
-        min_value: Inclusive lower bound of a numeric value.
-        max_value: Inclusive upper bound of a numeric value.
+        min_value: Inclusive lower bound of a numeric value (a ``date`` for dates).
+        max_value: Inclusive upper bound of a numeric value (a ``date`` for dates).
         choices: Choice groups among this node's children.
         children: Child elements and attributes, in schema order.
     """
@@ -103,8 +104,8 @@ class SpecNode:
     patterns: tuple[str, ...]
     min_length: int | None
     max_length: int | None
-    min_value: Decimal | None
-    max_value: Decimal | None
+    min_value: Decimal | date | None
+    max_value: Decimal | date | None
     choices: tuple[ChoiceGroup, ...]
     children: tuple["SpecNode", ...]
 
@@ -143,8 +144,8 @@ class SpecNode:
             "patterns": list(self.patterns),
             "minLength": self.min_length,
             "maxLength": self.max_length,
-            "minValue": _json_number(self.min_value),
-            "maxValue": _json_number(self.max_value),
+            "minValue": _json_bound(self.min_value),
+            "maxValue": _json_bound(self.max_value),
             "choices": [{"id": group.id, "min": group.min} for group in self.choices],
             "children": [child.to_json() for child in self.children],
         }
@@ -167,21 +168,28 @@ class SpecNode:
             patterns=tuple(data["patterns"]),
             min_length=data["minLength"],
             max_length=data["maxLength"],
-            min_value=_decimal(data["minValue"]),
-            max_value=_decimal(data["maxValue"]),
+            min_value=_bound(data["minValue"]),
+            max_value=_bound(data["maxValue"]),
             choices=tuple(ChoiceGroup(**group) for group in data["choices"]),
             children=tuple(cls.from_json(child) for child in data["children"]),
         )
 
 
-def _json_number(value: Decimal | None) -> int | float | None:
+def _json_bound(value: Decimal | date | None) -> int | float | str | None:
     if value is None:
         return None
+    if isinstance(value, date):
+        return value.isoformat()
     return int(value) if value == value.to_integral_value() else float(value)
 
 
-def _decimal(value: int | float | None) -> Decimal | None:
-    return None if value is None else Decimal(str(value))
+def _bound(value: int | float | str | None) -> Decimal | date | None:
+    """Read a bound: JSON numbers are exact decimals, strings are ISO dates."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return date.fromisoformat(value)
+    return Decimal(str(value))
 
 
 @dataclass(frozen=True)

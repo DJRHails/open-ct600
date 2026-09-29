@@ -52,7 +52,7 @@ _BOX_ID = re.compile(
 )
 _WORD = re.compile(
     r"""(?x)
-    [A-Z]+(?=[A-Z][a-z])  # acronym followed by a capitalised word: IMO in IMOnumber
+    [A-Z]+(?=[A-Z][a-z])  # acronym followed by a capitalised word: CFC in CFCTax
     | [A-Z]?[a-z]+        # a word, capitalised or not
     | [A-Z]+              # a trailing acronym
     | [0-9]+              # digits
@@ -197,7 +197,12 @@ def _documentation(element: etree._Element) -> str | None:
 
 
 def humanise(name: str) -> str:
-    """Turn an element name into a sentence-case label: ``IMOnumber`` → ``IMO number``."""
+    """Turn an element name into a sentence-case label: ``CFCTax`` → ``CFC tax``.
+
+    Only elements the box map does not describe use this (mostly containers). HMRC also
+    runs acronyms into lower-case words (``IRenvelope``), which cannot be told apart from
+    camel case without a dictionary; those come out as ``I renvelope``.
+    """
     words = _WORD.findall(name.removeprefix("@"))
     if not words:
         raise SchemaError(f"Cannot make a label from element name {name!r}")
@@ -234,10 +239,17 @@ class BoxRow:
 
 
 def load_box_map(path: Path) -> list[BoxRow]:
-    """Read the box map's rows, in schema order."""
+    """Read the box map's rows, in schema order.
+
+    Descriptions are cut off at the table width like paths are; a dangling comma or colon
+    left at the cut is dropped.
+    """
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t", quoting=csv.QUOTE_NONE)
-        return [BoxRow(row["path"], row["box_id"], row["description"].strip()) for row in reader]
+        return [
+            BoxRow(row["path"], row["box_id"], row["description"].strip().rstrip(",;:").strip())
+            for row in reader
+        ]
 
 
 class BoxMap:
