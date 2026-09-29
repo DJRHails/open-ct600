@@ -1,4 +1,6 @@
-import type { TaxBand, TaxComputation } from "@/api";
+import type { ReactNode } from "react";
+
+import type { FinancialYearSlice, TaxBand, TaxComputation } from "@/api";
 import { SummaryList } from "@/components/content";
 import { formatDate, formatMoney, formatPercent, formatPounds } from "@/format";
 
@@ -7,6 +9,7 @@ const BAND_LABELS: Record<TaxBand, string> = {
   small: "Small profits rate",
   marginal: "Main rate less marginal relief",
   main: "Main rate",
+  fund: "Authorised investment fund rate",
 };
 
 /** When the tax must be paid: a date, or quarterly instalments for large companies. */
@@ -69,35 +72,85 @@ export function TaxBreakdownTable({ tax }: { tax: TaxComputation }) {
           </th>
         </tr>
       </thead>
-      <tbody className="govuk-table__body">
-        {tax.slices.map((slice) => (
-          <tr className="govuk-table__row" key={slice.financial_year}>
-            <th scope="row" className="govuk-table__header">
-              {slice.financial_year} to {slice.financial_year + 1}
-              <span className="govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">
-                {formatDate(slice.start)} to {formatDate(slice.end)} ({slice.days} days)
-              </span>
-            </th>
-            <td className="govuk-table__cell">
-              {BAND_LABELS[slice.band]} ({formatPercent(slice.rate)})
-              {slice.band === "flat" ? null : (
-                <span className="govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">
-                  Limits {formatPounds(slice.lower_limit)} to {formatPounds(slice.upper_limit)}
-                </span>
-              )}
-            </td>
-            <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
-              {formatPounds(slice.profits)}
-            </td>
-            <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
-              {formatMoney(slice.tax)}
-            </td>
-            <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
-              {formatMoney(slice.marginal_relief)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
+      <tbody className="govuk-table__body">{tax.slices.flatMap(sliceRows)}</tbody>
     </table>
   );
+}
+
+/** Bands with one rate and no lower and upper limits. */
+const UNLIMITED_BANDS: TaxBand[] = ["flat", "fund"];
+
+type RowProps = {
+  slice: FinancialYearSlice;
+  label: ReactNode;
+  profits: number;
+  tax: string;
+  marginalRelief: number | string;
+};
+
+function Row({ slice, label, profits, tax, marginalRelief }: RowProps) {
+  return (
+    <tr className="govuk-table__row">
+      <th scope="row" className="govuk-table__header">
+        {slice.financial_year} to {slice.financial_year + 1}
+        <span className="govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">
+          {formatDate(slice.start)} to {formatDate(slice.end)} ({slice.days} days)
+        </span>
+      </th>
+      <td className="govuk-table__cell">{label}</td>
+      <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
+        {formatPounds(profits)}
+      </td>
+      <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
+        {formatMoney(tax)}
+      </td>
+      <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
+        {formatMoney(marginalRelief)}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * A slice's lines, as on the CT600: its ordinary profits, then any ring fence profits at the
+ * ring fence rate. The ordinary line is left out when a ring fence company has no other profits.
+ */
+function sliceRows(slice: FinancialYearSlice) {
+  const ringFence = slice.ring_fence;
+  const rows: ReactNode[] = [];
+  if (slice.profits || !ringFence) {
+    const ordinaryRelief = Number(slice.marginal_relief) - Number(ringFence?.marginal_relief ?? 0);
+    rows.push(
+      <Row
+        key={`${slice.financial_year}-ordinary`}
+        slice={slice}
+        label={
+          <>
+            {BAND_LABELS[slice.band]} ({formatPercent(slice.rate)})
+            {UNLIMITED_BANDS.includes(slice.band) ? null : (
+              <span className="govuk-body-s govuk-!-display-block govuk-!-margin-bottom-0">
+                Limits {formatPounds(slice.lower_limit)} to {formatPounds(slice.upper_limit)}
+              </span>
+            )}
+          </>
+        }
+        profits={slice.profits}
+        tax={slice.tax}
+        marginalRelief={ordinaryRelief.toFixed(2)}
+      />,
+    );
+  }
+  if (ringFence) {
+    rows.push(
+      <Row
+        key={`${slice.financial_year}-ring-fence`}
+        slice={slice}
+        label={`Ring fence profits (${formatPercent(ringFence.rate)})`}
+        profits={ringFence.profits}
+        tax={ringFence.tax}
+        marginalRelief={ringFence.marginal_relief}
+      />,
+    );
+  }
+  return rows;
 }

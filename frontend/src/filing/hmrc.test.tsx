@@ -71,6 +71,7 @@ const COMPUTATION: ReturnComputation = {
   accounts: {
     turnover: 100_000,
     interest_income: 0,
+    other_income: 0,
     total_expenses: 0,
     profit_before_tax: 100_000,
     corporation_tax: "22750.00",

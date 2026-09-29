@@ -23,9 +23,11 @@ export function AmountSectionPage<K extends AmountSectionKey>({
   const navigate = useNavigate();
   const [values, setValues] = useState<Record<string, string>>(draft[section.key] ?? {});
   const [errors, setErrors] = useState<FieldErrors>({});
+  // Some amounts are only asked once an earlier answer makes them relevant.
+  const asked = section.fields.filter((field) => field.askedWhen?.(values, draft) ?? true);
 
   function save() {
-    const result = validateAmounts(section, values);
+    const result = validateAmounts(section, values, draft);
     if (!result.ok) {
       setErrors(result.errors);
       return;
@@ -38,11 +40,11 @@ export function AmountSectionPage<K extends AmountSectionKey>({
     <SectionFrame
       title={section.title}
       errors={errors}
-      fieldOrder={section.fields.map((field) => field.key)}
+      fieldOrder={asked.map((field) => field.key)}
       onSubmit={save}
       intro={section.intro}
     >
-      {section.fields.map((field) => {
+      {asked.map((field) => {
         const props = {
           id: field.key,
           label: field.label,

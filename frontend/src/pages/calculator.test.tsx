@@ -25,6 +25,7 @@ describe("calculator", () => {
           rate: "0.19",
           tax: "7600.00",
           marginal_relief: "0.00",
+          ring_fence: null,
         },
       ],
       tax_before_relief: "7600.00",

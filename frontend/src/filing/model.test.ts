@@ -5,8 +5,10 @@ import {
   sectionComplete,
   validateAccounts,
   validateCompany,
+  validateAmounts,
   validatePeriod,
   type Draft,
+  TAX_ADJUSTMENTS,
 } from "@/filing/model";
 import { toReturn } from "@/filing/payload";
 import { EMPTY_RESEARCH } from "@/filing/reliefs";
@@ -192,6 +194,64 @@ describe("validateAccounts", () => {
   });
 });
 
+describe("trading losses brought forward from before 1 April 2017", () => {
+  const PRE_2017 = "losses_brought_forward_before_april_2017";
+  const CLAIMS_CARRIED_FORWARD_GROUP_RELIEF: Draft = {
+    chosen_pages: ["C"],
+    supplementary_pages: {
+      C: {
+        GroupAndConsortium: {
+          GroupReliefForCarriedForwardLosses: {
+            CompanyInformation: {
+              Company: [{ Name: "Sub Ltd", TaxReference: "9876543210", AmountClaimed: "5000" }],
+            },
+          },
+        },
+      },
+    },
+  };
+
+  it("are part of the trading losses brought forward", () => {
+    const result = validateAmounts(TAX_ADJUSTMENTS, {
+      losses_brought_forward: "10,000",
+      [PRE_2017]: "12,000",
+    });
+    const within = validateAmounts(TAX_ADJUSTMENTS, {
+      losses_brought_forward: "10,000",
+      [PRE_2017]: "4,000",
+    });
+
+    expect(!result.ok && result.errors[PRE_2017]).toBe(
+      "Losses from before 1 April 2017 are part of the trading losses brought forward, so cannot be more than them",
+    );
+    expect(within.ok && within.value[PRE_2017]).toBe(4_000);
+  });
+
+  it("are not asked, and are nil, without losses brought forward or a claim for them", () => {
+    const result = validateAmounts(TAX_ADJUSTMENTS, { [PRE_2017]: "500" });
+
+    expect(result.ok && result.value[PRE_2017]).toBe(0);
+  });
+
+  it("must be answered when the company claims group relief for carried-forward losses", () => {
+    const values = { losses_brought_forward: "20,000" };
+    const blank = validateAmounts(TAX_ADJUSTMENTS, values, CLAIMS_CARRIED_FORWARD_GROUP_RELIEF);
+    const nil = validateAmounts(
+      TAX_ADJUSTMENTS,
+      { ...values, [PRE_2017]: "0" },
+      CLAIMS_CARRIED_FORWARD_GROUP_RELIEF,
+    );
+
+    expect(!blank.ok && blank.errors[PRE_2017]).toBe(
+      "Enter how much of the trading losses brought forward arose before 1 April 2017, or 0 if none",
+    );
+    expect(nil.ok).toBe(true);
+    expect(validateAmounts(TAX_ADJUSTMENTS, values).ok).toBe(true);
+    const savedBeforeTheClaim = { ...CLAIMS_CARRIED_FORWARD_GROUP_RELIEF, tax_adjustments: values };
+    expect(sectionComplete(savedBeforeTheClaim, "tax_adjustments")).toBe(false);
+  });
+});
+
 describe("toReturn", () => {
   it("is null until every section is complete", () => {
     const { accounts: _, ...withoutAccounts } = COMPLETE;
@@ -234,6 +294,7 @@ describe("toReturn", () => {
         disallowable_expenses: 0,
         capital_allowances: 0,
         losses_brought_forward: 0,
+        losses_brought_forward_before_april_2017: 0,
         chargeable_gains: 0,
         qualifying_donations: 0,
         exempt_distributions: 0,
