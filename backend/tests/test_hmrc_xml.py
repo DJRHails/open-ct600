@@ -1,0 +1,297 @@
+"""CT600 XML for returns of each shape, checked with HMRC's XSD and schematron."""
+
+import base64
+from dataclasses import replace
+from decimal import Decimal
+
+import pytest
+from lxml import etree
+
+from open_ct600.ct600 import CT600Box, CT600Return, Declaration, compute_return
+from open_ct600.hmrc.validate import validate_return
+from open_ct600.hmrc.xml import ReturnXMLError, build_return_xml
+from open_ct600.hmrc.xmldoc import CT_NS
+
+ACCOUNTS = '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Accounts</p></body></html>'
+COMPUTATIONS = '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Tax</p></body></html>'
+DECLARATION = Declaration(name="Ada Lovelace", capacity="director", confirmed=True)
+NS = {"ct": CT_NS}
+
+
+def make_return(**overrides) -> CT600Return:
+    answers = {
+        "company": {
+            "name": "Acme Widgets Ltd",
+            "registration_number": "01234567",
+            "utr": "1234567890",
+            "principal_activity": "Manufacture of widgets",
+        },
+        "period": {"start": "2024-04-01", "end": "2025-03-31"},
+        "profit_and_loss": {
+            "turnover": 120_000,
+            "interest_income": 500,
+            "cost_of_sales": 20_000,
+            "staff_costs": 30_000,
+            "depreciation": 2_000,
+            "other_expenses": 8_000,
+        },
+        "tax_adjustments": {
+            "disallowable_expenses": 1_000,
+            "capital_allowances": 5_000,
+            "losses_brought_forward": 3_000,
+            "qualifying_donations": 500,
+        },
+        "balance_sheet": {"current_assets": 70_000, "called_up_share_capital": 100},
+        "accounts": {
+            "standard": "micro",
+            "approval_date": "2025-06-30",
+            "directors": ["Ada Lovelace"],
+            "signing_director": "Ada Lovelace",
+            "average_employees": 2,
+            "trading_status": "trading",
+        },
+    }
+    for section, values in overrides.items():
+        current = answers.get(section)
+        answers[section] = {**current, **values} if isinstance(current, dict) else values
+    return CT600Return.model_validate(answers)
+
+
+def build(ct600, *, declaration=DECLARATION, documents=True):
+    return build_return_xml(
+        ct600,
+        compute_return(ct600),
+        declaration=declaration,
+        accounts_xhtml=ACCOUNTS if documents else None,
+        computations_xhtml=COMPUTATIONS if documents else None,
+    )
+
+
+def text(envelope, path):
+    return envelope.xpath(f"string({path})", namespaces=NS)
+
+
+ROYALTY = {
+    "RecipientName": "Babbage Engines GmbH",
+    "AddressOfRecipient": {"Line": ["1 Hauptstrasse", "Berlin"]},
+    "PaymentType": "Royalty",
+    "Amount": "1000",
+    "RoyaltiesAgreement": {"DoubleTaxationAgreement": "UK/Germany"},
+    "DeductionRate": "5",
+    "DeductionAmount": "50",
+}
+
+SHAPES = {
+    "marginal relief": {},
+    "small profits rate": {"profit_and_loss": {"turnover": 60_000}},
+    "main rate": {"profit_and_loss": {"turnover": 600_000}},
+    "trading loss": {"profit_and_loss": {"turnover": 10_000}},
+    "nil profits": {
+        "profit_and_loss": {"turnover": 0, "interest_income": 0},
+        "tax_adjustments": {"disallowable_expenses": 0, "qualifying_donations": 0},
+    },
+    "associated companies": {"tax_adjustments": {"associated_companies": 2}},
+    "straddles 1 April 2023": {
+        "period": {"start": "2022-10-01", "end": "2023-09-30"},
+        "accounts": {"approval_date": "2023-12-01"},
+    },
+    "flat 19% before April 2023": {
+        "period": {"start": "2021-04-01", "end": "2022-03-31"},
+        "accounts": {"approval_date": "2022-06-01"},
+    },
+    "short period": {
+        "period": {"start": "2024-10-01", "end": "2025-03-31"},
+    },
+    "small company accounts": {"accounts": {"standard": "small"}},
+    "members' club": {"company": {"company_type": 6}},
+    "tax avoidance scheme (CT600J)": {
+        "supplementary_pages": {
+            "J": {
+                "AvoidanceSchemes": [
+                    {"ReferenceNumber": "12345678", "AccountingPeriod": "2025-03-31"}
+                ]
+            }
+        }
+    },
+    "cross-border royalties (CT600H)": {"supplementary_pages": {"H": {"Royalties": [ROYALTY]}}},
+}
+
+
+@pytest.mark.parametrize("overrides", SHAPES.values(), ids=SHAPES.keys())
+def test_every_shape_is_accepted_by_hmrc_schema_and_rules(overrides):
+    assert validate_return(build(make_return(**overrides))) == []
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="CORE computation gives box 210 without box 220 (NetChargeableGains), which the "
+    "schema requires whenever ChargeableGains is present",
+)
+def test_chargeable_gains_are_accepted():
+    ct600 = make_return(tax_adjustments={"chargeable_gains": 5_000})
+
+    assert validate_return(build(ct600)) == []
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="CORE computation gives boxes 326 (associated companies) for periods ending before "
+    "1 April 2023, when the form has no such section (rule 9389)",
+)
+def test_associated_companies_before_april_2023_are_accepted():
+    ct600 = make_return(
+        period={"start": "2021-04-01", "end": "2022-03-31"},
+        accounts={"approval_date": "2022-06-01"},
+        tax_adjustments={"associated_companies": 1},
+    )
+
+    assert validate_return(build(ct600)) == []
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="CORE computation does not yet carry CT600A's box A80 to box 480 (rule 9428)",
+)
+def test_loans_to_participators_page_is_accepted():
+    loans = {
+        "BeforeEndPeriod": "no",
+        "LoansInformation": {
+            "Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}],
+            "TotalLoans": "6000",
+            "TaxChargeable": "2025.00",
+        },
+        "TaxPayable": "2025.00",
+    }
+
+    assert validate_return(build(make_return(supplementary_pages={"A": loans}))) == []
+
+
+def test_boxes_are_placed_and_formatted_by_kind():
+    envelope = build(make_return())
+    calculation = "//ct:CompanyTaxReturn/ct:CompanyTaxCalculation"
+
+    assert text(envelope, "//ct:Turnover/ct:Total") == "120000.00"
+    assert text(envelope, f"{calculation}/ct:Income/ct:Trading/ct:Profits") == "58000.00"
+    assert text(envelope, f"{calculation}/ct:ChargeableProfits") == "55000.00"
+    details = f"{calculation}/ct:CorporationTaxChargeable/ct:FinancialYearOne"
+    assert text(envelope, f"{details}/ct:Year") == "2024"
+    assert text(envelope, f"{details}/ct:Details/ct:TaxRate") == "25.00"
+    assert text(envelope, f"{details}/ct:Details/ct:Tax") == "13750.00"
+    associated = f"{calculation}/ct:CorporationTaxChargeable/ct:AssociatedCompanies"
+    assert text(envelope, f"{associated}/ct:ThisPeriod") == "0"
+    assert text(envelope, f"{associated}/ct:StartingOrSmallCompaniesRate") == "yes"
+
+
+def test_nil_optional_boxes_are_left_blank():
+    envelope = build(make_return(profit_and_loss={"turnover": 600_000}))
+
+    assert not envelope.xpath("//ct:MarginalReliefForRingFenceTrades", namespaces=NS)
+    assert not envelope.xpath("//ct:StartingOrSmallCompaniesRate", namespaces=NS)
+    assert not envelope.xpath("//ct:ChargeableGains", namespaces=NS)
+
+
+def test_header_and_company_information():
+    envelope = build(make_return())
+
+    assert text(envelope, "/ct:IRenvelope/ct:IRheader/ct:Keys/ct:Key[@Type='UTR']") == "1234567890"
+    assert text(envelope, "//ct:IRheader/ct:PeriodEnd") == "2025-03-31"
+    assert text(envelope, "//ct:Manifest//ct:SchemaVersion") == "2025-v1.994"
+    assert envelope.xpath("//ct:IRheader/ct:IRmark[@Type='generic']", namespaces=NS)
+    assert text(envelope, "//ct:CompanyInformation/ct:Reference") == "1234567890"
+    assert text(envelope, "//ct:CompanyInformation/ct:RegistrationNumber") == "01234567"
+    assert text(envelope, "//ct:PeriodCovered/ct:From") == "2024-04-01"
+    assert text(envelope, "//ct:CompanyTaxReturn/@ReturnType") == "new"
+
+
+@pytest.mark.parametrize(
+    ("capacity", "status"),
+    [
+        ("director", "Director"),
+        ("company_secretary", "Company secretary"),
+        ("authorised_agent", "Authorised agent"),
+    ],
+)
+def test_declaration(capacity, status):
+    declaration = Declaration(name="Grace Hopper", capacity=capacity, confirmed=True)
+    envelope = build(make_return(), declaration=declaration)
+
+    assert text(envelope, "//ct:Declaration/ct:AcceptDeclaration") == "yes"
+    assert text(envelope, "//ct:Declaration/ct:Name") == "Grace Hopper"
+    assert text(envelope, "//ct:Declaration/ct:Status") == status
+
+
+def test_ixbrl_documents_are_attached_computations_first():
+    envelope = build(make_return())
+
+    documents = envelope.xpath(
+        "//ct:AttachedFiles/ct:XBRLsubmission/*/ct:Instance/ct:EncodedInlineXBRLDocument",
+        namespaces=NS,
+    )
+    assert [etree.QName(d.getparent().getparent()).localname for d in documents] == [
+        "Computation",
+        "Accounts",
+    ]
+    assert base64.b64decode(documents[0].text).decode() == COMPUTATIONS
+    assert base64.b64decode(documents[1].text).decode() == ACCOUNTS
+    assert [d.get("Filename") for d in documents] == ["computations.xhtml", "accounts.xhtml"]
+
+
+def test_without_ixbrl_hmrc_rules_ask_for_accounts_and_computations():
+    problems = validate_return(build(make_return(), documents=False))
+
+    assert sorted(problem.code for problem in problems) == [9113, 9965]
+
+
+def test_supplementary_page_is_flagged_and_serialised_in_schema_order():
+    scheme = {"AccountingPeriod": "2025-03-31", "ReferenceNumber": "12345678"}
+    envelope = build(make_return(supplementary_pages={"J": {"AvoidanceSchemes": [scheme]}}))
+
+    assert text(envelope, "//ct:ReturnInfoSummary/ct:SupplementaryPages/ct:CT600J") == "yes"
+    assert text(envelope, "//ct:ReturnInfoSummary/ct:RegisteredAvoidanceScheme") == "yes"
+    schemes = envelope.xpath("//ct:TaxAvoidanceSchemes/ct:AvoidanceSchemes", namespaces=NS)
+    assert [etree.QName(child).localname for child in schemes[0]] == [
+        "ReferenceNumber",
+        "AccountingPeriod",
+    ]
+    order = [
+        etree.QName(child).localname for child in envelope.find(f"{{{CT_NS}}}CompanyTaxReturn")
+    ]
+    assert order.index("Declaration") < order.index("TaxAvoidanceSchemes")
+    assert order.index("TaxAvoidanceSchemes") < order.index("AttachedFiles")
+
+
+def test_page_values_are_written_in_xml_form():
+    envelope = build(make_return(supplementary_pages={"H": {"Royalties": [ROYALTY]}}))
+
+    royalties = "//ct:CrossBorderRoyalties/ct:Royalties"
+    assert text(envelope, f"{royalties}/ct:Amount") == "1000.00"
+    assert text(envelope, f"{royalties}/ct:DeductionRate") == "5.00"
+    assert text(envelope, f"{royalties}/ct:DeductionAmount") == "50.00"
+    assert len(envelope.xpath(f"{royalties}/ct:AddressOfRecipient/ct:Line", namespaces=NS)) == 2
+
+
+def test_page_box_in_the_main_box_list_is_refused():
+    ct600 = make_return()
+    computation = compute_return(ct600)
+    stray = CT600Box(box="A80", label="Tax chargeable", value=Decimal(1), kind="money")
+    broken = replace(computation, boxes=(*computation.boxes, stray))
+
+    with pytest.raises(ReturnXMLError, match="Box A80"):
+        build_return_xml(
+            ct600, broken, declaration=DECLARATION, accounts_xhtml=None, computations_xhtml=None
+        )
+
+
+def test_fractional_whole_pounds_are_refused():
+    ct600 = make_return()
+    computation = compute_return(ct600)
+    boxes = tuple(
+        replace(box, value=box.value + Decimal("0.5")) if box.box == "145" else box
+        for box in computation.boxes
+    )
+    broken = replace(computation, boxes=boxes)
+
+    with pytest.raises(ReturnXMLError, match="whole pounds"):
+        build_return_xml(
+            ct600, broken, declaration=DECLARATION, accounts_xhtml=None, computations_xhtml=None
+        )
