@@ -1,7 +1,9 @@
 /**
  * Help for the tax adjustments questions, written from HMRC's guidance:
  * https://www.gov.uk/corporation-tax-rates (the expenses, rates and associated companies),
- * https://www.gov.uk/capital-allowances, https://www.gov.uk/tax-limited-company-gives-to-charity,
+ * https://www.gov.uk/capital-allowances, https://www.gov.uk/work-out-capital-allowances (pools
+ * and writing down allowances: main pool 14% from 1 April 2026 for Corporation Tax, 18% before),
+ * https://www.gov.uk/tax-limited-company-gives-to-charity,
  * https://www.gov.uk/guidance/corporation-tax-calculating-and-claiming-a-loss,
  * https://www.gov.uk/guidance/corporation-tax-marginal-relief and the Company Taxation Manual
  * (CTM03940 and CTM03945 for associated companies).
@@ -39,11 +41,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       meaning: [
         "When a company buys equipment, tools, machinery, computers or vehicles to use in the business, it cannot take their cost off its profits as an expense. It claims capital allowances instead.",
         "Most items qualify for the Annual Investment Allowance (AIA), which lets the company deduct their full cost in the year it bought them, up to £1 million a year. Companies can also claim full expensing on most new equipment.",
-        "Cars do not qualify for the AIA. The company claims a percentage of their value each year instead, called a writing down allowance.",
+        "Cars do not qualify for the AIA. For cars, and for anything else whose full cost the company has not claimed, it claims a percentage of the value left each year, called a writing down allowance. It carries on claiming this in later years, even in a year it buys nothing new.",
       ],
       example: [
         "The company bought 2 laptops for £2,400 and a van for £18,000. It claims the AIA on both, so enter £20,400.",
-        "If it also has a car that is worth £10,000 for tax, it might claim a writing down allowance on that too. Your accountant or HMRC's guidance can tell you the rate for your car.",
+        "Another company bought nothing this period, but its main pool, the value left from equipment it bought in earlier years, is £40,000. For a period from 1 April 2026 to 31 March 2027 the main pool rate is 14%, so it claims a writing down allowance of £5,600. Answer yes and enter £5,600.",
       ],
       excludes: [
         "Depreciation in your accounts, which is not the same thing and is added back for you.",
@@ -53,6 +55,7 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       ],
       effect: [
         "We take the amount off the company's trading profits before working out the tax. If the allowances are more than the profits, the company makes a trading loss, which it can carry forward to later periods.",
+        "If you answer no, the company claims no capital allowances this period, not even writing down allowances on things bought before.",
       ],
     },
     hmrc: [{ box: "690" }, { box: "688" }, { box: "705" }],

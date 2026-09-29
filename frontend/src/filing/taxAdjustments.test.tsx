@@ -35,17 +35,29 @@ describe("tax adjustments", () => {
     for (const name of questions) {
       expect(screen.getByRole("group", { name })).toBeInTheDocument();
     }
-    expect(question(/buy equipment, tools or vehicles/)).toBeInTheDocument();
+    expect(question(/claim capital allowances/)).toBeInTheDocument();
     expect(question(/sell property, shares or other major assets/)).toBeInTheDocument();
     expect(question(/control other companies/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Capital allowances the company is claiming")).toBeNull();
+  });
+
+  it("asks about allowances on things bought in earlier periods, so No cannot drop them", async () => {
+    const user = renderApp(PAGE);
+
+    const allowances = question(/claim capital allowances/);
+    expect(allowances).toHaveAccessibleDescription(/earlier periods/);
+    expect(allowances).toHaveAccessibleDescription(/writing down allowances/);
+    await answer(user, /claim capital allowances/, "Yes");
+    expect(
+      screen.getByLabelText("Capital allowances the company is claiming"),
+    ).toHaveAccessibleDescription(/writing down allowances/);
   });
 
   it("asks for the figure, with its precise name, when the answer is yes", async () => {
     const user = renderApp(PAGE);
 
     await answerNoToEverything(user);
-    await answer(user, /buy equipment, tools or vehicles/, "Yes");
+    await answer(user, /claim capital allowances/, "Yes");
     const amount = screen.getByLabelText("Capital allowances the company is claiming");
     expect(amount).toHaveAccessibleDescription(/Annual Investment Allowance/);
     await user.type(amount, "20,400");
@@ -79,7 +91,7 @@ describe("tax adjustments", () => {
   it("says which questions are unanswered and which figures are missing", async () => {
     const user = renderApp(PAGE);
 
-    await answer(user, /buy equipment, tools or vehicles/, "Yes");
+    await answer(user, /claim capital allowances/, "Yes");
     await save(user);
 
     const summary = within(screen.getByRole("alert"));
@@ -100,7 +112,7 @@ describe("tax adjustments", () => {
     seedDraft({ tax_adjustments: { capital_allowances: "5000", chargeable_gains: "0" } });
     renderApp(PAGE);
 
-    const yes = within(question(/buy equipment, tools or vehicles/)).getByRole("radio", {
+    const yes = within(question(/claim capital allowances/)).getByRole("radio", {
       name: "Yes",
     });
     expect(yes).toBeChecked();
