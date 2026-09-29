@@ -25,6 +25,21 @@ export function repeats(node: SpecNode): boolean {
   return node.max === null || node.max > 1;
 }
 
+/**
+ * Mark the elements the service calculates, from the page's computed box ids: a box listed,
+ * or a group whose every element is calculated (as the service decides, below the page root).
+ */
+export function withComputed(page: SchemaPage): SchemaPage {
+  const boxes = new Set(page.computed ?? []);
+  const mark = (node: SpecNode): SpecNode => {
+    const children = node.children.map(mark);
+    const listed = node.box !== null && boxes.has(node.box);
+    const whole = children.length > 0 && children.every((child) => child.computed === true);
+    return { ...node, children, computed: listed || whole };
+  };
+  return { ...page, node: { ...page.node, children: page.node.children.map(mark) } };
+}
+
 /** Elements the service works out are shown on check your answers, never asked. */
 export function asked(node: SpecNode): boolean {
   return node.computed !== true;

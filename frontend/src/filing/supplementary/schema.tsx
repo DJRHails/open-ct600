@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { api, type SchemaPage } from "@/api";
+import { withComputed } from "@/filing/supplementary/spec";
 
 export type SchemaState =
   | { status: "idle" }
@@ -31,7 +32,7 @@ export function SchemaProvider({ children }: { children: ReactNode }) {
     started.current = true;
     setState({ status: "loading" });
     api.schemaPages().then(
-      (pages) => setState({ status: "ready", pages }),
+      (pages) => setState({ status: "ready", pages: pages.map(withComputed) }),
       (error: unknown) =>
         setState({
           status: "failed",

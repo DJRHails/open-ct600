@@ -92,14 +92,50 @@ export type PageCode =
   | "N"
   | "P";
 
-/** Reliefs the computation applied, in pounds and pence; absent until the service computes them. */
+export type ResearchAndDevelopmentScheme = "sme" | "large_company_rdec" | "merged_rdec" | "eris";
+
+/**
+ * The reliefs and credits claimed through supplementary pages (``null`` when not claimed); see
+ * backend ``open_ct600.computation.ReliefsSummary``.
+ */
 export type ReliefsSummary = {
-  group_relief: string;
-  research_and_development_scheme: string | null;
-  research_and_development_deduction: string;
-  research_and_development_credit: string;
-  research_and_development_payable_credit: string;
-  loans_to_participators_tax: string;
+  group_relief: {
+    claimed: number;
+    claimed_for_carried_forward_losses: number;
+    available: number;
+    unused: number;
+  } | null;
+  research_and_development: {
+    scheme: ResearchAndDevelopmentScheme;
+    qualifying_expenditure: number;
+    additional_deduction: number;
+    enhanced_expenditure: number;
+    rdec: string;
+    notional_tax_rate: string | null;
+    set_off: string;
+    payable_rdec: string | null;
+    payable_credit: string | null;
+    credit_claimed: string | null;
+    losses_surrendered: number;
+    rdec_carried_forward: string;
+  } | null;
+  loans_to_participators: {
+    tax_payable: string;
+    relief_for_later_repayments: boolean;
+    statutory_tax_payable: string;
+    amendment_due: string;
+  } | null;
+  creative_industries: {
+    expenditure_credit: string;
+    expenditure_credit_set_off: string | null;
+    expenditure_credit_payable: string | null;
+    expenditure_credit_carried_forward: string;
+    additional_deduction: number;
+    tax_credit: string;
+    tax_credit_set_off: string | null;
+    tax_credit_payable: string | null;
+    losses_surrendered: number;
+  } | null;
 };
 
 export type ReturnComputation = {
@@ -168,7 +204,10 @@ export type SpecNode = {
   maxValue: number | string | null;
   choices: { id: string; min: number }[];
   children: SpecNode[];
-  /** The service works this box out (a total, a tax at a rate), so the user is not asked. */
+  /**
+   * The service works this element out (a total, a tax at a rate), so the user is not asked.
+   * Set by the frontend from ``SchemaPage.computed``.
+   */
   computed?: boolean;
 };
 
@@ -178,6 +217,11 @@ export type SchemaPage = {
   title: string;
   dormant: boolean;
   node: SpecNode;
+  /**
+   * The box ids the service calculates; a group whose every box is calculated is calculated
+   * as a whole. Absent from services older than the page calculations, where none are.
+   */
+  computed?: string[];
 };
 
 export type CT600Return = {

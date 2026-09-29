@@ -1,7 +1,7 @@
 import type { SpecNode } from "@/api";
 import { convertPage, type RawTree, xsdPattern } from "@/filing/supplementary/answers";
 import { hmrcProblemLink, rejectedAnswerLink } from "@/filing/supplementary/links";
-import { choiceKey, formItems, pageScreens } from "@/filing/supplementary/spec";
+import { choiceKey, formItems, pageScreens, withComputed } from "@/filing/supplementary/spec";
 import { schemaPage, schemaPages } from "@/test-schema";
 
 const CT600A = schemaPage("A");
@@ -46,19 +46,27 @@ describe("pageScreens", () => {
     expect(first?.id).toBe("Information");
   });
 
-  it("never asks for boxes the service works out", () => {
-    const computed = {
-      ...CT600A.node,
-      children: CT600A.node.children.map((child) =>
-        child.name === "TaxPayable" ? { ...child, computed: true } : child,
-      ),
-    };
-    const names = formItems(computed).map((item) =>
-      item.type === "node" ? item.node.name : item.id,
-    );
+  it("never asks for boxes the service works out, nor groups it works out entirely", () => {
+    const later = ["A50A", "A50B", "A50C", "A50D", "A55", "A60", "A65", "A70"];
+    const page = withComputed({ ...CT600A, computed: ["A15", "A20", "A80", ...later] });
+    const names = (node: SpecNode) =>
+      formItems(node).map((item) => (item.type === "node" ? item.node.name : item.id));
+    const loansInformation = page.node.children.find((child) => child.name === "LoansInformation");
 
-    expect(names).not.toContain("TaxPayable");
-    expect(names).toContain("TotalLoansOutstanding");
+    expect(names(page.node)).toEqual([
+      "BeforeEndPeriod",
+      "LoansInformation",
+      "ReliefEarlierThan",
+      "TotalLoansOutstanding",
+    ]);
+    expect(loansInformation && names(loansInformation)).toEqual(["Loan"]);
+    expect(pageScreens(page).map((screen) => screen.id)).not.toContain("LoanLaterReliefNow");
+  });
+
+  it("asks everything when the service calculates nothing", () => {
+    const page = withComputed(CT600A);
+
+    expect(formItems(page.node)).toHaveLength(CT600A.node.children.length);
   });
 });
 

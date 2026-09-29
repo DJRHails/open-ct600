@@ -91,12 +91,15 @@ const COMPUTATION: ReturnComputation = {
   losses_carried_forward: 0,
   pages: { A: DRAFT.supplementary_pages.A.LoansByCloseCompanies },
   reliefs: {
-    group_relief: "0.00",
-    research_and_development_scheme: null,
-    research_and_development_deduction: "0.00",
-    research_and_development_credit: "0.00",
-    research_and_development_payable_credit: "0.00",
-    loans_to_participators_tax: "1687.50",
+    group_relief: { claimed: 0, claimed_for_carried_forward_losses: 0, available: 0, unused: 0 },
+    research_and_development: null,
+    loans_to_participators: {
+      tax_payable: "1687.50",
+      relief_for_later_repayments: false,
+      statutory_tax_payable: "1687.50",
+      amendment_due: "0.00",
+    },
+    creative_industries: null,
   },
 };
 
@@ -215,7 +218,7 @@ describe("checking a return with supplementary pages", () => {
       "href",
       "/file/supplementary-pages/A?change=1",
     );
-    const reliefs = screen.getByRole("heading", { name: "Reliefs" })
+    const reliefs = screen.getByRole("heading", { name: "Reliefs and credits" })
       .nextElementSibling as HTMLElement;
     expect(
       within(reliefs).getByText("Tax on loans to participators (section 455)"),
