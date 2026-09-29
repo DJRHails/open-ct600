@@ -12,8 +12,12 @@ type SectionFrameProps = {
   fieldOrder: string[];
   /** The id of the input an error for ``field`` should link to. */
   inputId?: (field: string) => string;
+  /** The error summary, when it is not built from ``errors`` and ``fieldOrder``. */
+  summary?: ErrorItem[];
   onSubmit: () => void;
   intro?: ReactNode;
+  caption?: string;
+  backTo?: string;
   children: ReactNode;
 };
 
@@ -22,9 +26,11 @@ export function SectionFrame(props: SectionFrameProps) {
   const { title, errors, fieldOrder, onSubmit, intro, children } = props;
   const inputId = props.inputId ?? ((field: string) => field);
   const { next } = useNextPage();
-  const summary: ErrorItem[] = fieldOrder
-    .filter((field) => errors[field])
-    .map((field) => ({ href: `#${inputId(field)}`, text: errors[field] ?? "" }));
+  const summary: ErrorItem[] =
+    props.summary ??
+    fieldOrder
+      .filter((field) => errors[field])
+      .map((field) => ({ href: `#${inputId(field)}`, text: errors[field] ?? "" }));
   usePageTitle(title, summary.length > 0);
 
   const [attempt, setAttempt] = useState(0);
@@ -37,10 +43,10 @@ export function SectionFrame(props: SectionFrameProps) {
 
   return (
     <>
-      <BackLink to={next} />
+      <BackLink to={props.backTo ?? next} />
       <TwoThirds>
         <ErrorSummary key={attempt} errors={summary} />
-        <span className="govuk-caption-l">Company Tax Return</span>
+        <span className="govuk-caption-l">{props.caption ?? "Company Tax Return"}</span>
         <h1 className="govuk-heading-l">{title}</h1>
         {intro ? <p className="govuk-body">{intro}</p> : null}
         <form onSubmit={handleSubmit} noValidate>

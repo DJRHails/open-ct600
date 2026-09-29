@@ -1,9 +1,22 @@
 import { useSearchParams } from "react-router";
 
+import type { PageCode } from "@/api";
+
 export const TASK_LIST = "/file/tasks";
 export const CHECK_ANSWERS = "/file/check-your-answers";
 export const DECLARATION = "/file/declaration";
 export const CONFIRMATION = "/file/confirmation";
+export const CHOOSE_PAGES = "/file/supplementary-pages";
+
+/** A supplementary page's own check your answers page. */
+export function pagePath(code: PageCode): string {
+  return `${CHOOSE_PAGES}/${code}`;
+}
+
+/** One screen of questions on a supplementary page. */
+export function screenPath(code: PageCode, screen: string): string {
+  return `${pagePath(code)}/${screen}`;
+}
 
 /** Where a section page goes after saving: back to check answers if it came from there. */
 export function useNextPage(): { next: string; changing: boolean } {

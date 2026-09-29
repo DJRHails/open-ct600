@@ -36,6 +36,7 @@ const COMPLETE = {
   tax_adjustments: { associated_companies: "1" },
   balance_sheet: { prepayments_and_accrued_income: "1,000", provisions: "500" },
   accounts: ACCOUNTS,
+  chosen_pages: [],
 } satisfies Draft;
 
 describe("validateCompany", () => {
@@ -162,6 +163,12 @@ describe("toReturn", () => {
     expect(completedCount(withoutAccounts)).toBe(5);
   });
 
+  it("is null until the user says which supplementary pages apply", () => {
+    const { chosen_pages: _, ...unanswered } = COMPLETE;
+
+    expect(toReturn(unanswered)).toBeNull();
+  });
+
   it("builds the full API payload, treating blank amounts as zero", () => {
     expect(toReturn(COMPLETE)).toEqual({
       company: {
@@ -208,6 +215,7 @@ describe("toReturn", () => {
         average_employees: 2,
         trading_status: "trading",
       },
+      supplementary_pages: {},
     });
   });
 

@@ -10,35 +10,50 @@ import { DeclarationPage } from "@/filing/DeclarationPage";
 import { DraftProvider } from "@/filing/draft";
 import { BALANCE_SHEET, PROFIT_AND_LOSS, TAX_ADJUSTMENTS } from "@/filing/model";
 import { StartPage } from "@/filing/StartPage";
+import { ChoosePagesPage } from "@/filing/supplementary/ChoosePagesPage";
+import { PageAnswersPage } from "@/filing/supplementary/PageAnswersPage";
+import { PageScreenPage } from "@/filing/supplementary/PageScreenPage";
+import { SchemaProvider } from "@/filing/supplementary/schema";
 import { TaskListPage } from "@/filing/TaskListPage";
 import { NotFoundPage } from "@/pages/NotFound";
 
 export function FilingRoutes() {
   return (
     <DraftProvider>
-      <Routes>
-        <Route index element={<StartPage />} />
-        <Route path="tasks" element={<TaskListPage />} />
-        <Route path="company-details" element={<CompanyDetailsPage />} />
-        <Route path="accounting-period" element={<AccountingPeriodPage />} />
-        <Route
-          path={PROFIT_AND_LOSS.slug}
-          element={<AmountSectionPage key="pnl" section={PROFIT_AND_LOSS} />}
-        />
-        <Route
-          path={TAX_ADJUSTMENTS.slug}
-          element={<AmountSectionPage key="adjustments" section={TAX_ADJUSTMENTS} />}
-        />
-        <Route
-          path={BALANCE_SHEET.slug}
-          element={<AmountSectionPage key="balance" section={BALANCE_SHEET} />}
-        />
-        <Route path="accounts-details" element={<AccountsDetailsPage />} />
-        <Route path="check-your-answers" element={<CheckAnswersPage />} />
-        <Route path="declaration" element={<DeclarationPage />} />
-        <Route path="confirmation" element={<ConfirmationPage />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+      <SchemaProvider>
+        <FilingPages />
+      </SchemaProvider>
     </DraftProvider>
+  );
+}
+
+function FilingPages() {
+  return (
+    <Routes>
+      <Route index element={<StartPage />} />
+      <Route path="tasks" element={<TaskListPage />} />
+      <Route path="company-details" element={<CompanyDetailsPage />} />
+      <Route path="accounting-period" element={<AccountingPeriodPage />} />
+      <Route
+        path={PROFIT_AND_LOSS.slug}
+        element={<AmountSectionPage key="pnl" section={PROFIT_AND_LOSS} />}
+      />
+      <Route
+        path={TAX_ADJUSTMENTS.slug}
+        element={<AmountSectionPage key="adjustments" section={TAX_ADJUSTMENTS} />}
+      />
+      <Route
+        path={BALANCE_SHEET.slug}
+        element={<AmountSectionPage key="balance" section={BALANCE_SHEET} />}
+      />
+      <Route path="accounts-details" element={<AccountsDetailsPage />} />
+      <Route path="supplementary-pages" element={<ChoosePagesPage />} />
+      <Route path="supplementary-pages/:code" element={<PageAnswersPage />} />
+      <Route path="supplementary-pages/:code/:screen" element={<PageScreenPage />} />
+      <Route path="check-your-answers" element={<CheckAnswersPage />} />
+      <Route path="declaration" element={<DeclarationPage />} />
+      <Route path="confirmation" element={<ConfirmationPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }

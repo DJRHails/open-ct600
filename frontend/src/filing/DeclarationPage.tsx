@@ -1,7 +1,14 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { Navigate } from "react-router";
 
-import { api, ApiError, type SignatoryCapacity } from "@/api";
+import {
+  api,
+  type CT600Return,
+  type Declaration,
+  type HmrcEnvironment,
+  type SchemaPage,
+  type SignatoryCapacity,
+} from "@/api";
 import { BackLink, TwoThirds, usePageTitle, WarningText } from "@/components/content";
 import {
   Button,
@@ -12,8 +19,11 @@ import {
   TextInput,
 } from "@/components/forms";
 import { useDraft } from "@/filing/draft";
-import { type FieldErrors, toReturn } from "@/filing/model";
+import type { FieldErrors } from "@/filing/model";
 import { CHECK_ANSWERS, CONFIRMATION, TASK_LIST } from "@/filing/paths";
+import { Pending } from "@/filing/Pending";
+import { type Failure, failure, rejected } from "@/filing/submission";
+import { useReturn } from "@/filing/useReturn";
 
 const CAPACITIES: { value: SignatoryCapacity; label: string }[] = [
   { value: "director", label: "Director" },
@@ -21,48 +31,132 @@ const CAPACITIES: { value: SignatoryCapacity; label: string }[] = [
   { value: "authorised_agent", label: "Agent authorised by the company" },
 ];
 
-const FIELD_ORDER = ["name", "capacity", "confirmed"] as const;
+type Method = HmrcEnvironment | "demo";
 
-function validate(name: string, capacity: string, confirmed: boolean): FieldErrors {
+const FIELD_ORDER = [
+  "name",
+  "capacity",
+  "method",
+  "gateway_user_id",
+  "gateway_password",
+  "confirmed",
+] as const;
+
+type Answers = {
+  name: string;
+  capacity: SignatoryCapacity | "";
+  method: Method | "";
+  userId: string;
+  confirmed: boolean;
+};
+
+function validate(answers: Answers, password: string): FieldErrors {
   const errors: FieldErrors = {};
-  if (!name.trim()) errors.name = "Enter your full name";
-  if (!capacity) errors.capacity = "Select the capacity in which you are signing";
-  if (!confirmed)
+  if (!answers.name.trim()) errors.name = "Enter your full name";
+  if (!answers.capacity) errors.capacity = "Select the capacity in which you are signing";
+  if (!answers.method) errors.method = "Select how you want to send your return";
+  if (answers.method === "live" || answers.method === "test-in-live") {
+    if (!answers.userId.trim()) errors.gateway_user_id = "Enter your Government Gateway user ID";
+    if (!password) errors.gateway_password = "Enter your Government Gateway password";
+  }
+  if (!answers.confirmed) {
     errors.confirmed = "Confirm that the information you have given is correct and complete";
+  }
   return errors;
 }
 
-function submissionErrors(error: unknown): { fields: FieldErrors; general: ErrorItem[] } {
-  if (error instanceof ApiError && error.problems.length > 0) {
-    const fields: FieldErrors = {};
-    const general: ErrorItem[] = [];
-    for (const problem of error.problems) {
-      const [section, field] = problem.path;
-      if (section === "declaration" && field) fields[field] = problem.message;
-      else general.push({ href: CHECK_ANSWERS, text: problem.message });
-    }
-    return { fields, general };
-  }
-  const message = error instanceof Error ? error.message : String(error);
-  return {
-    fields: {},
-    general: [{ href: "#main-content", text: `Your return was not submitted: ${message}` }],
-  };
+type CredentialsProps = {
+  userId: string;
+  password: string;
+  onUserId: (value: string) => void;
+  onPassword: (value: string) => void;
+  errors: FieldErrors;
+};
+
+/** The company's Government Gateway sign in: sent to HMRC with the return, never kept. */
+function Credentials({ userId, password, onUserId, onPassword, errors }: CredentialsProps) {
+  return (
+    <>
+      <p className="govuk-body">
+        Enter the Government Gateway user ID and password the company uses for HMRC online services.
+        We send them to HMRC with your return and do not keep them.
+      </p>
+      <TextInput
+        id="gateway_user_id"
+        label="Government Gateway user ID"
+        value={userId}
+        onChange={onUserId}
+        error={errors.gateway_user_id}
+        width="20"
+        autoComplete="off"
+        spellCheck={false}
+      />
+      <TextInput
+        id="gateway_password"
+        label="Password"
+        type="password"
+        value={password}
+        onChange={onPassword}
+        error={errors.gateway_password}
+        width="20"
+        autoComplete="off"
+        spellCheck={false}
+      />
+    </>
+  );
 }
 
-export function DeclarationPage() {
-  const { draft, recordSubmission } = useDraft();
-  const ct600 = useMemo(() => toReturn(draft), [draft]);
-  const [name, setName] = useState("");
-  const [capacity, setCapacity] = useState<SignatoryCapacity | "">("");
-  const [confirmed, setConfirmed] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [general, setGeneral] = useState<ErrorItem[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+function PendingBanner({ correlationId }: { correlationId: string | null }) {
+  return (
+    <section className="govuk-notification-banner" aria-labelledby="pending-title">
+      <div className="govuk-notification-banner__header">
+        <h2 className="govuk-notification-banner__title" id="pending-title">
+          Important
+        </h2>
+      </div>
+      <div className="govuk-notification-banner__content">
+        <p className="govuk-notification-banner__heading">HMRC is still processing your return</p>
+        <p className="govuk-body">
+          HMRC has not replied yet. Your return may still be accepted, so do not send it again
+          straight away. Check your HMRC online services account later to see whether it arrived.
+        </p>
+        {correlationId ? (
+          <p className="govuk-body">
+            HMRC's reference for this submission (correlation ID) is{" "}
+            <strong className="app-numeric">{correlationId}</strong>.
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
 
-  const summary = [
+const WARNINGS: Record<Method, ReactNode> = {
+  demo:
+    "Your return will not be sent to HMRC. Giving false information in a real return can lead " +
+    "to a penalty or prosecution.",
+  "test-in-live": "HMRC will check your return but will not file it.",
+  live: "Giving false information in a return can lead to a penalty or prosecution.",
+};
+
+function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) {
+  const { recordSubmission } = useDraft();
+  const [answers, setAnswers] = useState<Answers>({
+    name: "",
+    capacity: "",
+    method: "",
+    userId: "",
+    confirmed: false,
+  });
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [outcome, setOutcome] = useState<Failure | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const set = (change: Partial<Answers>) => setAnswers({ ...answers, ...change });
+
+  const general = outcome?.kind === "errors" ? outcome.general : [];
+  const summary: ErrorItem[] = [
     ...FIELD_ORDER.filter((field) => errors[field]).map((field) => ({
       href: `#${field}`,
       text: errors[field] ?? "",
@@ -71,39 +165,100 @@ export function DeclarationPage() {
   ];
   usePageTitle("Declaration", summary.length > 0);
 
-  // Submitting clears the draft, so a submitted return has no draft left to show.
-  if (ct600 === null) return <Navigate to={submitted ? CONFIRMATION : TASK_LIST} replace />;
-  const ready = ct600;
+  /** Send the return; on success the draft is replaced by the receipt. */
+  async function send(declaration: Declaration, method: Method): Promise<Failure | null> {
+    if (method === "demo") {
+      const receipt = await api.submitReturn(ct600, declaration);
+      recordSubmission({ kind: "demo", ...receipt });
+      return null;
+    }
+    const credentials = { gateway_user_id: answers.userId.trim(), gateway_password: password };
+    setPassword("");
+    const result = await api.submitToHmrc({
+      ct600,
+      declaration,
+      environment: method,
+      ...credentials,
+    });
+    if (result.status === "rejected") {
+      const description =
+        "HMRC did not accept your return. Correct these problems and submit it again.";
+      return rejected(result.problems, pages, description);
+    }
+    const { status: _accepted, ...receipt } = result;
+    recordSubmission({
+      kind: "hmrc",
+      ...receipt,
+      company: ct600.company,
+      period: ct600.period,
+      signatory: declaration.name,
+    });
+    return null;
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const found = validate(name, capacity, confirmed);
+    const found = validate(answers, password);
     setErrors(found);
-    setGeneral([]);
+    setOutcome(null);
     setAttempt(attempt + 1);
-    if (Object.keys(found).length > 0 || capacity === "") return;
+    const { capacity, method } = answers;
+    if (Object.keys(found).length > 0 || !capacity || !method) return;
     setSubmitting(true);
+    let sorted: Failure | null;
     try {
-      const receipt = await api.submitReturn(ready, {
-        name: name.trim(),
-        capacity,
-        confirmed: true,
-      });
-      setSubmitted(true);
-      recordSubmission(receipt);
+      sorted = await send({ name: answers.name.trim(), capacity, confirmed: true }, method);
     } catch (error) {
-      const problems = submissionErrors(error);
-      setErrors(problems.fields);
-      setGeneral(problems.general);
-      setSubmitting(false);
+      sorted = failure(error, pages);
     }
+    if (sorted === null) return;
+    setPassword("");
+    setOutcome(sorted);
+    if (sorted.kind === "errors") setErrors(sorted.fields);
+    setSubmitting(false);
   }
+
+  const credentials = (
+    <Credentials
+      userId={answers.userId}
+      password={password}
+      onUserId={(userId) => set({ userId })}
+      onPassword={setPassword}
+      errors={errors}
+    />
+  );
+  const methods: { value: Method; label: string; hint: string; conditional?: ReactNode }[] = [
+    {
+      value: "test-in-live",
+      label: "Send a test submission to HMRC (Test in Live)",
+      hint: "HMRC checks your return as it would a real one, but does not file it.",
+      conditional: credentials,
+    },
+    {
+      value: "live",
+      label: "Submit to HMRC",
+      hint: "HMRC files your return for the company.",
+      conditional: credentials,
+    },
+    {
+      value: "demo",
+      label: "Do not send it: get a demonstration receipt",
+      hint: "Nothing is sent to HMRC.",
+    },
+  ];
 
   return (
     <>
       <BackLink to={CHECK_ANSWERS} />
       <TwoThirds>
-        <ErrorSummary key={attempt} errors={summary} />
+        <ErrorSummary
+          key={attempt}
+          errors={summary}
+          description={outcome?.kind === "errors" ? outcome.description : undefined}
+        />
+        {outcome?.kind === "pending" ? (
+          <PendingBanner correlationId={outcome.correlationId} />
+        ) : null}
         <span className="govuk-caption-l">{ct600.company.name}</span>
         <h1 className="govuk-heading-l">Declaration</h1>
         <p className="govuk-body">
@@ -114,8 +269,8 @@ export function DeclarationPage() {
           <TextInput
             id="name"
             label="Full name"
-            value={name}
-            onChange={setName}
+            value={answers.name}
+            onChange={(name) => set({ name })}
             error={errors.name}
             autoComplete="name"
           />
@@ -123,26 +278,42 @@ export function DeclarationPage() {
             name="capacity"
             legend="In what capacity are you signing?"
             options={CAPACITIES}
-            value={capacity}
-            onChange={setCapacity}
+            value={answers.capacity}
+            onChange={(capacity) => set({ capacity })}
             error={errors.capacity}
+          />
+          <Radios
+            name="method"
+            legend="How do you want to send your return?"
+            options={methods}
+            value={answers.method}
+            onChange={(method) => set({ method })}
+            error={errors.method}
           />
           <Checkbox
             id="confirmed"
             label="The information I have given in this Company Tax Return is correct and complete to the best of my knowledge and belief."
-            checked={confirmed}
-            onChange={setConfirmed}
+            checked={answers.confirmed}
+            onChange={(confirmed) => set({ confirmed })}
             error={errors.confirmed}
           />
-          <WarningText>
-            This is a demonstration. Your return will not be sent to HMRC. Giving false information
-            in a real return can lead to a penalty or prosecution.
-          </WarningText>
+          {answers.method ? <WarningText>{WARNINGS[answers.method]}</WarningText> : null}
           <Button disabled={submitting} aria-disabled={submitting}>
-            Submit return
+            {answers.method === "test-in-live" ? "Send test submission" : "Submit return"}
           </Button>
         </form>
       </TwoThirds>
     </>
   );
+}
+
+export function DeclarationPage() {
+  const { receipt } = useDraft();
+  const built = useReturn();
+  // Submitting clears the draft, so a submitted return has no draft left to show.
+  if (built.status === "incomplete") {
+    return <Navigate to={receipt ? CONFIRMATION : TASK_LIST} replace />;
+  }
+  if (built.status === "ready") return <Declare ct600={built.ct600} pages={built.pages} />;
+  return <Pending title="Declaration" failure={built.status === "failed" ? built.message : null} />;
 }

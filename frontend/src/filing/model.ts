@@ -5,8 +5,17 @@
  * A section is stored only once it validates, so "saved" means "completed". A section saved
  * before its questions changed no longer validates, and shows as incomplete again.
  */
-import type { AccountsDetails, CompanyDetails, CT600Return, TradingStatus } from "@/api";
+import type {
+  AccountsDetails,
+  CompanyDetails,
+  CT600Return,
+  PageAnswers,
+  PageCode,
+  SchemaPage,
+  TradingStatus,
+} from "@/api";
 import type { DateParts } from "@/components/forms";
+import { convertPage, type RawTree } from "@/filing/supplementary/answers";
 import {
   formatDate,
   formatPounds,
@@ -45,6 +54,10 @@ export type Draft = {
   tax_adjustments?: Record<string, string>;
   balance_sheet?: Record<string, string>;
   accounts?: AccountsAnswers;
+  /** The supplementary pages the user said apply (none is ``[]``); absent until they answer. */
+  chosen_pages?: PageCode[];
+  /** Each chosen page's answers as typed, saved screen by screen. */
+  supplementary_pages?: Partial<Record<PageCode, RawTree>>;
 };
 
 export type FieldErrors = Record<string, string>;
@@ -492,8 +505,40 @@ export function sectionComplete(draft: Draft, key: SectionKey): boolean {
   return validateSection(draft, key)?.ok === true;
 }
 
-/** Build the API payload, or ``null`` if any section is not yet completed. */
-export function toReturn(draft: Draft): CT600Return | null {
+/** Whether the answers need HMRC's page definitions (``GET /api/schema/pages``) to be checked. */
+export function needsSchema(draft: Draft): boolean {
+  return (draft.chosen_pages?.length ?? 0) > 0;
+}
+
+/** Whether a chosen page has been started and its answers are complete. */
+export function pageComplete(draft: Draft, page: SchemaPage): boolean {
+  const raw = draft.supplementary_pages?.[page.code];
+  return raw !== undefined && convertPage(page, raw).problems.length === 0;
+}
+
+/** The chosen pages' element trees; ``null`` until they are chosen and all complete. */
+function supplementaryPages(
+  draft: Draft,
+  pages: SchemaPage[] | undefined,
+): Partial<Record<PageCode, PageAnswers>> | null {
+  if (draft.chosen_pages === undefined) return null;
+  const trees: Partial<Record<PageCode, PageAnswers>> = {};
+  for (const code of draft.chosen_pages) {
+    const page = pages?.find((candidate) => candidate.code === code);
+    if (!page || !pageComplete(draft, page)) return null;
+    const converted = convertPage(page, draft.supplementary_pages?.[code]);
+    if (converted.value === undefined) return null;
+    trees[code] = converted.value;
+  }
+  return trees;
+}
+
+/**
+ * Build the API payload, or ``null`` if any section is not yet completed. ``pages`` are HMRC's
+ * page definitions, needed to check the answers to any supplementary pages chosen.
+ */
+export function toReturn(draft: Draft, pages?: SchemaPage[]): CT600Return | null {
+  const supplementary = supplementaryPages(draft, pages);
   const company = validateSection(draft, "company");
   const period = validateSection(draft, "period");
   const profitAndLoss = validateSection(draft, "profit_and_loss");
@@ -506,7 +551,8 @@ export function toReturn(draft: Draft): CT600Return | null {
     !profitAndLoss?.ok ||
     !adjustments?.ok ||
     !balanceSheet?.ok ||
-    !accounts?.ok
+    !accounts?.ok ||
+    supplementary === null
   ) {
     return null;
   }
@@ -517,6 +563,7 @@ export function toReturn(draft: Draft): CT600Return | null {
     tax_adjustments: adjustments.value,
     balance_sheet: balanceSheet.value,
     accounts: accounts.value,
+    supplementary_pages: supplementary,
   };
 }
 
