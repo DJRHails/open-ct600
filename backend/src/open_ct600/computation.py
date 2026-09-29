@@ -344,6 +344,8 @@ BOX_LABELS: dict[int, str] = {
     711: "Structures and buildings allowances",
     760: "Machinery and plant on which first year allowance is claimed",
     771: "Structures and buildings qualifying expenditure",
+    780: "Losses of trades carried on wholly or partly in the UK",
+    785: "Losses of UK trades: maximum available for surrender as group relief",
     875: "Payable R&D tax credit",
     880: "Payable R&D expenditure credit",
     885: "Payable creatives tax credit",
@@ -383,6 +385,7 @@ def main_return_boxes() -> frozenset[str]:
             continue
         if node.box is not None:
             found.add(node.box)
+        found |= set(node.box_parts())
         stack.extend(node.children)
     return frozenset(found)
 
@@ -575,6 +578,20 @@ def _profit_boxes(run: _Evaluation, profits: _Profits) -> None:
         run.box(310, profits.group_relief)
         run.box(312, profits.group_relief_carried_forward)
     run.box(315, profits.chargeable)
+
+
+def _loss_boxes(run: _Evaluation, loss: int, surrendered: tuple[int, int, int]) -> None:
+    """Boxes 780 and 785: the trading loss arising and the most available as group relief.
+
+    CT600 guide boxes 780/785 (review M4): the loss of the period (CTA 2010 s99(1)(a),
+    s100), less what was surrendered for R&D or creative payable credits, which cannot also be
+    surrendered as group relief. Group relief actually surrendered (C45) stays in 785.
+    """
+    if loss <= 0:
+        return
+    research_and_development, creative, _ = surrendered
+    run.box(780, loss)
+    run.box(785, max(loss - research_and_development - creative, 0))
 
 
 def _tax_boxes(run: _Evaluation, tax: TaxComputation) -> None:
@@ -1085,6 +1102,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     )
     _check_losses_surrendered(run, stages.profits, surrendered)
     _profit_boxes(run, stages.profits)
+    _loss_boxes(run, stages.profits.loss_arising, surrendered)
     adjustments = ct600.tax_adjustments
     tax = compute_corporation_tax(
         *run.period,

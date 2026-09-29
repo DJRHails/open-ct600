@@ -635,3 +635,13 @@ def test_fractional_whole_pounds_are_refused():
         build_return_xml(
             ct600, broken, declaration=DECLARATION, accounts_xhtml=None, computations_xhtml=None
         )
+
+
+def test_a_loss_return_records_the_loss_and_is_accepted():
+    ct600 = make_return(profit_and_loss={"turnover": 20_000})
+    envelope = build(ct600)
+
+    losses = "//ct:LossesDeficitsAndExcess/ct:AmountArising/ct:LossesOfTradesUK"
+    assert text(envelope, f"{losses}/ct:Arising") == text(envelope, f"{losses}/ct:SurrenderMaximum")
+    assert text(envelope, f"{losses}/ct:Arising") != ""
+    assert validate_return(envelope) == []

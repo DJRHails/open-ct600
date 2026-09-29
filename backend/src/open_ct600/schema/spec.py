@@ -118,6 +118,18 @@ class SpecNode:
         """Return the first child called ``name`` (``@Name`` for attributes), if any."""
         return next((child for child in self.children if child.name == name), None)
 
+    def box_parts(self) -> dict[str, "SpecNode"]:
+        """The boxes inside a paired box such as ``780/785``, by their own ids.
+
+        The pair is an amount arising and the most available for surrender. HMRC's box map
+        gives the pair to the group and nothing to its two elements. Empty for other nodes.
+        """
+        names = [child.name for child in self.children]
+        if self.box is None or "/" not in self.box or names != ["Arising", "SurrenderMaximum"]:
+            return {}
+        arising, maximum = self.box.split("/")
+        return {arising: self.children[0], maximum: self.children[1]}
+
     def walk(self) -> Iterator["SpecNode"]:
         """Yield this node and all its descendants, depth first in schema order."""
         yield self

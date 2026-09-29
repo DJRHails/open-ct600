@@ -231,7 +231,10 @@ def _main_return_boxes() -> dict[str, SpecNode]:
     for node in load_spec().node(RETURN_PATH).children:
         if node.name in _PAGE_ELEMENT_BY_CODE.values() or node.name == "AttachedFiles":
             continue
-        boxes |= {each.box: each for each in node.walk() if each.box is not None}
+        for each in node.walk():
+            if each.box is not None:
+                boxes[each.box] = each
+            boxes |= each.box_parts()
     return boxes
 
 
