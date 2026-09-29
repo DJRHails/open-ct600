@@ -115,6 +115,366 @@ SHAPES = {
     "cross-border royalties (CT600H)": {"supplementary_pages": {"H": {"Royalties": [ROYALTY]}}},
 }
 
+RD_FORMS = {"claimed_in_previous_three_years": True, "additional_information_submitted": True}
+PAYE_REFERENCE = [{"HMRCofficeNumber": "123", "EmployerPAYEreference": "AB12345"}]
+LOSS_MAKING = {"profit_and_loss": {"turnover": 10_000}}
+SME_PAYE = {
+    "SME": {
+        "PAYENICforWhichTheCompanyIsLiableInThisAccountingPeriod": "10000",
+        "EmployerPAYEreference": PAYE_REFERENCE,
+    }
+}
+AUTHORISED = {
+    "AuthorisationForSimplifiedArrangements": {
+        "AuthorisationWhereSimplifiedArrangement": "yes",
+        "CompanyName": "Parent Ltd",
+        "NameOfAuthorisedPerson": "Ada Lovelace",
+        "Status": "Director",
+    }
+}
+SHIP = {
+    "Name": "Northern Star",
+    "IMOnumber": "9123456",
+    "InterestInShip": "O",
+    "GrossTonnage": "45000",
+    "NetTonnage": "30099",
+    "NumberDays": "365",
+    "Flagged": "yes",
+    "FirstTime": "no",
+}
+ADDRESS = {"Line": ["1 Dock Road", "Tilbury"]}
+CREATIVES_FORM = {"creative_industries": {"additional_information_submitted": True}}
+
+RELIEF_SHAPES = {
+    "merged RDEC, profit-making (CT600L)": {
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "rdec",
+            "qualifying_expenditure": 50_000,
+        },
+        "supplementary_pages": {"L": {}},
+    },
+    "merged RDEC, loss-making to step 7 (CT600L)": {
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "rdec",
+            "qualifying_expenditure": 50_000,
+            "company_is_sme": True,
+        },
+        "supplementary_pages": {
+            "L": {
+                "Step3": {
+                    "PAYENICsForWhichTheCompanyIsLiableInThisAP": "30000",
+                    "EmployerPAYEreference": PAYE_REFERENCE,
+                }
+            }
+        },
+    },
+    "ERIS payable credit (CT600L)": {
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "eris",
+            "qualifying_expenditure": 50_000,
+            "intensity": "35",
+            "claim_payable_credit": True,
+        },
+        "supplementary_pages": {"L": SME_PAYE},
+    },
+    "ERIS additional deduction only": {
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "eris",
+            "qualifying_expenditure": 50_000,
+            "intensity": "35",
+        },
+    },
+    "SME scheme before April 2024 (CT600L)": {
+        "period": {"start": "2023-04-01", "end": "2024-03-31"},
+        "accounts": {"approval_date": "2024-06-01"},
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "sme",
+            "qualifying_expenditure": 50_000,
+            "intensity": "45",
+            "claim_payable_credit": True,
+        },
+        "supplementary_pages": {"L": SME_PAYE},
+    },
+    "large-company RDEC straddling April 2023 (CT600L)": {
+        "period": {"start": "2023-01-01", "end": "2023-12-31"},
+        "accounts": {"approval_date": "2024-06-01"},
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "rdec",
+            "qualifying_expenditure": 50_000,
+            "rd_workers_paye_and_nic": 5_000,
+        },
+        "supplementary_pages": {"L": {}},
+    },
+    "RDEC brought forward only (CT600L)": {
+        "supplementary_pages": {
+            "L": {"PreStep1Restriction": {"Step2RestrictionBroughtForward": "5000.00"}}
+        }
+    },
+    "loans to participators with relief (CT600A)": {
+        "supplementary_pages": {
+            "A": {
+                "BeforeEndPeriod": "no",
+                "LoansInformation": {"Loan": [{"Name": "J Smith", "AmountOfLoan": "40000"}]},
+                "ReliefEarlierThan": {
+                    "Loan": [{"Name": "J Smith", "AmountRepaid": "15000", "Date": "2025-06-30"}]
+                },
+            }
+        }
+    },
+    "loans to participators repaid in full (CT600A)": {
+        "supplementary_pages": {
+            "A": {
+                "BeforeEndPeriod": "no",
+                "LoansInformation": {"Loan": [{"Name": "J Smith", "AmountOfLoan": "6000"}]},
+                "ReliefEarlierThan": {
+                    "Loan": [{"Name": "J Smith", "AmountRepaid": "6000", "Date": "2025-06-30"}]
+                },
+            }
+        }
+    },
+    "loans either side of 6 April 2022 (CT600A)": {
+        "period": {"start": "2022-01-01", "end": "2022-12-31"},
+        "accounts": {"approval_date": "2023-06-01"},
+        "supplementary_pages": {
+            "A": {
+                "BeforeEndPeriod": "no",
+                "LoansInformation": {
+                    "Loan": [
+                        {"Name": "J Smith", "AmountOfLoan": "10000"},
+                        {"Name": "A Jones", "AmountOfLoan": "10000"},
+                    ]
+                },
+            }
+        },
+        "participator_loan_dates": {"loans": ["2022-02-01", "2022-07-01"]},
+    },
+    "group relief claims (CT600C)": {
+        "supplementary_pages": {
+            "C": {
+                "ClaimToGroupRelief": {
+                    "CompanyInformation": {
+                        "Company": [
+                            {
+                                "Name": "Sub Ltd",
+                                "AccountingPeriod": {"From": "2024-07-01", "To": "2025-06-30"},
+                                "TaxReference": "1234567891",
+                                "AmountClaimed": "10000",
+                            }
+                        ]
+                    },
+                    "ClaimAuthorisation": AUTHORISED,
+                },
+                "GroupReliefForCarriedForwardLosses": {
+                    "CompanyInformation": {
+                        "Company": [
+                            {
+                                "Name": "Sub Ltd",
+                                "TaxReference": "1234567891",
+                                "AmountClaimed": "5000",
+                            }
+                        ]
+                    },
+                    "ClaimAuthorisation": AUTHORISED,
+                },
+            }
+        }
+    },
+    "group relief surrendered (CT600C)": {
+        **LOSS_MAKING,
+        "supplementary_pages": {
+            "C": {
+                "SurrenderedGroupRelief": {
+                    "TradingLosses": "20000",
+                    "SurrenderInformation": {
+                        "Company": [
+                            {
+                                "Name": "Parent Ltd",
+                                "TaxReference": "1234567891",
+                                "AmountSurrendered": "20000",
+                            }
+                        ]
+                    },
+                    "ConsentToSurrender": {
+                        "ConsentOptions": {"NoticeOfConsentCompleted": "yes"},
+                        "Declaration": {
+                            "AcceptDeclaration": "yes",
+                            "Name": "Ada Lovelace",
+                            "Status": "Director",
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "controlled foreign companies (CT600B)": {
+        "supplementary_pages": {
+            "B": {
+                "CompanyInformation": [
+                    {
+                        "Name": "Alpha Ltd",
+                        "Territory": "Ruritania",
+                        "CFCTaxCalculation": {
+                            "Percentage": "60.00",
+                            "ChargeableProfits": "1000000",
+                            "CreditableTax": "48000.00",
+                        },
+                    },
+                    {"Name": "Beta SA", "Territory": "Freedonia", "ExemptionDue": "Low Profits"},
+                ]
+            }
+        }
+    },
+    "insurance (CT600D)": {"supplementary_pages": {"D": {"Declaration": "yes"}}},
+    "charity, all income exempt (CT600E)": {
+        "company": {"company_type": 8},
+        "supplementary_pages": {
+            "E": {
+                "ClaimExemption": {
+                    "Status": {
+                        "ClaimingExemptionAllOrPart": "yes",
+                        "AllCharitable": {"AllExempt": "yes"},
+                    }
+                },
+                "InformationRequired": {
+                    "Income": {"TotalTurnover": "120000", "GiftAid": "28000"},
+                    "Expenditure": {"TradingCosts": "60000"},
+                },
+            }
+        },
+    },
+    "tonnage tax (CT600F)": {
+        "supplementary_pages": {
+            "F": {
+                "TonnageTax": {
+                    "Information": {
+                        "TrainingCertificate": "yes",
+                        "CompanyMetCharteredInLimit": "yes",
+                        "NotRegistered": "na",
+                        "OffshoreActivities": "yes",
+                    },
+                    "OffshoreTrainingAllowance": {"OffsetAgainstCorpTax": "500.00"},
+                    "QualifyingShips": {"Ship": [SHIP]},
+                }
+            }
+        }
+    },
+    "ring fence supplementary charge (CT600I)": {
+        "supplementary_pages": {
+            "I": {
+                "CalculationOfSupplementaryCharge": {
+                    "Trade": {"Amount": "50000", "Profits": "yes"},
+                    "DisallowedFinancingCosts": {"RelatedToCompany": "4000"},
+                    "MinusLosses": "10000",
+                    "FieldAllowance": "6000",
+                },
+                "NetRingFenceTrade": {"SupplementaryChargeTax": "3800.00"},
+            }
+        }
+    },
+    "restitution tax straddling 1 April (CT600K)": {
+        "period": {"start": "2025-01-01", "end": "2025-12-31"},
+        "accounts": {"approval_date": "2026-06-01"},
+        "supplementary_pages": {"K": {"TaxCalculation": {"RestitutionInterest": "1000000"}}},
+    },
+    "freeports (CT600M)": {
+        "tax_adjustments": {"capital_allowances": 50_000},
+        "supplementary_pages": {
+            "M": {
+                "EnhancedSBAinFreeports": [
+                    {
+                        "LocationOfFreeport": "7",
+                        "AddressOfBusinessOperation": ADDRESS,
+                        "DateStructureOrBuildingWasBroughtIntoQualifyingUse": "2024-06-01",
+                        "DateOfFirstContractForConstruction": "2023-06-01",
+                        "TotalAmountOfQualifyingExpenditure": "120000",
+                        "TotalSBAclaimAmount": "10000",
+                    }
+                ],
+                "ECAforPlantAndMachineryInFreeports": [
+                    {
+                        "LocationOfFreeport": "7",
+                        "AddressOfBusinessOperation": ADDRESS,
+                        "TotalAmountOfECAclaimedWithinTheAccountingPeriod": "30000",
+                    }
+                ],
+            }
+        },
+    },
+    "residential property developer tax (CT600N)": {
+        "supplementary_pages": {
+            "N": {
+                "Section4": {
+                    "AdjustedProfit": "40000000",
+                    "JointVentureProfit": "2000000",
+                    "AllowableLossRelief": "5000000",
+                    "AllowanceAllocationForAccountingPeriod": "25000000",
+                }
+            }
+        }
+    },
+    "audio-visual expenditure credit (CT600P)": {
+        **LOSS_MAKING,
+        **CREATIVES_FORM,
+        "supplementary_pages": {
+            "P": {
+                "AudioVisualExpenditureCredit": {
+                    "HighEndTV": {
+                        "RelevantGlobalExpenditure": "1000000",
+                        "UKrelevantGlobalExpenditure": "900000",
+                        "QualifyingExpenditure": "800000",
+                        "ExpenditureCreditClaimed": "272000.00",
+                    },
+                    "Animation": {
+                        "RelevantGlobalExpenditure": "100000",
+                        "UKrelevantGlobalExpenditure": "90000",
+                        "QualifyingExpenditure": "80000",
+                        "ExpenditureCreditClaimed": "31200.00",
+                    },
+                }
+            }
+        },
+    },
+    "theatre tax relief (CT600P)": {
+        **LOSS_MAKING,
+        **CREATIVES_FORM,
+        "supplementary_pages": {
+            "P": {
+                "CulturalReliefs": {
+                    "Theatre": {
+                        "CoreExpenditure": "500000",
+                        "UKcoreExpenditure": "450000",
+                        "AdditionalDeduction": "400000",
+                        "LossesSurrenderedForTaxCredit": "300000",
+                        "TaxCreditClaimed": "120000.00",
+                    }
+                }
+            }
+        },
+    },
+    "creative credits brought forward only (CT600P)": {
+        **CREATIVES_FORM,
+        "supplementary_pages": {
+            "P": {"PreStep1Restriction": {"Step2RestrictionBroughtForward": "5000.00"}}
+        },
+    },
+}
+
+
+@pytest.mark.parametrize("overrides", RELIEF_SHAPES.values(), ids=RELIEF_SHAPES.keys())
+def test_every_relief_and_page_is_accepted_by_hmrc_schema_and_rules(overrides):
+    assert validate_return(build(make_return(**overrides))) == []
+
 
 @pytest.mark.parametrize("overrides", SHAPES.values(), ids=SHAPES.keys())
 def test_every_shape_is_accepted_by_hmrc_schema_and_rules(overrides):
