@@ -1,9 +1,18 @@
+import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
-from open_ct600.tax import PeriodError, add_months, compute_corporation_tax, financial_year_of
+from open_ct600.tax import (
+    PeriodError,
+    add_months,
+    compute_corporation_tax,
+    filing_due_date,
+    financial_year_of,
+    payment_due_date,
+)
 
 FY2024_START, FY2024_END = date(2024, 4, 1), date(2025, 3, 31)
 
@@ -156,3 +165,17 @@ def test_financial_year_of(day, year):
 def test_add_months_clamps_to_month_end():
     assert add_months(date(2024, 5, 31), 9) == date(2025, 2, 28)
     assert add_months(date(2023, 12, 31), 2) == date(2024, 2, 29)
+
+
+def _deadline_cases() -> list[dict[str, str]]:
+    path = Path(__file__).parent / "fixtures" / "deadlines.json"
+    return json.loads(path.read_text())
+
+
+@pytest.mark.parametrize("case", _deadline_cases(), ids=lambda case: case["case"])
+def test_deadlines_match_the_shared_cases(case):
+    """The frontend's ``filing/deadlines.ts`` is tested against the same cases."""
+    end = date.fromisoformat(case["period_end"])
+
+    assert payment_due_date(end).isoformat() == case["payment_due"]
+    assert filing_due_date(end).isoformat() == case["filing_due"]

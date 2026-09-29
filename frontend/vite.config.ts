@@ -38,6 +38,7 @@ export default defineConfig({
         "../backend/src/open_ct600/schema",
         "../backend/src/open_ct600/pages",
         "../specs/hmrc/guidance",
+        "../backend/tests/fixtures/deadlines.json",
       ],
     },
   },

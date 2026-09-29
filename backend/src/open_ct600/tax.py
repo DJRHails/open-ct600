@@ -264,6 +264,24 @@ def add_months(day: date, months: int) -> date:
     return date(year, month, min(day.day, last_day))
 
 
+def payment_due_date(period_end: date) -> date:
+    """Return the normal date Corporation Tax is due: 9 months and 1 day after the period ends.
+
+    That is 9 months after the day after the period, so a period ending 30 June is due on
+    1 April (https://www.gov.uk/pay-corporation-tax). The frontend's ``filing/deadlines.ts``
+    works this out the same way; both are tested against ``tests/fixtures/deadlines.json``.
+    """
+    return add_months(period_end + timedelta(days=1), 9)
+
+
+def filing_due_date(period_end: date) -> date:
+    """Return the deadline for filing the return: 12 months after the period ends.
+
+    https://www.gov.uk/company-tax-returns. A period ending 29 February is due on 28 February.
+    """
+    return add_months(period_end, 12)
+
+
 def twelve_month_period_end(start: date) -> date:
     """Return the last day of a twelve-month period beginning on ``start``.
 
@@ -509,8 +527,8 @@ def compute_corporation_tax(  # noqa: PLR0913 - the two options past five are ke
         marginal_relief=marginal_relief,
         tax_chargeable=tax_chargeable,
         effective_rate=effective_rate,
-        payment_due=add_months(period_end + timedelta(days=1), 9),
-        filing_due=add_months(period_end, 12),
+        payment_due=payment_due_date(period_end),
+        filing_due=filing_due_date(period_end),
         may_pay_by_instalments=(
             augmented_total > LARGE_COMPANY_THRESHOLD * year_fraction / (associated_companies + 1)
         ),
