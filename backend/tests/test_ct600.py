@@ -268,21 +268,41 @@ def test_accounts_are_approved_after_the_period_ends(approved):
 
 
 def loans_page(loan: dict[str, str]) -> dict:
-    return {
-        "BeforeEndPeriod": "no",
-        "LoansInformation": {"Loan": [loan], "TotalLoans": "6000", "TaxChargeable": "2025.00"},
-        "TaxPayable": "2025.00",
-    }
+    return {"BeforeEndPeriod": "no", "LoansInformation": {"Loan": [loan]}}
 
 
 LOANS_PAGE = loans_page({"Name": "Ada Lovelace", "AmountOfLoan": "6000"})
 
 
-def test_valid_supplementary_pages_pass_through_to_the_computation():
+def test_supplementary_pages_are_completed_with_their_calculated_boxes():
     ct600 = make_return(supplementary_pages={"A": LOANS_PAGE})
 
-    assert compute_return(ct600).pages == {"A": LOANS_PAGE}
+    # 6,000 x 33.75% (loans made 6 April 2022 to 5 April 2026) = 2,025.00
+    assert compute_return(ct600).pages == {
+        "A": {
+            "BeforeEndPeriod": "no",
+            "LoansInformation": {
+                "Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}],
+                "TotalLoans": "6000",
+                "TaxChargeable": "2025.00",
+            },
+            "TaxPayable": "2025.00",
+        }
+    }
+    assert ct600.supplementary_pages == {"A": LOANS_PAGE}
     assert compute_return(make_return()).pages == {}
+
+
+def test_calculated_boxes_cannot_be_answered():
+    page = {**LOANS_PAGE, "TaxPayable": "2025.00"}
+
+    with pytest.raises(ValidationError) as caught:
+        make_return(supplementary_pages={"A": page})
+
+    (error,) = caught.value.errors()
+    assert error["loc"] == ("supplementary_pages", "A", "TaxPayable")
+    assert error["ctx"]["box"] == "A80"
+    assert "calculated from your other answers" in error["msg"]
 
 
 def test_page_problems_are_located_inside_the_page():

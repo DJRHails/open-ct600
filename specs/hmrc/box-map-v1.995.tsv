@@ -36,7 +36,7 @@ box_id	path	cardinality	description
 [90B]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/Computations/NoComputationsReason	1..1	Reason for no computations
 [N029]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages	0..1	Supplementary pages
 [95]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600A	0..1	Loans to participators by close companies
-[100]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600B	0..1	Controlled foreign companies, foreign permanent establishment exemptions, hybrid and other
+[100]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600B	0..1	Controlled foreign companies, foreign permanent establishment exemptions, hybrid and other mismatches
 [105]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600C	0..1	Group and Consortium
 [110]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600D	0..1	Insurance
 [115]	/IRenvelope/CompanyTaxReturn/ReturnInfoSummary/SupplementaryPages/CT600E	0..1	Charities and Community Amateur Sports Clubs
@@ -59,9 +59,9 @@ box_id	path	cardinality	description
 [155]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/Trading/Profits	0..1	Trading profits
 [160]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/Trading/LossesBroughtForward	0..1	Trading losses brought forward set against trading profits
 [165]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/Trading/NetProfits	0..1	Net trading profits
-[170]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/NonTradingLoanProfitsAndGain	0..1	Bank, building society or other interest, and profits from non-trading loan relationships
+[170]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/NonTradingLoanProfitsAndGains	0..1	Bank, building society or other interest, and profits from non-trading loan relationships
 [172]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/IncomeStatedNet	0..1	Is income stated net after carrying back deficits from a later accounting period?
-[175]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/NonLoanAnnuitiesAnnualPaym	0..1	Annual payments not otherwise charged to Corporation Tax and from which Income Tax has not
+[175]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/NonLoanAnnuitiesAnnualPaymentsDiscounts	0..1	Annual payments not otherwise charged to Corporation Tax and from which Income Tax has not been deducted
 [180]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/NonUKdividends	0..1	Non-exempt dividends or distributions from non-UK resident companies
 [185]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/DeductedIncome	0..1	Income from which income tax has been deducted
 [190]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/Income/PropertyBusinessIncome	0..1	Income from a property business
@@ -73,59 +73,59 @@ box_id	path	cardinality	description
 [215]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargeableGains/AllowableLosses	0..1	Allowable losses including losses brought forward
 [220]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargeableGains/NetChargeableGains	1..1	Net chargeable gains
 [225]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/LossesBroughtForward	0..1	Losses brought forward against certain investment income
-[230]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/NonTradeDeficitsOnLoans	0..1	Non-trade deficits on loan relationships (including interest) and derivative contracts (financial
+[230]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/NonTradeDeficitsOnLoans	0..1	Non-trade deficits on loan relationships (including interest) and derivative contracts (financial instruments) brought forward set against non-trading profits
 [235]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ProfitsBeforeOtherDeductions	0..1	Profits before other deductions and reliefs
 [N046]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs	0..1	Deductions and reliefs
 [240]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/UnquotedShares	0..1	Losses on unquoted shares
-[245]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/ManagementExp	0..1	Management expenses
-[250]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/UKpropertyBusin	0..1	UK property business losses for this or previous accounting period
-[255]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/CapitalAllowance	0..1	Capital allowances for the purposes of management of the business
-[260]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradeDeficits	0..1	Non-trade deficits for this accounting period from loan relationships and derivative contracts
-[263]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/CarriedForwardN	0..1	Carried forward non-trade deficits from loan relationships and derivative contracts (financial
-[265]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradingLossI	0..1	Non-trading losses on intangible fixed assets
+[245]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/ManagementExpenses	0..1	Management expenses
+[250]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/UKpropertyBusinessLosses	0..1	UK property business losses for this or previous accounting period
+[255]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/CapitalAllowances	0..1	Capital allowances for the purposes of management of the business
+[260]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradeDeficits	0..1	Non-trade deficits for this accounting period from loan relationships and derivative contracts (financial instruments)
+[263]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/CarriedForwardNonTradeDeficits	0..1	Carried forward non-trade deficits from loan relationships and derivative contracts (financial instruments)
+[265]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradingLossIntangibles	0..1	Non-trading losses on intangible fixed assets
 [275]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/TradingLosses	0..1	Trading losses of this or a later accounting period
-[280]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/TradingLossesCar	0..1	Are amounts carried back from later accounting periods included in trading losses?
-[285]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/TradingLossesCar	0..1	Trading losses carried forward and claimed against total profits
-[290]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradeCapital	0..1	Non-trade capital allowances
+[280]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/TradingLossesCarriedBack	0..1	Are amounts carried back from later accounting periods included in trading losses?
+[285]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/TradingLossesCarriedForward	0..1	Trading losses carried forward and claimed against total profits
+[290]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/NonTradeCapitalAllowances	0..1	Non-trade capital allowances
 [295]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/DeductionsAndReliefs/Total	0..1	Total of deductions and reliefs
 [N047]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs	0..1	Charges and reliefs
-[300]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/ProfitsBeforeDonati	0..1	Profits before qualifying donations and group relief
+[300]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/ProfitsBeforeDonationsAndGroupRelief	0..1	Profits before qualifying donations and group relief
 [305]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/QualifyingDonations	0..1	Qualifying donations
 [310]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/GroupRelief	0..1	Group relief
-[312]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/GroupReliefForCarri	0..1	Group relief for carried forward losses
+[312]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargesAndReliefs/GroupReliefForCarriedForwardLosses	0..1	Group relief for carried forward losses
 [315]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/ChargeableProfits	1..1	Profits chargeable to corporation tax
 [320]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/RingFenceProfitsIncluded	0..1	Ring fence profits included
 [325]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/NorthernIrelandProfitsIncluded	0..1	Northern Ireland profits included
 [N051]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable	0..1	Corporation tax chargeable
-[N049]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	0..1	Associated companies
-[326]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	0..1	Number of associated companies in this period
-[N054]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	0..1	Associated companies financial years
-[327]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	1..1	Number of associated companies in the first financial year
-[328]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	1..1	Number of associated companies in the second financial year
-[329]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedC	0..1	Is the company chargeable at the small profit rate or entitled to marginal relief?
-[N052]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Financial year one
-[330]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Financial year one
-[N053]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..3	Details
-[335]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Amounts of profit
-[340]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Rates of tax
-[345]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Tax
-[N052b]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	0..1	Financial year two
-[380]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Financial year two
-[N053b]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..3	Details
-[385]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Amounts of profit
-[390]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Rates of tax
-[395]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYea	1..1	Tax
+[N049]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies	0..1	Associated companies
+[326]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies/ThisPeriod	0..1	Number of associated companies in this period
+[N054]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies/AssociatedCompaniesFinancialYears	0..1	Associated companies financial years
+[327]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies/AssociatedCompaniesFinancialYears/FirstYear	1..1	Number of associated companies in the first financial year
+[328]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies/AssociatedCompaniesFinancialYears/SecondYear	1..1	Number of associated companies in the second financial year
+[329]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies/StartingOrSmallCompaniesRate	0..1	Is the company chargeable at the small profit rate or entitled to marginal relief?
+[N052]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne	1..1	Financial year one
+[330]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne/Year	1..1	Financial year one
+[N053]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne/Details	1..3	Details
+[335]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne/Details/Profit	1..1	Amounts of profit
+[340]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne/Details/TaxRate	1..1	Rates of tax
+[345]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearOne/Details/Tax	1..1	Tax
+[N052b]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo	0..1	Financial year two
+[380]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo/Year	1..1	Financial year two
+[N053b]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo/Details	1..3	Details
+[385]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo/Details/Profit	1..1	Amounts of profit
+[390]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo/Details/TaxRate	1..1	Rates of tax
+[395]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable/FinancialYearTwo/Details/Tax	1..1	Tax
 [430]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTax	0..1	Corporation tax
 [435]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/MarginalReliefForRingFenceTrades	0..1	Marginal relief
 [440]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/NetCorporationTaxChargeable	1..1	Corporation tax chargeable
 [N055]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions	0..1	Tax reliefs and deductions
-[445]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/CommunityIn	0..1	Community investment relief
-[N056]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxati	0..1	Double taxation
-[450]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxati	0..1	Double taxation relief
-[455]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxati	0..1	Does double taxation relief include an underlying rate relief claim?
-[460]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxati	0..1	Does double taxation relief include any amount carried back from a later period?
-[465]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/AdvancedCor	0..1	Advanced corporation tax
-[470]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/TotalReliefsAn	0..1	Total reliefs and deductions in terms of tax
+[445]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/CommunityInvestmentRelief	0..1	Community investment relief
+[N056]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxation	0..1	Double taxation
+[450]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxation/DoubleTaxationRelief	0..1	Double taxation relief
+[455]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxation/UnderlyingRate	0..1	Does double taxation relief include an underlying rate relief claim?
+[460]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/DoubleTaxation/AmountCarriedBack	0..1	Does double taxation relief include any amount carried back from a later period?
+[465]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/AdvancedCorporationTax	0..1	Advanced corporation tax
+[470]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/TaxReliefsAndDeductions/TotalReliefsAndDeductions	0..1	Total reliefs and deductions in terms of tax
 [F056]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CJRS	0..1	Coronavirus Job Retention Scheme
 [471]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CJRS/CJRSreceived	1..1	CJRS received
 [472]	/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CJRS/CJRSdue	0..1	CJRS entitlement
@@ -135,7 +135,7 @@ box_id	path	cardinality	description
 [986]	/IRenvelope/CompanyTaxReturn/EnergyProfitsLevy/EOGPLamounts	0..1	Energy (Oil and Gas) Profits Levy (EOGPL) amounts liable
 [987]	/IRenvelope/CompanyTaxReturn/EnergyProfitsLevy/EGLamounts	0..1	Electricity Generator Levy (EGL) exceptional generation receipts
 [F050]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid	1..1	
-[475]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/NetCorporationTaxLiab	0..1	Net corporation tax liability
+[475]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/NetCorporationTaxLiability	0..1	Net corporation tax liability
 [480]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/LoansToParticipators	0..1	Tax payable on loans to participators
 [485]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/CT600AreliefDue	0..1	Have you completed 'relief due' box in supplementary page CT600A?
 [490]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/CFCtaxPayable	0..1	CFC tax payable
@@ -148,23 +148,23 @@ box_id	path	cardinality	description
 [505]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/SupplementaryCharge	0..1	Supplementary charge (ring fence trades) payable
 [510]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/TaxChargeable	0..1	Tax chargeable
 [N058]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/IncomeTax	0..1	Income tax
-[515]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/IncomeTax/DeductedIn	0..1	Income tax deducted from gross income included in profits
-[520]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/IncomeTax/TaxRepaya	0..1	Income tax repayable to the company
+[515]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/IncomeTax/DeductedIncomeTax	0..1	Income tax deducted from gross income included in profits
+[520]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/IncomeTax/TaxRepayable	0..1	Income tax repayable to the company
 [525]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/TaxPayable	1..1	Tax payable before restitution tax, CJRS and job retention bonus overpayments
-[526]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/CJRSoverpaymentsNow	0..1	CJRS and job retention bonus overpayments now due
+[526]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/CJRSoverpaymentsNowDue	0..1	CJRS and job retention bonus overpayments now due
 [527]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/RestitutionTax	0..1	Restitution tax
-[528]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/TaxPayableIncludingRe	0..1	Tax payable after restitution tax, CJRS and job retention bonus overpayments - this is your self-
+[528]	/IRenvelope/CompanyTaxReturn/CalculationOfTaxOutstandingOrOverpaid/TaxPayableIncludingRestitutionTax	0..1	Tax payable after restitution tax, CJRS and job retention bonus overpayments - this is your self-assessment
 [N059]	/IRenvelope/CompanyTaxReturn/TaxReconciliation	0..1	Tax reconciliation
 [530]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ResearchAndDevelopmentCredit	0..1	Research and development credit
 [535]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/VaccineCredit	0..1	Not currently used
 [540]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/CreativeCredit	0..1	Creatives tax credit
 [541]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/AVECandVGEC	0..1	Audio-Visual expenditure credit and Video Games expenditure credit
-[545]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ResearchAndDevelopmentVaccineOrCreativeT	0..1	Total of research and development credit, creatives tax credit and AVEC/VGEC
+[545]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ResearchAndDevelopmentVaccineOrCreativeTaxCredit	0..1	Total of research and development credit, creatives tax credit and AVEC/VGEC
 [550]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/LandRemediationCredit	0..1	Land remediation tax credit
 [555]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/LifeAssuranceCompanyCredit	0..1	Life assurance company tax credit
 [560]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/LandOrLifeCredit	0..1	Total land remediation tax credit and life assurance company tax credit
 [565]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/CapitalAllowancesFirstYearCredit	0..1	Capital allowances first-year tax credit
-[570]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/SurplusResearchAndDevelopmentCreditsOrCr	0..1	Surplus research and development credits and creatives tax credit payable
+[570]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/SurplusResearchAndDevelopmentCreditsOrCreativeCreditPayable	0..1	Surplus research and development credits and creatives tax credit payable
 [575]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/LandOrLifeCreditPayable	0..1	Land remediation or life assurance company tax credit payable
 [580]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/CapitalAllowancesFirstYearCreditPayable	0..1	Capital allowances first-year tax credit payable
 [585]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/RingFenceCorpTaxIncluded	0..1	Ring fence corporation tax included
@@ -177,26 +177,26 @@ box_id	path	cardinality	description
 [610]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/RefundsSurrendered	0..1	Group tax refunds surrendered to this company
 [614]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/AVECVGECsurrenderedToThisCompany	0..1	Audio-Visual expenditure credit / Video Games expenditure credit surrendered to this company
 [615]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/RandDExpenditureCreditsSurrendered	0..1	Research and development expenditure credits surrendered to this company
-[N118]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation	0..1	During the return period, did the company export goods and/or services to individuals enterprises
+[N118]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation	0..1	During the return period, did the company export goods and/or services to individuals enterprises or organisations outside the United Kingdom?
 [616]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation/GoodsExported	0..1	Goods exported outside-UK
 [617]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation/ServicesExported	0..1	Services exported outside-UK
-[618]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation/NeitherGoodsNorService	0..1	Neither goods nor services exported outside-UK
+[618]	/IRenvelope/CompanyTaxReturn/TaxReconciliation/ExporterInformation/NeitherGoodsNorServicesExported	0..1	Neither goods nor services exported outside-UK
 [N060]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation	0..1	Indicators
 [620]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/FrankedInvestmentIncome	0..1	Franked investment income / Exempt ABGH distributions
 [625]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/NumberOf51groupCompanies	0..1	Number of 51% group companies
-[630]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/InstalmentPayments	0..1	Should have made (whether it has or not) instalment payments as a large company under the
-[631]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/VeryLargeQIPs	0..1	Should have made (whether it has or not) instalment payments as a very large company under the
+[630]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/InstalmentPayments	0..1	Should have made (whether it has or not) instalment payments as a large company under the Corporation Tax (Instalment Payments) Regulations
+[631]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/VeryLargeQIPs	0..1	Should have made (whether it has or not) instalment payments as a very large company under the Corporation Tax (Instalment Payments) Regulations
 [635]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/GroupPayment	0..1	Is the company in a group payment arrangement for this period?
 [640]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/IntangibleAssets	0..1	Has the company written down or sold intangible assets?
 [645]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/CrossBorderRoyalty	0..1	Has the company made cross-border royalty payments?
 [647]	/IRenvelope/CompanyTaxReturn/IndicatorsAndInformation/EatOutToHelpOutScheme	0..1	Eat Out to Help Out Scheme: reimbursed discounts included as taxable income
 [N061]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure	0..1	R&D and creatives enhanced expenditure
-[650]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/SMEclaim	0..1	Put an 'X' in box 650 if the claim is made by a small or medium-sized enterprise (SME) including a
+[650]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/SMEclaim	0..1	Put an 'X' in box 650 if the claim is made by a small or medium-sized enterprise (SME) including a SME subcontractor to a large company
 [653]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/RAndDIntensiveSMEclaim	0..1	Put an 'X' in box 653 if the claim is made by an R&D intensive SME
 [655]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/LargeCompanyClaim	0..1	Put an 'X' in box 655 if the claim is made by a large company
 [656]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/RAndDClaimNotificationForm	0..1	Put an 'X' in box 656 to confirm that a R&D claim notification form has been submitted
 [657]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/AdditionalRAndDForm	0..1	Put an 'X' in box 657 to confirm that an R&D additional information form has been submitted
-[658]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/AdditionalCreativesForm	0..1	Put an 'X' in box 658 to confirm that a Creatives claim additional information form has been
+[658]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/AdditionalCreativesForm	0..1	Put an 'X' in box 658 to confirm that a Creatives claim additional information form has been submitted
 [659]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/RAndDExpenditureSME	0..1	R&D expenditure qualifying for SME/R&D intensive SME relief
 [660]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/RandDEnhancedExpenditure	0..1	R&D enhanced expenditure
 [663]	/IRenvelope/CompanyTaxReturn/EnhancedExpenditure/CreativesCoreExpenditure	0..1	Creatives core expenditure
@@ -213,7 +213,7 @@ box_id	path	cardinality	description
 [696]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/FortyPercentFirstYearAllowance	0..1	40% first-year allowance
 [695/700]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/MachineryAndPlantSpecialRatePool	0..1	Machinery and plant - special rate pool
 [705/710]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/MachineryAndPlantMainPool	0..1	Machinery and plant - main pool
-[711]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/StructuresAndBuildingsCapitalAllowance	0..1	Structures and buildings - Capital allowances
+[711]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/StructuresAndBuildingsCapitalAllowances	0..1	Structures and buildings - Capital allowances
 [713/714]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/ElectricChargePoints	0..1	Electric vehicle charge-points
 [715/720]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/BusinessPremisesRenovationIncluded	0..1	Business premises renovation included in calculation
 [721/722]	/IRenvelope/CompanyTaxReturn/AllowancesAndCharges/EnterpriseZones	0..1	Enterprise zones
@@ -235,7 +235,7 @@ box_id	path	cardinality	description
 [750/755]	/IRenvelope/CompanyTaxReturn/NotIncluded/OtherAllowancesAndCharges	0..1	Other allowances and charges
 [N065]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure	0..1	
 [760]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/MachineryAndPlantExpenditure	0..1	Machinery and plant on which first year allowance is claimed
-[765]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/DesignatedEnvironmentallyFriendlyMachi	0..1	Designated environmentally friendly machinery and plant
+[765]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/DesignatedEnvironmentallyFriendlyMachineryAndPlant	0..1	Designated environmentally friendly machinery and plant
 [770]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/MachineryAndPlantLongLife	0..1	Machinery and plant on long-life assets and integral features
 [771]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/StructuresAndBuildings	0..1	Structures and buildings
 [772]	/IRenvelope/CompanyTaxReturn/QualifyingExpenditure/MachineryAndPlantSuperDeduction	0..1	Machinery and plant - super-deduction
@@ -244,32 +244,32 @@ box_id	path	cardinality	description
 [N064]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess	0..1	Losses, deficits and excess amounts
 [N200]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising	0..1	
 [780/785]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/LossesOfTradesUK	0..1	Losses of trades carried on wholly or partly in the UK
-[790]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/LossesOfTradesOutside	0..1	Losses of trades carried on wholly outside the UK
+[790]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/LossesOfTradesOutsideUK	0..1	Losses of trades carried on wholly outside the UK
 [795/800]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/Loans	0..1	Non-trade deficits on loan relationships and derivative contracts
-[805/810]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/UKpropertyBusinessLos	0..1	UK property business losses
-[815]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/OverseasPropertyBusin	0..1	Overseas property business losses
+[805/810]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/UKpropertyBusinessLosses	0..1	UK property business losses
+[815]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/OverseasPropertyBusinessLosses	0..1	Overseas property business losses
 [820]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/MiscLosses	0..1	Losses from miscellaneous transactions
 [825]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/CapitalLosses	0..1	Capital losses
-[830/835]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/NonTradingLossesIntan	0..1	Non-trading losses intangibles
+[830/835]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/AmountArising/NonTradingLossesIntangibles	0..1	Non-trading losses intangibles
 [N201]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/ExcessAmounts	0..1	
 [840]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/ExcessAmounts/NonTradeCapital	0..1	Excess non-trade capital allowances
 [845]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/ExcessAmounts/QualifyingDonations	0..1	Qualifying donations
 [850/855]	/IRenvelope/CompanyTaxReturn/LossesDeficitsAndExcess/ExcessAmounts/ManagementExpenses	0..1	Excess management expenses
 [N203]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation	0..1	Northern Ireland information
-[856]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation/NIagainstUK	0..1	Amount of group relief claimed which relates to NI trading losses used against rest of
+[856]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation/NIagainstUK	0..1	Amount of group relief claimed which relates to NI trading losses used against rest of UK/mainstream profits
 [857]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation/NIagainstNI	0..1	Amount of group relief claimed which relates to NI trading losses used against NI trading profits
-[858]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation/UKagainstNI	0..1	Amount of group relief claimed which relates to rest of UK/mainstream losses used against NI
+[858]	/IRenvelope/CompanyTaxReturn/NorthernIrelandInformation/UKagainstNI	0..1	Amount of group relief claimed which relates to rest of UK/mainstream losses used against NI trading profits
 [N066]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments	0..1	Overpayments and repayments
 [860]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/OwnRepaymentsLowerLimit	0..1	What is the smallest sum you wish to be repaid?
-[N202]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	
-[865]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Repayment of corporation tax
-[870]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Repayment of income tax
-[875]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable Research and Development tax credit
-[880]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable Research and Development expenditure credit
-[885]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable creatives tax credit
-[886]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable Audio-Visual expenditure credit and Video Games expenditure credit
-[890]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable land remediation or life assurance company tax credit
-[895]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCovere	0..1	Payable capital allowances first-year tax credit
+[N202]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn	0..1	
+[865]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/CorporationTax	0..1	Repayment of corporation tax
+[870]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/IncomeTax	0..1	Repayment of income tax
+[875]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/RandDTaxCredit	0..1	Payable Research and Development tax credit
+[880]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/RandDExpenditureCredit	0..1	Payable Research and Development expenditure credit
+[885]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/CreativeCredit	0..1	Payable creatives tax credit
+[886]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/PayableAVECandVGEC	0..1	Payable Audio-Visual expenditure credit and Video Games expenditure credit
+[890]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/LandRemediationCredit	0..1	Payable land remediation or life assurance company tax credit
+[895]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RepaymentsForThePeriodCoveredByThisReturn/PayableCapitalAllowancesFirstYearCredit	0..1	Payable capital allowances first-year tax credit
 [N075]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/Surrender	0..1	Surrender
 [900]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/Surrender/Amount	1..1	The following amount is to be surrendered
 [N077]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/Surrender/JointNotice	1..1	Status of the Joint Notice
@@ -279,20 +279,20 @@ box_id	path	cardinality	description
 [N081]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails	0..1	Bank details for person to whom repayment is to be made
 [920]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/BankName	1..1	Name of bank or building society
 [925]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/SortCode	1..1	Branch sort code
-[930]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/AccountNu	1..1	Account number
-[935]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/AccountNa	1..1	Name of account
-[940]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/BuildingSoc	0..1	Building society reference
-[943]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RAndDCreditWithCondition	0..1	Put an 'X' in box 943 if there is an R&D payable credit and one of the conditions listed in the CT600
+[930]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/AccountNumber	1..1	Account number
+[935]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/AccountName	1..1	Name of account
+[940]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/BankAccountDetails/BuildingSocReference	0..1	Building society reference
+[943]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/RAndDCreditWithCondition	0..1	Put an 'X' in box 943 if there is an R&D payable credit and one of the conditions listed in the CT600 guide is applicable
 [N087]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/PaymentToPerson	0..1	Payments to a person other than the company
 [955]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/PaymentToPerson/Recipient	1..1	Person authorised to receive payment
 [960]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/PaymentToPerson/Address	1..1	Address of person
-[965]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/PaymentToPerson/NomineeRefe	1..1	Nominee reference
+[965]	/IRenvelope/CompanyTaxReturn/OverpaymentsAndRepayments/PaymentToPerson/NomineeReference	1..1	Nominee reference
 [N091]	/IRenvelope/CompanyTaxReturn/Declaration	1..1	Declaration
-[N092]	/IRenvelope/CompanyTaxReturn/Declaration/AcceptDeclaration	1..1	
+[N092]	/IRenvelope/CompanyTaxReturn/Declaration/AcceptDeclaration	1..1	I declare that the information I have given on this Company Tax Return and any supplementary pages is correct and complete to the best of my knowledge and belief. I understand that giving false information in the return, or concealing any part of the company's profits or tax payable, can lead to both the company and me being prosecuted.
 [975]	/IRenvelope/CompanyTaxReturn/Declaration/Name	1..1	Name of signatory
 [985]	/IRenvelope/CompanyTaxReturn/Declaration/Status	1..1	Status of the signatory
 [N095]	/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies	0..1	Loans to participators by close companies.
-[N096]	/IRenvelope/CompanyTaxReturn/ControlledForeignCompanies	0..1	Controlled foreign companies, foreign permanent establishment exemptions, hybrid and other
+[N096]	/IRenvelope/CompanyTaxReturn/ControlledForeignCompanies	0..1	Controlled foreign companies, foreign permanent establishment exemptions, hybrid and other mismatches
 [N097]	/IRenvelope/CompanyTaxReturn/GroupAndConsortium	0..1	Group and Consortium
 [N098]	/IRenvelope/CompanyTaxReturn/Insurance	0..1	Insurance
 [N099]	/IRenvelope/CompanyTaxReturn/Charity	0..1	Charities and Community Amateur Sports Clubs
@@ -327,7 +327,7 @@ box_id	path	cardinality	description
 [Postcode]	/IRheader/Agent/Address/PostCode	0..1	Generic postal or zip code
 [Country]	/IRheader/Agent/Address/Country	0..1	Country within address
 	/IRheader/Agent/Contact	0..1	
-	/IRheader/DefaultCurrency	0..1	Default currency for amounts where currency is not specified. This is currently restricted to only
+	/IRheader/DefaultCurrency	0..1	Default currency for amounts where currency is not specified. This is currently restricted to only allow GBP.
 	/IRheader/Manifest	0..1	
 	/IRheader/Manifest/Contains	1..1	
 	/IRheader/IRmark	0..1	
@@ -337,7 +337,7 @@ box_id	path	cardinality	description
 [Reference]	/Contains/Reference	1..∞	
 [Namespace]	/Contains/Reference/Namespace	1..1	
 [SchemaVersion]	/Contains/Reference/SchemaVersion	1..1	
-[TopElementName]	/Contains/Reference/TopElementName	1..1	Attached File, base 64 encoded
+[TopElementName]	/Contains/Reference/TopElementName	1..1	
 [DESCRIPTION]	[AttachmentStructure]/@Description	0..1	Description of the attached file
 [FILENAME4]	[AttachmentStructure]/@Filename	1..1	
 [FORMAT]	[AttachmentStructure]/@Format	1..1	Format of the file attached
@@ -348,7 +348,7 @@ box_id	path	cardinality	description
 	[IRnonNegativeWholeUnitsMonetaryStructure]/@Currency	0..1	Currency symbol such as GBP or EUR
 	[CTaddressStructure]/Line	2..3	
 	[CTaddressStructure]/AdditionalLine	0..1	
-	[CTaddressStructure]/PostCode	0..1	Standard structure for submitting XBRL attachments
+	[CTaddressStructure]/PostCode	0..1	
 [INSTANCE]	[XBRLsubmissionDetails]/Instance	1..1	Container element for the XBRL instance document
 [FILENAME]	[XBRLsubmissionDetails]/Instance/@Filename	0..1	Filename of the instance. Use of this attribute is deprecated.
 [BASETAXONOMYVERSIONDATE]	[XBRLsubmissionDetails]/Instance/@BaseTaxonomyVersionDate	0..1	Taxonomy version date of the base taxonomy
@@ -372,15 +372,15 @@ box_id	path	cardinality	description
 	[ChargeAndAllowance]/BalancingCharges	0..1	
 	[ChargeAndAllowance]/CapitalAllowances	0..1	
 [Arising]	[ArisingAndMaximum]/Arising	0..1	
-[Surrender Maximum]	[ArisingAndMaximum]/SurrenderMaximum	0..1	'yes' or 'no' or 'na'
+[Surrender Maximum]	[ArisingAndMaximum]/SurrenderMaximum	0..1	
 [A5]	[CTA]/BeforeEndPeriod	1..1	Have loans made during the period been released, or written off before the end of the period?
 [LOANSINFORMATION]	[CTA]/LoansInformation	0..1	Loans information
 [LOAN]	[CTA]/LoansInformation/Loan	1..∞	Loan
 [A10A]	[CTA]/LoansInformation/Loan/Name	1..1	Name of participator or associate
 [A10B]	[CTA]/LoansInformation/Loan/AmountOfLoan	1..1	Amount of loan
-[A15]	[CTA]/LoansInformation/TotalLoans	1..1	Total Loans within S419 ICTA 1988 made during the return period which have not been repaid,
+[A15]	[CTA]/LoansInformation/TotalLoans	1..1	Total Loans within S419 ICTA 1988 made during the return period which have not been repaid, released or written off before the end of the period
 [A20]	[CTA]/LoansInformation/TaxChargeable	1..1	Tax due before any relief for loans repaid, released or written off after the end of the period
-[RELIEFEARLIERTHAN]	[CTA]/ReliefEarlierThan	0..1	Loans made during the returning period - Relief for amounts repaid, released or written off after
+[RELIEFEARLIERTHAN]	[CTA]/ReliefEarlierThan	0..1	Loans made during the returning period - Relief for amounts repaid, released or written off after the end of the period but eariler than 9 months and 1 day after the end of the period
 [A25]	[CTA]/ReliefEarlierThan/Loan	1..∞	Loan
 [A25A]	[CTA]/ReliefEarlierThan/Loan/Name	1..1	Name of participator or associate
 [A25B]	[CTA]/ReliefEarlierThan/Loan/AmountRepaid	0..1	Amount repaid
@@ -390,7 +390,7 @@ box_id	path	cardinality	description
 [A35]	[CTA]/ReliefEarlierThan/TotalAmountReleasedOrWritten	0..1	Total amount released or written
 [A40]	[CTA]/ReliefEarlierThan/TotalLoans	1..1	Total loans
 [A45]	[CTA]/ReliefEarlierThan/ReliefDue	1..1	Relief due
-[LOANLATERRELIEFNOW]	[CTA]/LoanLaterReliefNow	0..1	Loans made during the return period which have been repaid, released or written off more than 9
+[LOANLATERRELIEFNOW]	[CTA]/LoanLaterReliefNow	0..1	Loans made during the return period which have been repaid, released or written off more than 9 months after the end of the period and where relief is due now
 [A50]	[CTA]/LoanLaterReliefNow/Loan	1..∞	Loan
 [A50A]	[CTA]/LoanLaterReliefNow/Loan/Name	1..1	Name of participator or associate
 [A50B]	[CTA]/LoanLaterReliefNow/Loan/AmountRepaid	0..1	Amount repaid
@@ -423,7 +423,7 @@ box_id	path	cardinality	description
 [HYBRID]	[CTB]/HybridAndOtherMismatches	0..1	Hybrid and other mismatches
 [B40]	[CTB]/HybridAndOtherMismatches/HybridEntity	0..1	The company is a hybrid entity
 [B45]	[CTB]/HybridAndOtherMismatches/TransactionsWithHybridEntities	0..1	There were any transactions with hybrid entities in the same control group as this company
-[B50]	[CTB]/HybridAndOtherMismatches/HybridDeductionMismatches	0..1	There were any hybrid or otherwise impermissible deduction/non-inclusion mismatches in
+[B50]	[CTB]/HybridAndOtherMismatches/HybridDeductionMismatches	0..1	There were any hybrid or otherwise impermissible deduction/non-inclusion mismatches in connection with a financial instrument
 [B55]	[CTB]/HybridAndOtherMismatches/ExcessivePEdeduction	0..1	There was an excessive PE deduction
 [B60]	[CTB]/HybridAndOtherMismatches/MultinationalDeductionMismatch	0..1	There has been a multinational payee deduction/non-inclusion mismatch
 [B65]	[CTB]/HybridAndOtherMismatches/Part6Acounteraction	0..1	There has been a counteraction under Part 6A TIOPA 2010
@@ -439,14 +439,14 @@ box_id	path	cardinality	description
 [C5C]	[CTC]/ClaimToGroupRelief/CompanyInformation/Company/TaxReference	1..1	Tax reference of surrendering company
 [C5D]	[CTC]/ClaimToGroupRelief/CompanyInformation/Company/AmountClaimed	1..1	Amount claimed
 [C10]	[CTC]/ClaimToGroupRelief/CompanyInformation/TotalAmountClaimed	1..1	Total group relief claimed
-[C15]	[CTC]/ClaimToGroupRelief/NonResidentCompany	0..1	Group relief claim involves losses of a trade carried on in the UK through a Permanent
-[C20]	[CTC]/ClaimToGroupRelief/LossesGeneratedAbroad	0..1	Group relief claim involves losses of a non-resident company other than those covered by SC023,
+[C15]	[CTC]/ClaimToGroupRelief/NonResidentCompany	0..1	Group relief claim involves losses of a trade carried on in the UK through a Permanent Establishment by a non-resident company
+[C20]	[CTC]/ClaimToGroupRelief/LossesGeneratedAbroad	0..1	Group relief claim involves losses of a non-resident company other than those covered by SC023, or involves a non-resident link company
 [CLAIMAUTHORISATION]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation	0..1	Authorisation of claim
 [SC161]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/CopyOfNoticesOfConsentAttached	1..1	Notice/s of consent attached?
 [AUTHORISATION]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements	1..1	Authorisation of claim to group relief for simplified arrangements
-[C25]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Authorisa	1..1	Authorisation of claim where a simplified arrangement applies
-[C30]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Company	1..1	Name of authorised company
-[C35]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/NameOfA	1..1	Name of person authorised to sign
+[C25]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/AuthorisationWhereSimplifiedArrangement	1..1	Authorisation of claim where a simplified arrangement applies
+[C30]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/CompanyName	1..1	Name of authorised company
+[C35]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/NameOfAuthorisedPerson	1..1	Name of person authorised to sign
 [C40]	[CTC]/ClaimToGroupRelief/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Status	1..1	Status
 [SURRENDEREDGROUPRELIEF]	[CTC]/SurrenderedGroupRelief	0..1	Amounts surrendered as group relief
 [C45]	[CTC]/SurrenderedGroupRelief/TradingLosses	0..1	Trading losses - total
@@ -467,14 +467,14 @@ box_id	path	cardinality	description
 [C90]	[CTC]/SurrenderedGroupRelief/SurrenderInformation/AmountSurrenderedTotal	1..1	Total amount surrendered
 [CONSENTTOSURRENDER]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender	1..1	Consent to surrender
 [CONSENTOPTIONS]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions	0..1	Type of consent
-[SC150]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInFor	0..1	Is a simplified arrangement in force?
+[SC150]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForce	0..1	Is a simplified arrangement in force?
 [SC151]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions/NoticeOfConsentCompleted	0..1	Has CT600C notice of consent been completed?
-[SC152]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAtt	0..1	Notice/s of consent attached?
+[SC152]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [DECLARATION]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration	0..1	Declaration of consent
 [C95]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/CompanyName	1..1	Name of company surrendering relief
 [C100]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/TaxReference	1..1	Tax reference of company surrendering relief
 [C105/C110]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/AccountingPeriod	1..1	Accounting period of company surrendering relief
-[SC156]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of
+[SC156]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of my knowledge and belief.
 [C115]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/Name	1..1	Name of signatory
 [C120]	[CTC]/SurrenderedGroupRelief/ConsentToSurrender/Declaration/Status	1..1	Status of the signatory
 [GROUPRELIEFCFL]	[CTC]/GroupReliefForCarriedForwardLosses	0..1	Claims to group relief for carried forward losses
@@ -485,39 +485,39 @@ box_id	path	cardinality	description
 [C125C]	[CTC]/GroupReliefForCarriedForwardLosses/CompanyInformation/Company/TaxReference	1..1	Tax reference of surrendering company
 [C125D]	[CTC]/GroupReliefForCarriedForwardLosses/CompanyInformation/Company/AmountClaimed	1..1	Amount claimed
 [C130]	[CTC]/GroupReliefForCarriedForwardLosses/CompanyInformation/TotalAmountClaimed	1..1	Total group relief claimed
-[C135]	[CTC]/GroupReliefForCarriedForwardLosses/NonResidentCompany	0..1	Group relief claim for carried forward losses involves losses of a trade carried on in the UK through
+[C135]	[CTC]/GroupReliefForCarriedForwardLosses/NonResidentCompany	0..1	Group relief claim for carried forward losses involves losses of a trade carried on in the UK through a Permanent Establishment by a non-resident company
 [CLAIMAUTHORISATION2]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation	0..1	Authorisation of claim
-[SC172]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/CopyOfNoticesOfConsentAttache	1..1	Notice/s of consent attached?
-[AUTHORISATION2]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrang	1..1	Authorisation of claim to group relief for carried forward losses for simplified arrangements
-[C140]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrang	1..1	Authorisation of a claim where a simplified arrangement applies
-[C145]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrang	1..1	Name of authorised company
-[C150]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrang	1..1	Name of person authorised to sign
-[C155]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrang	1..1	Status
+[SC172]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/CopyOfNoticesOfConsentAttached	1..1	Notice/s of consent attached?
+[AUTHORISATION2]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrangements	1..1	Authorisation of claim to group relief for carried forward losses for simplified arrangements
+[C140]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/AuthorisationWhereSimplifiedArrangement	1..1	Authorisation of a claim where a simplified arrangement applies
+[C145]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/CompanyName	1..1	Name of authorised company
+[C150]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/NameOfAuthorisedPerson	1..1	Name of person authorised to sign
+[C155]	[CTC]/GroupReliefForCarriedForwardLosses/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Status	1..1	Status
 [SURRGROUPRELIEFCFL]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses	0..1	Amounts surrendered as group relief for carried forward losses
 [C160]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/TradingLosses	0..1	Trading losses carried forward - total
 [C161]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/NItradingLosses	0..1	Trading losses carried forward - Northern Ireland
 [C165]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/NonTradingDeficit	0..1	Non-trading deficit on loan relationships carried forward
 [C170]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/UKpropertyBusinessLosses	0..1	UK property business losses carried forward
 [C175]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ManagementExpenses	0..1	Management expenses carried forward
-[C180]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/NonTradingDeficitsOnIntangibleFixedAss	0..1	Non-trading deficits on intangible fixed assets carried forward
+[C180]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/NonTradingDeficitsOnIntangibleFixedAssets	0..1	Non-trading deficits on intangible fixed assets carried forward
 [C185]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/TotalSurrender	1..1	Total of carried forward losses surrendered as group relief
 [SURRENDERINFORMATION2]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation	1..1	Details of surrender
 [COMPANY4]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company	1..∞	Details of claimant company
 [C190A]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/Name	1..1	Name of claimant company
-[C190B]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/Account	0..1	Accounting period of claimant company
-[C190C]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/TaxRefe	1..1	Tax reference of claimant company
-[C190D]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/Amount	1..1	Amount surrendered
-[C195]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/AmountSurrender	1..1	Total amount surrendered
+[C190B]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/AccountingPeriod	0..1	Accounting period of claimant company
+[C190C]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/TaxReference	1..1	Tax reference of claimant company
+[C190D]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/Company/AmountSurrendered	1..1	Amount surrendered
+[C195]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/SurrenderInformation/AmountSurrenderedTotal	1..1	Total amount surrendered
 [CONSENTTOSURRENDER2]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender	1..1	Consent to surrender
 [CONSENTOPTIONS2]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions	0..1	Type of consent
-[SC188]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/Si	0..1	Is a simplified arrangement in force?
-[SC189]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/N	0..1	Has CT600C notice of consent been completed?
-[SC190]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/Co	0..1	Notice/s of consent attached?
+[SC188]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForce	0..1	Is a simplified arrangement in force?
+[SC189]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/NoticeOfConsentCompleted	0..1	Has CT600C notice of consent been completed?
+[SC190]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [DECLARATION2]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration	0..1	Declaration of consent
-[C200]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/Compa	1..1	Name of company surrendering relief
-[C205]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/TaxRef	1..1	Tax reference of company surrendering relief
-[C210/C215]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/Accoun	1..1	Accounting period of company surrendering relief
-[SC194]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/Accept	1..1	I certify that all the information I have given on these pages is correct and complete to the best of
+[C200]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/CompanyName	1..1	Name of company surrendering relief
+[C205]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/TaxReference	1..1	Tax reference of company surrendering relief
+[C210/C215]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/AccountingPeriod	1..1	Accounting period of company surrendering relief
+[SC194]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of my knowledge and belief.
 [C220]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/Name	1..1	Name of signatory
 [C225]	[CTC]/SurrenderedGroupReliefForCarriedForwardLosses/ConsentToSurrender/Declaration/Status	1..1	Status of the signatory
 [SD001]	[CTD]/Declaration	0..1	Overseas life assurance business declaration
@@ -525,10 +525,10 @@ box_id	path	cardinality	description
 [E5]	[CTE]/ClaimExemption/RepaymentReference	0..1	Charity/CASC repayment reference
 [E10]	[CTE]/ClaimExemption/RegistrationNumber	0..1	Charity Commission registration number, or Scottish Charity number (if applicable)
 [STATUS]	[CTE]/ClaimExemption/Status	1..1	Status
-[E15]	[CTE]/ClaimExemption/Status/ClaimingExemptionAllOrPart	1..1	The company was a charity/CASC and is claiming exemption from all tax on all or part of its income
+[E15]	[CTE]/ClaimExemption/Status/ClaimingExemptionAllOrPart	1..1	The company was a charity/CASC and is claiming exemption from all tax on all or part of its income and gains
 [ALLCHARITABLE]	[CTE]/ClaimExemption/Status/AllCharitable	1..1	All charitable
-[E20]	[CTE]/ClaimExemption/Status/AllCharitable/AllExempt	1..1	All income and gains are exempt from tax and have been, or will be applied for charitable or
-[E25]	[CTE]/ClaimExemption/Status/AllCharitable/SomeNotOnlyCharitable	1..1	Some of the charity's income and gains may not be exempt or have not been applied for charitable
+[E20]	[CTE]/ClaimExemption/Status/AllCharitable/AllExempt	1..1	All income and gains are exempt from tax and have been, or will be applied for charitable or qualifying purposes only
+[E25]	[CTE]/ClaimExemption/Status/AllCharitable/SomeNotOnlyCharitable	1..1	Some of the charity's income and gains may not be exempt or have not been applied for charitable or qualifying purposes only and I have completed the form CT600
 [REPAYMENTS]	[CTE]/Repayments	0..1	Repayments
 [E45]	[CTE]/Repayments/OverclaimedTax	0..1	E3 e3c included amounts
 [INFORMATIONREQUIRED]	[CTE]/InformationRequired	0..1	Information required
@@ -571,7 +571,7 @@ box_id	path	cardinality	description
 [INVESTMENTSORLOANS]	[CTE]/InformationRequired/Assets/InvestmentsOrLoans	0..1	Investments or loans
 [E180]	[CTE]/InformationRequired/Assets/InvestmentsOrLoans/Qualifying	0..1	Qualifying investments and loans
 [E185]	[CTE]/InformationRequired/Assets/InvestmentsOrLoans/ValueOfNonQualifying	0..1	Value of any non-qualifying investments and loans
-[E190]	[CTE]/InformationRequired/Assets/SubsidiaryOrAssociatedCompanies	0..1	Number of subsidiary or associated companies the charity controls at the end of the period.
+[E190]	[CTE]/InformationRequired/Assets/SubsidiaryOrAssociatedCompanies	0..1	Number of subsidiary or associated companies the charity controls at the end of the period. Exclude companies that were dormant throughout the period
 [LEGACYPAYMENTS]	[CTE]/InformationRequired/Assets/LegacyPayments	0..1	Legacy Payments
 [E195]	[CTE]/InformationRequired/Assets/LegacyPayments/Payment	1..∞	Legacy payment details
 [E195A]	[CTE]/InformationRequired/Assets/LegacyPayments/Payment/Forename	1..1	Forename
@@ -597,10 +597,10 @@ box_id	path	cardinality	description
 [F45]	[CTF]/TonnageTax/OffshoreTrainingAllowance/OffsetAgainstCorpTax	0..1	The amount of training allowance to be offset against the Corporation Tax liability
 [F50]	[CTF]/TonnageTax/OffshoreTrainingAllowance/CarriedForward	0..1	The amount of training allowance to be carried forward
 [RELEVANTSHIPPINGPROFITS]	[CTF]/TonnageTax/RelevantShippingProfits	0..1	Relevant shipping profits
-[F11]	[CTF]/TonnageTax/RelevantShippingProfits/Other	0..1	The profit or loss as shown in the companys accounts, other than non-tonnage tax profit or loss
+[F11]	[CTF]/TonnageTax/RelevantShippingProfits/Other	0..1	The profit or loss as shown in the companys accounts, other than non-tonnage tax profit or loss included elsewhere on the form CT600, and amounts included below
 [F55A]	[CTF]/TonnageTax/RelevantShippingProfits/Other/Profit	1..1	Profit
 [F55B]	[CTF]/TonnageTax/RelevantShippingProfits/Other/Loss	1..1	Loss
-[F12]	[CTF]/TonnageTax/RelevantShippingProfits/DisposalOfAssets	0..1	The profit or loss in the company's accounts in respect of the disposal of Tonnage Tax assets,
+[F12]	[CTF]/TonnageTax/RelevantShippingProfits/DisposalOfAssets	0..1	The profit or loss in the company's accounts in respect of the disposal of Tonnage Tax assets, which would otherwise be computed under chargeable gains rules
 [F60A]	[CTF]/TonnageTax/RelevantShippingProfits/DisposalOfAssets/Profit	1..1	Profit
 [F60B]	[CTF]/TonnageTax/RelevantShippingProfits/DisposalOfAssets/Loss	1..1	Loss
 [F65]	[CTF]/TonnageTax/RelevantShippingProfits/GrossDividends	0..1	Dividends and other distributions qualifying as relevant shipping income
@@ -644,7 +644,7 @@ box_id	path	cardinality	description
 [G35]	[CTG]/ProfitsBeforeDeductions/LossesBroughtForward	0..1	Losses brought forward against certain investment income
 [G35B]	[CTG]/ProfitsBeforeDeductions/LossesBroughtForward/RestOfUK	1..1	Rest of UK
 [G35C]	[CTG]/ProfitsBeforeDeductions/LossesBroughtForward/Total	1..1	Total
-[G40]	[CTG]/ProfitsBeforeDeductions/DeficitsBroughtForward	0..1	Non-trade deficits on loan relationships (including interest) and derivative contracts (financial
+[G40]	[CTG]/ProfitsBeforeDeductions/DeficitsBroughtForward	0..1	Non-trade deficits on loan relationships (including interest) and derivative contracts (financial instruments) brought forward set against non-trading profits
 [G40B]	[CTG]/ProfitsBeforeDeductions/DeficitsBroughtForward/RestOfUK	1..1	Rest of UK
 [G40C]	[CTG]/ProfitsBeforeDeductions/DeficitsBroughtForward/Total	1..1	Total
 [G45]	[CTG]/ProfitsBeforeDeductions/ProfitsBeforeOtherDeductionsAndReliefs	1..1	Profits before other deductions and reliefs
@@ -668,11 +668,11 @@ box_id	path	cardinality	description
 [G65A]	[CTG]/DeductionsAndReliefs/CapitalAllowancesManagement/NorthernIreland	0..1	Northern Ireland
 [G65B]	[CTG]/DeductionsAndReliefs/CapitalAllowancesManagement/RestOfUK	0..1	Rest of UK
 [G65C]	[CTG]/DeductionsAndReliefs/CapitalAllowancesManagement/Total	1..1	Total
-[G70]	[CTG]/DeductionsAndReliefs/NonTradeDeficits	0..1	Non-trade deficits for this accounting period from loan relationships and derivative contracts
+[G70]	[CTG]/DeductionsAndReliefs/NonTradeDeficits	0..1	Non-trade deficits for this accounting period from loan relationships and derivative contracts (financial instruments)
 [G70A]	[CTG]/DeductionsAndReliefs/NonTradeDeficits/NorthernIreland	0..1	Northern Ireland
 [G70B]	[CTG]/DeductionsAndReliefs/NonTradeDeficits/RestOfUK	0..1	Rest of UK
 [G70C]	[CTG]/DeductionsAndReliefs/NonTradeDeficits/Total	1..1	Total
-[G73]	[CTG]/DeductionsAndReliefs/CarriedForwardNonTradeDeficits	0..1	Carried forward non-trade deficits from loan relationships and derivative contracts (financial
+[G73]	[CTG]/DeductionsAndReliefs/CarriedForwardNonTradeDeficits	0..1	Carried forward non-trade deficits from loan relationships and derivative contracts (financial instruments)
 [G73A]	[CTG]/DeductionsAndReliefs/CarriedForwardNonTradeDeficits/NorthernIreland	0..1	Northern Ireland
 [G73B]	[CTG]/DeductionsAndReliefs/CarriedForwardNonTradeDeficits/RestOfUK	0..1	Rest of UK
 [G73C]	[CTG]/DeductionsAndReliefs/CarriedForwardNonTradeDeficits/Total	1..1	Total
@@ -797,49 +797,49 @@ box_id	path	cardinality	description
 [I85]	[CTI]/NetRingFenceTrade/SupplementaryChargeTax	0..1	Supplementary charge tax
 [TRANSFERREDTAXHISTORY]	[CTI]/TransferredTaxHistory	0..1	Transferred tax history
 [ELECTIONTOTRANSFER]	[CTI]/TransferredTaxHistory/ElectionToTransfer	1..1	Election to transfer tickboxes
-[I90]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetAcquiredThisPeriod	0..1	An election to transfer tax history has been made in the period covered by this return - Asset(s)
-[I95]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetDisposedOfThisPeriod	0..1	An election to transfer tax history has been made in the period covered by this return - Asset(s)
-[I100]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetAcquiredPreviousPeriod	0..1	An election to transfer tax history has been made in a previous accounting period - Asset(s)
-[I105]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetDisposedOfPreviousPeriod	0..1	An election to transfer tax history has been made in a previous accounting period - Asset(s)
+[I90]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetAcquiredThisPeriod	0..1	An election to transfer tax history has been made in the period covered by this return - Asset(s) acquired
+[I95]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetDisposedOfThisPeriod	0..1	An election to transfer tax history has been made in the period covered by this return - Asset(s) disposed of
+[I100]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetAcquiredPreviousPeriod	0..1	An election to transfer tax history has been made in a previous accounting period - Asset(s) acquired
+[I105]	[CTI]/TransferredTaxHistory/ElectionToTransfer/AssetDisposedOfPreviousPeriod	0..1	An election to transfer tax history has been made in a previous accounting period - Asset(s) disposed of
 [ASSETINFORMATION]	[CTI]/TransferredTaxHistory/AssetInformation	0..999	Asset information
 [I110]	[CTI]/TransferredTaxHistory/AssetInformation/DescriptionOfAsset	1..1	Description of asset
 [I115]	[CTI]/TransferredTaxHistory/AssetInformation/AssetReference	1..1	Asset reference
 [I120]	[CTI]/TransferredTaxHistory/AssetInformation/OGAapprovedCessation	0..1	Put an ‘X’ in box I120 if OGA has approved the cessation of production
 [I125]	[CTI]/TransferredTaxHistory/AssetInformation/STOcertificationQualified	0..1	Put an ‘X’ in box I125 if STO certification of tracking is qualified
 [TRACKINGOFTRANSFERREDTAXHISTORY]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory	1..1	Tracking of transferred tax history
-[I130]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/IncludedInTaxCo	0..1	Put an ‘X’ in box I130 if a detailed schedule of the accounting periods and rates applying is included
-[I135]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorpor	1..1	Transferred tax history - Ring fence corporation tax
-[I135A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorpor	1..1	Amount brought forward or acquired
-[I135B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorpor	0..1	Amount transferred
-[I135C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorpor	0..1	Amount used this period
-[I135D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorpor	1..1	Amount carried forward
-[I140]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCh	0..1	Transferred tax history - Supplementary charge
-[I140A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCh	1..1	Amount brought forward or acquired
-[I140B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCh	0..1	Amount transferred
-[I140C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCh	0..1	Amount used this period
-[I140D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCh	1..1	Amount carried forward
-[I145]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	1..1	Tracked profits or losses
-[I145A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	0..1	Balance brought forward
-[I145B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	1..1	Profits or losses for this period
-[I145C1]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	1..1	Other adjustments Plus
-[I145C2]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	1..1	Other adjustments Minus
-[I145D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOr	1..1	Amount carried forward
-[I150]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	0..1	Decommissioning expenditure
-[I150A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	0..1	Balance brought forward
-[I150B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	0..1	Expenditure for this period
-[I150C1]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	1..1	Other adjustments Plus
-[I150C2]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	1..1	Other adjustments Minus
-[I150D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/Decommissioning	1..1	Amount carried forward
-[I155]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFen	0..1	Activated transferred tax history - Ring fence corporation tax
-[I155A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFen	0..1	Previously activated
-[I155B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFen	0..1	Activated this period
-[I155C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFen	1..1	Total activated
-[I155D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFen	0..1	Total used
-[I160]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupple	0..1	Activated transferred tax history - Supplementary charge
-[I160A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupple	0..1	Previously activated
-[I160B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupple	0..1	Activated this period
-[I160C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupple	1..1	Total activated
-[I160D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupple	0..1	Total used
+[I130]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/IncludedInTaxComputations	0..1	Put an ‘X’ in box I130 if a detailed schedule of the accounting periods and rates applying is included in the tax computations
+[I135]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorporationTax	1..1	Transferred tax history - Ring fence corporation tax
+[I135A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorporationTax/AmountBroughtForward	1..1	Amount brought forward or acquired
+[I135B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorporationTax/AmountTransferred	0..1	Amount transferred
+[I135C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorporationTax/AmountUsed	0..1	Amount used this period
+[I135D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/RingFenceCorporationTax/AmountCarriedForward	1..1	Amount carried forward
+[I140]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCharge	0..1	Transferred tax history - Supplementary charge
+[I140A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCharge/AmountBroughtForward	1..1	Amount brought forward or acquired
+[I140B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCharge/AmountTransferred	0..1	Amount transferred
+[I140C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCharge/AmountUsed	0..1	Amount used this period
+[I140D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/SupplementaryCharge/AmountCarriedForward	1..1	Amount carried forward
+[I145]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses	1..1	Tracked profits or losses
+[I145A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses/BalanceBroughtForward	0..1	Balance brought forward
+[I145B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses/ProfitsOrLossesForThisPeriod	1..1	Profits or losses for this period
+[I145C1]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses/OtherAdjustmentsPlus	1..1	Other adjustments Plus
+[I145C2]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses/OtherAdjustmentsMinus	1..1	Other adjustments Minus
+[I145D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/TrackedProfitsOrLosses/AmountCarriedForward	1..1	Amount carried forward
+[I150]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure	0..1	Decommissioning expenditure
+[I150A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure/BalanceBroughtForward	0..1	Balance brought forward
+[I150B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure/ExpenditureForThisPeriod	0..1	Expenditure for this period
+[I150C1]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure/OtherAdjustmentsPlus	1..1	Other adjustments Plus
+[I150C2]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure/OtherAdjustmentsMinus	1..1	Other adjustments Minus
+[I150D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/DecommissioningExpenditure/AmountCarriedForward	1..1	Amount carried forward
+[I155]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFenceCorporationTax	0..1	Activated transferred tax history - Ring fence corporation tax
+[I155A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFenceCorporationTax/PreviouslyActivated	0..1	Previously activated
+[I155B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFenceCorporationTax/ActivatedThisPeriod	0..1	Activated this period
+[I155C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFenceCorporationTax/TotalActivated	1..1	Total activated
+[I155D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedRingFenceCorporationTax/TotalUsed	0..1	Total used
+[I160]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupplementaryCharge	0..1	Activated transferred tax history - Supplementary charge
+[I160A]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupplementaryCharge/PreviouslyActivated	0..1	Previously activated
+[I160B]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupplementaryCharge/ActivatedThisPeriod	0..1	Activated this period
+[I160C]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupplementaryCharge/TotalActivated	1..1	Total activated
+[I160D]	[CTI]/TransferredTaxHistory/AssetInformation/TrackingOfTransferredTaxHistory/ActivatedSupplementaryCharge/TotalUsed	0..1	Total used
 [AVOIDANCESCHEMES]	[CTJ]/AvoidanceSchemes	1..10	Avoidance schemes
 [J5]	[CTJ]/AvoidanceSchemes/ReferenceNumber	1..1	Reference number
 [J5A]	[CTJ]/AvoidanceSchemes/AccountingPeriod	1..1	Accounting period
@@ -870,6 +870,7 @@ box_id	path	cardinality	description
 [SL001]	[CTL]/Step1	0..1	Step 1 - Calculation of Research & Development
 [L10]	[CTL]/Step1/RandDExpenditureOnWhichRDECisClaimedInThisAccountingPeriod	0..1	R&D expenditure on which RDEC is claimed in this accounting period
 [L15]	[CTL]/Step1/RDECclaimForThisAccountingPeriod	0..1	RDEC claim for this accounting period
+[L20]	[CTL]/Step1/AmountsFromAPreviousAccountingPeriodTreatedAsRDECforThisAccountingPeriod	0..1	Step 3 amounts from a previous accounting period treated as RDEC for this accounting period
 [L25]	[CTL]/Step1/TotalRDECforTheAccountingPeriod	1..1	Total RDEC for the accounting period
 [L30]	[CTL]/Step1/CorporationTaxLiability	0..1	Remaining Corporation Tax liability
 [L35]	[CTL]/Step1/IncomeTaxDeductedFromProfitsApplicableToCorporationTaxLiability	0..1	Income Tax deducted from profits (applicable to Corporation Tax liability)
@@ -889,6 +890,7 @@ box_id	path	cardinality	description
 [L72A]	[CTL]/Step3/EmployerPAYEreference	0..2	Employer PAYE reference
 [L73]	[CTL]/Step3/RelevantPAYENICsLiabilityOfConnectedCompanies	0..1	Relevant PAYE/NICs liability of connected companies
 [L73A]	[CTL]/Step3/ConnectedCompaniesEmployerPAYEreference	0..∞	Connected companies' employer PAYE reference
+[L75]	[CTL]/Step3/TotalRelevantExpenditureOnRandDWorkersPAYEandNationalInsuranceContributions	0..1	PAYE/NIC liability cap
 [L80]	[CTL]/Step3/Step3RestrictionCarriedForwardToNextAP	1..1	Step 3 restriction carried forward to next AP
 [SL019]	[CTL]/Step4	0..1	Step 4 - RDEC to be offset against outstanding Corporation Tax liabilities
 [L85]	[CTL]/Step4/Step3BalanceCarriedForwardToStep4	1..1	Step 3 balance carried forward to Step 4
@@ -918,6 +920,7 @@ box_id	path	cardinality	description
 [SL042]	[CTL]/SME	0..1	Small and medium-sized enterprise (SME) R&D and enhanced support for R&D intensive SMEs
 [L166]	[CTL]/SME/RandDexpenditure	0..1	R&D expenditure
 [L167]	[CTL]/SME/DoesTheExceptionAtS1058DCTA2009apply	0..1	Does the exception at s1058D or s1112E CTA 2009 apply
+[L167A]	[CTL]/SME/TotalExpenditureOnExternallyProvidedWorkersFromAndSubcontractingToConnectedPersons	0..1	Total expenditure on externally provided workers from, and subcontracting to, connected persons
 [L168]	[CTL]/SME/PAYENICforWhichTheCompanyIsLiableInThisAccountingPeriod	0..1	PAYE/NICs for which the company is liable in this accounting period
 [L168A]	[CTL]/SME/EmployerPAYEreference	0..2	Employer PAYE reference
 [L169]	[CTL]/SME/RelevantPAYENICliabilityOfConnectedCompanies	0..1	Relevant PAYE/NICs liability of connected companies
@@ -931,6 +934,7 @@ box_id	path	cardinality	description
 [L194]	[CTL]/TotalRandDSetOffAgainstLiabilities/RDECpreStep1DischargeAmount	0..1	RDEC pre-step 1 discharge amount
 [L195]	[CTL]/TotalRandDSetOffAgainstLiabilities/RDECstep1DischargeAmount	0..1	RDEC Step 1 discharge amount
 [L200]	[CTL]/TotalRandDSetOffAgainstLiabilities/RDECstep6DischargeAmountForThisAccountingPeriod	0..1	RDEC Step 6 discharge amount for this accounting period
+[L205]	[CTL]/TotalRandDSetOffAgainstLiabilities/SMERandDBalancePayableTaxCreditUsedToDischargeOtherLiabilitiesOnThisReturn	0..1	SME R&D balance payable tax credit used to discharge other liabilities on this return
 [L210]	[CTL]/TotalRandDSetOffAgainstLiabilities/Total	1..1	Total
 [M5]	[CTM]/EnhancedSBAinFreeports	0..∞	Enhanced Structures and Buildings allowances in Freeports and Investment Zones
 [M5A]	[CTM]/EnhancedSBAinFreeports/LocationOfFreeport	1..1	Location of Freeport and/or Investment Zones
@@ -945,7 +949,7 @@ box_id	path	cardinality	description
 [M20A]	[CTM]/ECAforPlantAndMachineryInFreeports/LocationOfFreeport	1..1	Location of Freeport and/or Investment Zones
 [M20B]	[CTM]/ECAforPlantAndMachineryInFreeports/AddressOfBusinessOperation	1..1	Address of business operation
 [M20C]	[CTM]/ECAforPlantAndMachineryInFreeports/MadeAnEnterpriseZoneClaimRelatingToThisECAclaim	0..1	Made an Enterprise Zone claim relating to this ECA claim
-[M20D]	[CTM]/ECAforPlantAndMachineryInFreeports/TotalAmountOfECAclaimedWithinTheAccountingPeri	0..1	Total amount of ECA claimed within the accounting period
+[M20D]	[CTM]/ECAforPlantAndMachineryInFreeports/TotalAmountOfECAclaimedWithinTheAccountingPeriod	0..1	Total amount of ECA claimed within the accounting period
 [M20E]	[CTM]/ECAforPlantAndMachineryInFreeports/DisposalValue	0..1	Disposal Value
 [M25]	[CTM]/AmountOfECAclaimedWithinTheAccountingPeriodTotal	0..1	Amount of ECA claimed within the accounting period total
 [M30]	[CTM]/DisposalValueTotal	0..1	Disposal value total
@@ -957,20 +961,20 @@ box_id	path	cardinality	description
 [N30]	[CTN]/Section1/PreviousAllocatingMemberTaxReference	0..1	Previous allocating member tax reference, if this was different at the beginning of the period
 [N35]	[CTN]/Section1/IsUltimateParentCompany	0..1	Put an 'X' in box N35 if you are the Ultimate Parent Company of the group
 [N40]	[CTN]/Section1/UltimateParentCompanyName	0..1	Enter the name of the Ultimate Parent Company if N35 is not completed
-[N45]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance	0..∞	Provide details of the group companies receiving an allocation of allowance (including the
+[N45]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance	0..∞	Provide details of the group companies receiving an allocation of allowance (including the allocating company itself, where relevant)
 [N45A]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance/Name	1..1	Name of Company
 [N45B]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance/AccountingPeriod	1..1	Accounting period
 [N45C]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance/TaxReference	1..1	Tax reference
 [N45D]	[CTN]/Section1/GroupCompanyReceivingAllocationAllowance/AmountAllocated	1..1	Amount allocated
 [N50]	[CTN]/Section1/TotalAllocated	0..1	Total
 [N55]	[CTN]/Section1/StatementAuthorised	0..1	If the statement has been authorised put an 'X' in box N55 to confirm
-[N60]	[CTN]/Section1/FullNameOfPersonAuthorising	0..1	Full name of person authorising - any person authorised to act on behalf of the company that is
+[N60]	[CTN]/Section1/FullNameOfPersonAuthorising	0..1	Full name of person authorising - any person authorised to act on behalf of the company that is authorised to act for the companies within the arrangement
 [N65]	[CTN]/Section1/StatusOfThePersonAuthorising	0..1	Status of the person authorising
 [SN018]	[CTN]/Section2	0..1	Section 2 - Joint venture companies
 [N70]	[CTN]/Section2/NotionalAllowanceClaimed	1..1	Notional allowance claimed
-[N75]	[CTN]/Section2/NotionalAllowanceAllocatedToExcludedBody	0..1	Put an 'X' in box N75 if an amount of notional allowance is being allocated in respect of an
-[N80]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody	0..∞	Provide details of any company providing an allocation of notional allowance on behalf of an
-[N80A]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody/CompanyNam	1..1	Name of the allocating company
+[N75]	[CTN]/Section2/NotionalAllowanceAllocatedToExcludedBody	0..1	Put an 'X' in box N75 if an amount of notional allowance is being allocated in respect of an excluded body
+[N80]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody	0..∞	Provide details of any company providing an allocation of notional allowance on behalf of an excluded body
+[N80A]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody/CompanyName	1..1	Name of the allocating company
 [N80B]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody/TaxReference	0..1	Tax reference
 [N80C]	[CTN]/Section2/CompanyProvidingAllocationOfNotionalAllowanceForExcludedBody/Amount	1..1	Amount
 [N85]	[CTN]/Section2/Total	0..1	Total
@@ -988,8 +992,8 @@ box_id	path	cardinality	description
 [SN037]	[CTN]/Section3/Section3Part1/ClaimAuthorisation	0..1	Authorisation of claim
 [SN038]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [SN039]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements	0..1	Authorisation of claim to group relief for simplified arrangements
-[N105]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/State	1..1	If the statement has been authorised put an 'x' in box N105 to confirm
-[N110]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/FullNa	1..1	Full name of person authorising
+[N105]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/StatementAuthorised	1..1	If the statement has been authorised put an 'x' in box N105 to confirm
+[N110]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/FullNameOfPersonAuthorising	1..1	Full name of person authorising
 [N115]	[CTN]/Section3/Section3Part1/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Status	1..1	Status
 [SN043]	[CTN]/Section3/Section3Part2	0..1	Section 3 Part 2 - Amounts surrendered as RPDT group relief
 [N120]	[CTN]/Section3/Section3Part2/DetailsOfSurrender	1..∞	Details of surrender
@@ -1000,14 +1004,14 @@ box_id	path	cardinality	description
 [N125]	[CTN]/Section3/Section3Part2/Total	1..1	Total
 [SN050]	[CTN]/Section3/Section3Part2/ConsentToSurrender	0..1	Consent to surrender
 [SN051]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions	1..1	Type of consent
-[SN052]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForc	0..1	Is a simplified arrangement in force?
+[SN052]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForce	0..1	Is a simplified arrangement in force?
 [SN053]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions/NoticeOfConsentCompleted	0..1	Has CT600N notice of consent been completed?
-[SN054]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAtta	0..1	Notice/s of consent attached?
+[SN054]	[CTN]/Section3/Section3Part2/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [SN055]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration	0..1	Declaration of consent
 [N130]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/CompanyName	1..1	Company name
 [N135]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/TaxReference	1..1	Tax reference
 [N140/N145]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/AccountingPeriod	1..1	Accounting period
-[SN059]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of
+[SN059]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of my knowledge and belief.
 [N150]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/FullNameOfPersonAuthorising	1..1	Full name of person authorising
 [N155]	[CTN]/Section3/Section3Part2/ConsentToSurrender/Declaration/Status	1..1	Status
 [SN062]	[CTN]/Section3/Section3Part3	0..1	Section 3 Part 3 - Claims to RPDT group relief for carried forward losses
@@ -1020,9 +1024,9 @@ box_id	path	cardinality	description
 [SN069]	[CTN]/Section3/Section3Part3/ClaimAuthorisation	0..1	Authorisation of claim
 [SN070]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [SN071]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements	0..1	Authorisation of claim to group relief for simplified arrangements
-[N170]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/State	1..1	If the claim has been authorised put an 'X' in box N170 to confirm
-[N175]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Name	1..1	Name of authorised company
-[N180]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/FullNa	1..1	Full name of person authorising
+[N170]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/StatementAuthorised	1..1	If the claim has been authorised put an 'X' in box N170 to confirm
+[N175]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/NameOfAuthorisedCompany	1..1	Name of authorised company
+[N180]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/FullNameOfPersonAuthorising	1..1	Full name of person authorising
 [N185]	[CTN]/Section3/Section3Part3/ClaimAuthorisation/AuthorisationForSimplifiedArrangements/Status	1..1	Status
 [SN076]	[CTN]/Section3/Section3Part4	0..1	Section 3 Part 4 - Amounts surrendered as RPDT group relief for carried forward losses
 [N190]	[CTN]/Section3/Section3Part4/DetailsOfSurrender	1..∞	Details of surrender
@@ -1033,14 +1037,14 @@ box_id	path	cardinality	description
 [N195]	[CTN]/Section3/Section3Part4/Total	1..1	Total
 [SN083]	[CTN]/Section3/Section3Part4/ConsentToSurrender	0..1	Consent to surrender
 [SN084]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions	1..1	Type of consent
-[SN085]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForc	0..1	Is a simplified arrangement in force?
+[SN085]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions/SimplifiedArrangementInForce	0..1	Is a simplified arrangement in force?
 [SN086]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions/NoticeOfConsentCompleted	0..1	Has CT600N notice of consent been completed?
-[SN087]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAtta	0..1	Notice/s of consent attached?
+[SN087]	[CTN]/Section3/Section3Part4/ConsentToSurrender/ConsentOptions/CopyOfNoticesOfConsentAttached	0..1	Notice/s of consent attached?
 [SN088]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration	0..1	Declaration of consent
 [N200]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/CompanyName	1..1	Company name
 [N205]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/TaxReference	1..1	Tax reference
 [N210/N215]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/AccountingPeriod	1..1	Accounting period
-[SN092]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of
+[SN092]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/AcceptDeclaration	1..1	I certify that all the information I have given on these pages is correct and complete to the best of my knowledge and belief.
 [N220]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/FullNameOfPersonAuthorising	1..1	Full name of person authorising
 [N225]	[CTN]/Section3/Section3Part4/ConsentToSurrender/Declaration/Status	1..1	Status
 [SN095]	[CTN]/Section4	0..1	Section 4 - Calculation of RPD profits and RPDT Payable
@@ -1061,17 +1065,17 @@ box_id	path	cardinality	description
 [P5A]	[CTP]/AudioVisualExpenditureCredit/Film/RelevantGlobalExpenditure	1..1	Film - Relevant global expenditure for this accounting period
 [P5B]	[CTP]/AudioVisualExpenditureCredit/Film/UKrelevantGlobalExpenditure	1..1	Film - Relevant global expenditure for this accounting period that is UK expenditure
 [P5C]	[CTP]/AudioVisualExpenditureCredit/Film/QualifyingExpenditure	1..1	Film - Qualifying expenditure for this accounting period
-[P5D]	[CTP]/AudioVisualExpenditureCredit/Film/ExpenditureCreditClaimed	1..1	Film - Expenditure credit claimed for this accounting period (excluding additional credit for visual
+[P5D]	[CTP]/AudioVisualExpenditureCredit/Film/ExpenditureCreditClaimed	1..1	Film - Expenditure credit claimed for this accounting period (excluding additional credit for visual effects)
 [P5E]	[CTP]/AudioVisualExpenditureCredit/Film/AdditionalCreditForVisualEffects	0..1	Film - Additional credit for visual effects for this accounting period
 [P10]	[CTP]/AudioVisualExpenditureCredit/HighEndTV	0..1	High-End TV
 [P10A]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/RelevantGlobalExpenditure	1..1	High-End TV programmes - Relevant global expenditure for this accounting period
-[P10B]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/UKrelevantGlobalExpenditure	1..1	High-End TV programmes - Relevant global expenditure for this accounting period that is UK
+[P10B]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/UKrelevantGlobalExpenditure	1..1	High-End TV programmes - Relevant global expenditure for this accounting period that is UK expenditure
 [P10C]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/QualifyingExpenditure	1..1	High-End TV programmes - Qualifying expenditure for this accounting period
-[P10D]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/ExpenditureCreditClaimed	1..1	High-End TV programmes - Expenditure credit claimed for this accounting period (excluding
+[P10D]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/ExpenditureCreditClaimed	1..1	High-End TV programmes - Expenditure credit claimed for this accounting period (excluding additional credit for visual effects)
 [P10E]	[CTP]/AudioVisualExpenditureCredit/HighEndTV/AdditionalCreditForVisualEffects	0..1	High-End TV programmes - Additional credit for visual effects for this accounting period
 [P15]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV	0..1	Children's TV
 [P15A]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV/RelevantGlobalExpenditure	1..1	Children's TV programmes - Relevant global expenditure for this accounting period
-[P15B]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV/UKrelevantGlobalExpenditure	1..1	Children's TV programmes - Relevant global expenditure for this accounting period that is UK
+[P15B]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV/UKrelevantGlobalExpenditure	1..1	Children's TV programmes - Relevant global expenditure for this accounting period that is UK expenditure
 [P15C]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV/QualifyingExpenditure	1..1	Children's TV programmes - Qualifying expenditure for this accounting period
 [P15D]	[CTP]/AudioVisualExpenditureCredit/ChildrensTV/ExpenditureCreditClaimed	1..1	Children's TV programmes - Expenditure credit claimed for this accounting period
 [P20]	[CTP]/AudioVisualExpenditureCredit/Animation	0..1	Animation
@@ -1088,7 +1092,7 @@ box_id	path	cardinality	description
 [P30A]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalRelevantGlobalExpenditure	1..1	Total relevant global expenditure for this accounting period
 [P30B]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalUKrelevantGlobalExpenditure	1..1	Total Relevant global expenditure for this accounting period that is UK expenditure
 [P30C]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalQualifyingExpenditure	1..1	Total qualifying expenditure for this accounting period
-[P30D]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalExpenditureCreditClaimed	1..1	Total expenditure credit claimed for this accounting period (excluding additional credit for visual
+[P30D]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalExpenditureCreditClaimed	1..1	Total expenditure credit claimed for this accounting period (excluding additional credit for visual effects)
 [P30E]	[CTP]/AudioVisualExpenditureCredit/TotalAudioVisual/TotalAdditionalCreditForVisualEffects	0..1	Total additional credit for visual effects for this accounting period
 [SP026]	[CTP]/VideoGamesExpenditureCredit	0..1	Video Games Expenditure Credit
 [P35]	[CTP]/VideoGamesExpenditureCredit/VideoGames	1..1	Video Games
@@ -1102,9 +1106,9 @@ box_id	path	cardinality	description
 [P45C]	[CTP]/VideoGamesExpenditureCredit/TotalVideoGames/TotalQualifyingExpenditure	1..1	Total qualifying expenditure for this accounting period
 [P45D]	[CTP]/VideoGamesExpenditureCredit/TotalVideoGames/TotalExpenditureCreditClaimed	1..1	Total expenditure credit claimed for this accounting period
 [SP035]	[CTP]/PreStep1Restriction	0..1	Pre-Step 1 restriction
-[P50]	[CTP]/PreStep1Restriction/Step2RestrictionBroughtForward	1..1	Step 2 restriction brought forward from previous accounting periods and/or amounts surrendered
+[P50]	[CTP]/PreStep1Restriction/Step2RestrictionBroughtForward	1..1	Step 2 restriction brought forward from previous accounting periods and/or amounts surrendered from group companies
 [P55]	[CTP]/PreStep1Restriction/CorporationTaxLiability	1..1	Corporation Tax Liability
-[P60]	[CTP]/PreStep1Restriction/AmountOfStep2BroughtForwardAndSurrenderedAVECVGEC	1..1	Amount of Step 2 brought forward and surrendered AVEC/VGEC used to discharge Corporation
+[P60]	[CTP]/PreStep1Restriction/AmountOfStep2BroughtForwardAndSurrenderedAVECVGEC	1..1	Amount of Step 2 brought forward and surrendered AVEC/VGEC used to discharge Corporation Tax liability
 [P65]	[CTP]/PreStep1Restriction/AmountOfStep2BroughtForwardAVECVGECcarriedForward	1..1	Amount of Step 2 brought forward AVEC/VGEC carried forward to next accounting period
 [P70]	[CTP]/PreStep1Restriction/RemainingCorporationTaxLiabilityCarriedForwardToStep1	1..1	Remaining Corporation Tax liability carried forward to Step 1
 [SP041]	[CTP]/Step1	0..1	Step 1 - Calculation of AVEC and VGEC
@@ -1121,6 +1125,7 @@ box_id	path	cardinality	description
 [SP051]	[CTP]/Step2	0..1	Step 2 - Calculation of notional tax charge
 [P120]	[CTP]/Step2/Step1BalanceCarriedForwardToStep2	1..1	Step 1 balance carried forward to Step 2
 [P125]	[CTP]/Step2/CorporationTaxChargeOnAVECandVGECforThisAP	1..1	Corporation Tax charge on AVEC and VGEC for this accounting period
+[P130]	[CTP]/Step2/TotalAVECandVGECarisingInThisAPlessCorporationTaxChargeOnTheAVECandVGECforThisAP	1..1	Total AVEC and VGEC arising in this accounting period less Corporation Tax charge on the AVEC and VGEC for this accounting period
 [P135]	[CTP]/Step2/AVECandVGECarisingInThisAPlessRemainingCorporationTaxLiabilityAtStep1	1..1	AVEC and VGEC arising in this accounting period less remaining Corporation Tax liability at Step 1
 [P140]	[CTP]/Step2/Step2RestrictionCarriedForwardToNextAP	1..1	Step 2 restriction carried forward to next accounting period
 [SP057]	[CTP]/Step3	0..1	Step 3 - AVEC/VGEC to be offset
@@ -1131,6 +1136,7 @@ box_id	path	cardinality	description
 [P160]	[CTP]/Step4/CreditSurrenderedToGroupMember	0..1	Credit surrendered to group member
 [SP063]	[CTP]/Step5	0..1	Step 5 - Amount used to discharge other company liabilities
 [P165]	[CTP]/Step5/Step4BalanceCarriedForwardToStep5	1..1	Step 4 balance carried forward to Step 5
+[P170]	[CTP]/Step5/AmountUsedToDischargeOtherCompanyLiabilityOnThisCorporationTaxSelfAssessment	0..1	Amount used to discharge other company liability on this Corporation Tax Self Assessment
 [P175]	[CTP]/Step5/AmountUsedToDischargeAnyOtherCompanyLiability	0..1	Amount used to discharge any other company liability
 [P180]	[CTP]/Step5/TotalUsedToDischargeOtherCompanyLiability	0..1	Total used to discharge other company liability
 [SP068]	[CTP]/Step6	0..1	Step 6 - Payable Audio-Viusual (AVEC) and Video Games (VGEC) expenditure credit
@@ -1146,9 +1152,9 @@ box_id	path	cardinality	description
 [P220]	[CTP]/AVECVGECsurrendered/Step4CreditSurrenderedToGroupMember	0..1	Step 4 credit surrendered to group member
 [P225]	[CTP]/AVECVGECsurrendered/TotalSurrendered	1..1	Total surrendered
 [SP080]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn	0..1	Total credits to discharge against liabilities in this Company Tax Return
-[P230]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECpreStep1Disc	0..1	AVEC/VGEC pre-Step 1 discharge amount
-[P235]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECstep1Discharg	0..1	AVEC/VGEC Step 1 discharge amount
-[P240]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECstep5Discharg	0..1	AVEC/VGEC Step 5 discharge amount for this accounting period
+[P230]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECpreStep1DischargeAmount	0..1	AVEC/VGEC pre-Step 1 discharge amount
+[P235]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECstep1DischargeAmount	0..1	AVEC/VGEC Step 1 discharge amount
+[P240]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/AVECVGECstep5DischargeAmountForThisAP	0..1	AVEC/VGEC Step 5 discharge amount for this accounting period
 [P245]	[CTP]/TotalCreditsToDischargeAgainstLiabilitiesInThisCompanyTaxReturn/Total	1..1	Total
 [SP085]	[CTP]/DetailsOfAVECVGECsurrendered	0..1	Details of AVEC/VGEC surrendered
 [P250]	[CTP]/DetailsOfAVECVGECsurrendered/DetailsOfSurrender	1..∞	Details of surrender
@@ -1162,38 +1168,38 @@ box_id	path	cardinality	description
 [P260A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/CoreExpenditure	1..1	Film - Core expenditure for this accounting period
 [P260B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/UKcoreExpenditure	1..1	Film - UK core expenditure for this accounting period
 [P260C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/AdditionalDeduction	1..1	Film - Additional deduction for this accounting period
-[P260D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/LossesSurrenderedForT	1..1	Film - Losses surrendered for tax credit
+[P260D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/LossesSurrenderedForTaxCredit	1..1	Film - Losses surrendered for tax credit
 [P260E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Film/TaxCreditClaimed	1..1	Film - Tax credit claimed for this accounting period
 [P265]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV	0..1	High-End TV
 [P265A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/CoreExpenditure	1..1	High-End TV - Core expenditure for this accounting period
-[P265B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/UKcoreExpenditu	1..1	High-End TV - UK core expenditure for this accounting period
-[P265C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/AdditionalDeduct	1..1	High-End TV - Additional deduction for this accounting period
-[P265D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/LossesSurrender	1..1	High-End TV - Losses surrendered for tax credit
-[P265E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/TaxCreditClaime	1..1	High-End TV - Tax credit claimed for this accounting period
+[P265B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/UKcoreExpenditure	1..1	High-End TV - UK core expenditure for this accounting period
+[P265C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/AdditionalDeduction	1..1	High-End TV - Additional deduction for this accounting period
+[P265D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/LossesSurrenderedForTaxCredit	1..1	High-End TV - Losses surrendered for tax credit
+[P265E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/HighEndTV/TaxCreditClaimed	1..1	High-End TV - Tax credit claimed for this accounting period
 [P270]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV	0..1	Children's TV
-[P270A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/CoreExpenditur	1..1	Children's TV - Core expenditure for this accounting period
-[P270B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/UKcoreExpendit	1..1	Children's TV - UK core expenditure for this accounting period
-[P270C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/AdditionalDeduc	1..1	Children's TV - Additional deduction for this accounting period
-[P270D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/LossesSurrende	1..1	Children's TV - Losses surrendered for tax credit
-[P270E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/TaxCreditClaime	1..1	Children's TV - Tax credit claimed for this accounting period
+[P270A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/CoreExpenditure	1..1	Children's TV - Core expenditure for this accounting period
+[P270B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/UKcoreExpenditure	1..1	Children's TV - UK core expenditure for this accounting period
+[P270C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/AdditionalDeduction	1..1	Children's TV - Additional deduction for this accounting period
+[P270D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/LossesSurrenderedForTaxCredit	1..1	Children's TV - Losses surrendered for tax credit
+[P270E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/ChildrensTV/TaxCreditClaimed	1..1	Children's TV - Tax credit claimed for this accounting period
 [P275]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation	0..1	Animation
 [P275A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/CoreExpenditure	1..1	Animation - Core expenditure for this accounting period
-[P275B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/UKcoreExpenditur	1..1	Animation - UK core expenditure for this accounting period
-[P275C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/AdditionalDeducti	1..1	Animation - Additional deduction for this accounting period
-[P275D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/LossesSurrendere	1..1	Animation - Losses surrendered for tax credit
+[P275B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/UKcoreExpenditure	1..1	Animation - UK core expenditure for this accounting period
+[P275C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/AdditionalDeduction	1..1	Animation - Additional deduction for this accounting period
+[P275D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/LossesSurrenderedForTaxCredit	1..1	Animation - Losses surrendered for tax credit
 [P275E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/Animation/TaxCreditClaimed	1..1	Animation - Tax credit claimed for this accounting period
 [P280]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames	0..1	Video Games
-[P280A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/CoreExpenditur	1..1	Video Games - Core expenditure for this accounting period
-[P280B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/UKcoreExpendi	1..1	Video Games - UK core expenditure for this accounting period
-[P280C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/AdditionalDedu	1..1	Video Games - Additional deduction for this accounting period
-[P280D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/LossesSurrend	1..1	Video Games - Losses surrendered for tax credit
-[P280E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/TaxCreditClaim	1..1	Video Games - Tax credit claimed for this accounting period
-[P285]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total Audio-Visual and Video Games
-[P285A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total core expenditure for this accounting period
-[P285B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total UK core expenditure for this accounting period
-[P285C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total additional deduction for this accounting period
-[P285D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total losses surrendered for tax credit
-[P285E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGa	1..1	Total tax credit claimed for this accounting period
+[P280A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/CoreExpenditure	1..1	Video Games - Core expenditure for this accounting period
+[P280B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/UKcoreExpenditure	1..1	Video Games - UK core expenditure for this accounting period
+[P280C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/AdditionalDeduction	1..1	Video Games - Additional deduction for this accounting period
+[P280D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/LossesSurrenderedForTaxCredit	1..1	Video Games - Losses surrendered for tax credit
+[P280E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/VideoGames/TaxCreditClaimed	1..1	Video Games - Tax credit claimed for this accounting period
+[P285]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames	1..1	Total Audio-Visual and Video Games
+[P285A]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames/TotalCoreExpenditure	1..1	Total core expenditure for this accounting period
+[P285B]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames/TotalUKcoreExpenditure	1..1	Total UK core expenditure for this accounting period
+[P285C]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames/TotalAdditionalDeduction	1..1	Total additional deduction for this accounting period
+[P285D]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames/TotalLossesSurrenderedForTaxCredit	1..1	Total losses surrendered for tax credit
+[P285E]	[CTP]/FilmHighEndTVchildrensTVanimationAndVideoGamesTaxRelief/TotalAudioVisualAndVideoGames/TotalTaxCreditClaimed	1..1	Total tax credit claimed for this accounting period
 [SP123]	[CTP]/CulturalReliefs	0..1	Cultural Reliefs
 [P290]	[CTP]/CulturalReliefs/Theatre	0..1	Theatre
 [P290A]	[CTP]/CulturalReliefs/Theatre/CoreExpenditure	1..1	Theatre - Core expenditure for this accounting period
@@ -1220,13 +1226,13 @@ box_id	path	cardinality	description
 [P305D]	[CTP]/CulturalReliefs/TotalCulturalReliefs/TotalLossesSurrenderedForTaxCredit	1..1	Total losses surrendered for tax credit
 [P305E]	[CTP]/CulturalReliefs/TotalCulturalReliefs/TotalTaxCreditClaimed	1..1	Total tax credit claimed for this accounting period
 [SP144]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief	0..1	Cultural Reliefs and Film, High End TV, Children's TV, Animation and Video Game tax relief
-[P310]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalCoreE	1..1	Total core expenditure for this accounting period
-[P315]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalAdditi	1..1	Total additional deduction for this accounting period
-[P320]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalTaxCre	1..1	Total tax credit claim for this accounting period
-[P325]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/PayableTax	1..1	Payable tax credit set-off against other liabilities on this return
-[P330]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/BalancePay	1..1	Balance payable tax credit
+[P310]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalCoreExpenditureForThisAP	1..1	Total core expenditure for this accounting period
+[P315]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalAdditionalDeductionForThisAP	1..1	Total additional deduction for this accounting period
+[P320]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/TotalTaxCreditClaimForThisAP	1..1	Total tax credit claim for this accounting period
+[P325]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/PayableTaxCreditSetOffAgainstOtherLiabilitiesOnThisReturn	1..1	Payable tax credit set-off against other liabilities on this return
+[P330]	[CTP]/CulturalReliefsAndFilmHighEndTVchildrensTVanimationAndVideoGameTaxRelief/BalancePayableTaxCredit	1..1	Balance payable tax credit
 	[CTnominalShareValueStructure]/@Currency	0..1	Currency symbol such as GBP or EUR
-	[CT_ContactDetailsStructure]/Name	0..1	Standard structure for a person's name including title (type 19), 2 fornames (type 16 and 17) and
+	[CT_ContactDetailsStructure]/Name	0..1	Standard structure for a person's name including title (type 19), 2 fornames (type 16 and 17) and surname (type 15)
 	[CT_ContactDetailsStructure]/Name/Ttl	0..1	Person's Title of 1 to 4 characters
 	[CT_ContactDetailsStructure]/Name/Fore	1..2	Forename for a person
 	[CT_ContactDetailsStructure]/Name/Sur	1..1	Surname for a person
@@ -1234,7 +1240,7 @@ box_id	path	cardinality	description
 	[CT_ContactDetailsStructure]/Email/@Type	0..1	Whether this email is work or home
 	[CT_ContactDetailsStructure]/Email/@Preferred	0..1	Whether this is the preferred email address
 	[CT_ContactDetailsStructure]/Telephone	0..∞	
-	[CT_ContactDetailsStructure]/Fax	0..∞	Simple type for email address
+	[CT_ContactDetailsStructure]/Fax	0..∞	
 	[CT_IRmonetaryStructure]/@Currency	0..1	Currency symbol such as GBP or EUR
 	[CT_IRnonNegativeMonetaryStructure]/@Currency	0..1	Currency symbol such as GBP or EUR
 	[CT_IRnonNegativeNonZeroWholeUnitsMonetaryStructure]/@Currency	0..1	Currency symbol such as GBP or EUR

@@ -17,6 +17,7 @@ from open_ct600.ct600 import CT600Return, Pounds, ReturnComputation, Submission,
 from open_ct600.filing import SubmissionReceipt, submit_return
 from open_ct600.hmrc.routes import hmrc_router
 from open_ct600.ixbrl import routes as ixbrl_routes
+from open_ct600.pages.definitions import COMPUTED_BOXES
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
 
@@ -52,7 +53,10 @@ class SchemaPage(BaseModel):
 
     ``node`` is the page root in the spec's JSON form (see ``open_ct600.schema.spec``):
     name, path, box, label, kind, min, max, choice, branch, enum, patterns, minLength,
-    maxLength, minValue, maxValue, choices and children.
+    maxLength, minValue, maxValue, choices and children. ``computed`` lists the box ids the
+    service calculates (``open_ct600.pages.definitions``): show them as answers, not
+    questions, and leave them out of the answers sent back. A group whose every box is
+    calculated (such as CT600L's step sections) is calculated as a whole.
     """
 
     code: PageCode
@@ -60,6 +64,7 @@ class SchemaPage(BaseModel):
     title: str
     dormant: bool
     node: dict[str, JsonValue]
+    computed: list[str]
 
 
 @cache
@@ -71,6 +76,7 @@ def _schema_pages() -> list[SchemaPage]:
             title=page.title,
             dormant=page.dormant,
             node=page.node.to_json(),
+            computed=sorted(COMPUTED_BOXES[page.code]),
         )
         for page in load_spec().pages()
     ]

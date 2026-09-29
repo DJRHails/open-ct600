@@ -1,21 +1,24 @@
-"""CT600 return: the answers a company gives, and the boxes and accounts derived from them.
+"""CT600 return: the answers a company gives, and computing the return from them.
 
 The main return models a UK company preparing micro-entity or small company accounts, with
 trading profits, bank interest, chargeable gains, trading losses brought forward and
 qualifying charitable donations. Supplementary pages (CT600A to CT600P) are element trees
-validated against HMRC's schema (see ``open_ct600.schema``).
+validated against HMRC's schema (see ``open_ct600.schema``), leaving out the boxes the service
+calculates (``open_ct600.pages.definitions``). Reliefs claimed through the pages take a few
+answers the pages have no box for: the R&D claim, figures from group relief surrendering
+companies, the dates of loans to participators and the creatives additional information form.
+
+A return is computed (``open_ct600.computation``) as part of validating it, so problems that
+only the computation finds (a group relief claim larger than the profits, an R&D claim without
+its additional information form) are reported like any other invalid answer.
 """
 
 import re
-from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
 from pydantic import (
-    BaseModel,
-    ConfigDict,
     Field,
     JsonValue,
     ValidationError,
@@ -25,12 +28,43 @@ from pydantic import (
 )
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
+from open_ct600.computation import (
+    AccountsSummary,
+    CT600Box,
+    ReliefsSummary,
+    ReturnComputation,
+    evaluate,
+)
+from open_ct600.model import MAX_POUNDS, Pounds, StrictModel
+from open_ct600.pages.definitions import computed_paths
+from open_ct600.problems import InvalidReturnError, Problem
+from open_ct600.reliefs.group_relief import SurrenderingCompany
+from open_ct600.reliefs.loans_to_participators import ParticipatorLoanDates
+from open_ct600.reliefs.research_and_development import ResearchAndDevelopment
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
+from open_ct600.tax import PeriodError, validate_period
 
-MAX_POUNDS = 99_999_999_999
-Pounds = Annotated[int, Field(ge=0, le=MAX_POUNDS)]
+__all__ = [
+    "MAX_POUNDS",
+    "AccountsDetails",
+    "AccountsSummary",
+    "BalanceSheet",
+    "CT600Box",
+    "CT600Return",
+    "CompanyDetails",
+    "CreativeIndustries",
+    "Declaration",
+    "Pounds",
+    "ProfitAndLoss",
+    "ReliefsSummary",
+    "ReturnComputation",
+    "ReturnPeriod",
+    "SignatoryCapacity",
+    "Submission",
+    "TaxAdjustments",
+    "compute_return",
+]
 
 _COMPANY_NUMBER = re.compile(
     r"""(?x)          # verbose
@@ -52,10 +86,6 @@ _WHITESPACE = re.compile(
 )
 
 
-class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-
 def _answer_error(
     message: str, location: tuple[str | int, ...], value: object, box: str | None = None
 ) -> InitErrorDetails:
@@ -75,7 +105,7 @@ def _located_error(message: str, location: tuple[str | int, ...], value: object)
     return ValidationError.from_exception_data("CT600Return", details)
 
 
-class CompanyDetails(_Strict):
+class CompanyDetails(StrictModel):
     """Who the return is for.
 
     Attributes:
@@ -118,7 +148,7 @@ class CompanyDetails(_Strict):
         return normalised
 
 
-class ReturnPeriod(_Strict):
+class ReturnPeriod(StrictModel):
     """The accounting period the return covers."""
 
     start: date
@@ -133,7 +163,7 @@ class ReturnPeriod(_Strict):
         return self
 
 
-class ProfitAndLoss(_Strict):
+class ProfitAndLoss(StrictModel):
     """Figures from the company's profit and loss account, in whole pounds."""
 
     turnover: Pounds
@@ -149,7 +179,7 @@ class ProfitAndLoss(_Strict):
         return self.cost_of_sales + self.staff_costs + self.depreciation + self.other_expenses
 
 
-class TaxAdjustments(_Strict):
+class TaxAdjustments(StrictModel):
     """Adjustments that turn accounting profit into taxable profit."""
 
     disallowable_expenses: Pounds = 0
@@ -161,7 +191,7 @@ class TaxAdjustments(_Strict):
     associated_companies: Annotated[int, Field(ge=0, le=999)] = 0
 
 
-class BalanceSheet(_Strict):
+class BalanceSheet(StrictModel):
     """Balance sheet at the end of the period in the micro-entity format, in whole pounds.
 
     The items are those of the Companies Act micro-entity balance sheet (FRS 105): called up
@@ -185,7 +215,7 @@ class BalanceSheet(_Strict):
 DirectorName = Annotated[str, Field(min_length=1, max_length=120)]
 
 
-class AccountsDetails(_Strict):
+class AccountsDetails(StrictModel):
     """Facts about the statutory accounts filed with the return.
 
     Attributes:
@@ -196,6 +226,9 @@ class AccountsDetails(_Strict):
         signing_director: The director who signed the balance sheet; one of ``directors``.
         average_employees: Average number of employees (including directors) in the period.
         trading_status: Whether the company traded in the period, never has, or has stopped.
+        dormant: Whether the company was dormant (had no significant accounting transactions)
+            throughout the period, so files dormant accounts. A dormant company has no
+            turnover, expenses, income or gains, does not trade, and has no tax to pay.
     """
 
     standard: Literal["micro", "small"]
@@ -204,6 +237,18 @@ class AccountsDetails(_Strict):
     signing_director: DirectorName
     average_employees: Annotated[int, Field(ge=0, le=9_999_999)]
     trading_status: Literal["trading", "never_traded", "no_longer_trading"]
+    dormant: bool = False
+
+    @model_validator(mode="after")
+    def _check_dormant_company_is_not_trading(self) -> Self:
+        if self.dormant and self.trading_status == "trading":
+            raise _located_error(
+                "A dormant company cannot be trading: select whether it has never traded or "
+                "has stopped trading, or say it was not dormant",
+                ("trading_status",),
+                self.trading_status,
+            )
+        return self
 
     @field_validator("directors")
     @classmethod
@@ -244,12 +289,31 @@ def _answer_at(tree: JsonValue, path: tuple[str | int, ...]) -> JsonValue:
     return answer
 
 
-class CT600Return(_Strict):
+class CreativeIndustries(StrictModel):
+    """Answers for creative industries claims (CT600P) that the page has no box for.
+
+    Attributes:
+        additional_information_submitted: Whether the creatives additional information form
+            was submitted before the return (box 658); claims are invalid without it.
+    """
+
+    additional_information_submitted: bool
+
+
+class CT600Return(StrictModel):
     """Everything needed to compute a company's CT600 return.
 
     Attributes:
         supplementary_pages: Supplementary pages by code (``"A"`` for CT600A), each an element
-            tree for that page's root element (see ``open_ct600.schema.trees``).
+            tree for that page's root element (see ``open_ct600.schema.trees``), without the
+            boxes the service calculates.
+        research_and_development: The company's R&D claim (see CT600L), if any.
+        group_relief_surrenderers: Figures from the returns of companies surrendering group
+            relief to this one (CT600C), to limit each claim for non-coterminous periods and
+            consortium shares; optional.
+        participator_loan_dates: When the loans on CT600A were made, needed only when the s455
+            rate changes during the period.
+        creative_industries: Answers for CT600P claims.
     """
 
     company: CompanyDetails
@@ -259,6 +323,50 @@ class CT600Return(_Strict):
     balance_sheet: BalanceSheet
     accounts: AccountsDetails
     supplementary_pages: SupplementaryPages = Field(default_factory=dict)
+    research_and_development: ResearchAndDevelopment | None = None
+    group_relief_surrenderers: list[SurrenderingCompany] = Field(default_factory=list)
+    participator_loan_dates: ParticipatorLoanDates | None = None
+    creative_industries: CreativeIndustries | None = None
+
+    @model_validator(mode="after")
+    def _check_dormant_company_has_no_activity(self) -> Self:
+        if not self.accounts.dormant:
+            return self
+        pnl, adjustments = self.profit_and_loss, self.tax_adjustments
+        activity = {
+            ("profit_and_loss", name): value for name, value in pnl.model_dump().items() if value
+        }
+        if adjustments.chargeable_gains:
+            activity[("tax_adjustments", "chargeable_gains")] = adjustments.chargeable_gains
+        details = [
+            _answer_error(
+                "A dormant company has no turnover, expenses, income or gains: enter 0, or say "
+                "the company was not dormant",
+                location,
+                value,
+            )
+            for location, value in activity.items()
+        ]
+        if details:
+            raise ValidationError.from_exception_data("CT600Return", details)
+        return self
+
+    @model_validator(mode="after")
+    def _check_the_return_computes(self) -> Self:
+        _, problems = evaluate(self)
+        if problems:
+            raise ValidationError.from_exception_data(
+                "CT600Return", [self._problem_error(problem) for problem in problems]
+            )
+        return self
+
+    def _problem_error(self, problem: Problem) -> InitErrorDetails:
+        location = problem.location
+        value: object = None
+        if location[:1] == ("supplementary_pages",) and len(location) > 1:
+            tree = self.supplementary_pages.get(str(location[1]))  # type: ignore[call-overload]
+            value = _answer_at(tree, location[2:])
+        return _answer_error(problem.message, location, value, problem.box)
 
     @field_validator("tax_adjustments")
     @classmethod
@@ -311,7 +419,7 @@ class CT600Return(_Strict):
                     _answer_at(tree, problem.path),
                     problem.box,
                 )
-                for problem in validate_tree(page.node, tree)
+                for problem in validate_tree(page.node, tree, computed_paths(code))
             ]
         if details:
             raise ValidationError.from_exception_data("SupplementaryPages", details)
@@ -326,7 +434,7 @@ class SignatoryCapacity(StrEnum):
     AUTHORISED_AGENT = "authorised_agent"
 
 
-class Declaration(_Strict):
+class Declaration(StrictModel):
     """The statement the signatory makes when submitting the return."""
 
     name: Annotated[str, Field(min_length=1, max_length=120)]
@@ -334,236 +442,26 @@ class Declaration(_Strict):
     confirmed: Literal[True]
 
 
-class Submission(_Strict):
+class Submission(StrictModel):
     """A return and the declaration made when submitting it."""
 
     ct600: CT600Return
     declaration: Declaration
 
 
-BoxKind = Literal["pounds", "money", "count", "rate", "year", "flag"]
-
-
-@dataclass(frozen=True)
-class CT600Box:
-    """One box on the CT600 form.
-
-    Attributes:
-        box: The box id: ``"145"`` on the main return, ``"A80"`` or ``"L210"`` on a
-            supplementary page, as in HMRC's CT600 schema.
-        label: The box description.
-        value: The box value; its meaning depends on ``kind``.
-        kind: How to present ``value``: whole pounds, pounds and pence, a count, a
-            rate, a financial year, or a tick box (1 ticked, 0 not).
-    """
-
-    box: str
-    label: str
-    value: Decimal
-    kind: BoxKind
-
-
-@dataclass(frozen=True)
-class AccountsSummary:
-    """Accounts derived from the answers, in whole pounds except tax.
-
-    The balance sheet follows the micro-entity format: net current assets are current assets
-    plus prepayments less creditors due within a year; total assets less current liabilities
-    add fixed assets and share capital not paid; net assets then deduct creditors due after a
-    year, provisions, and accruals and deferred income.
-    """
-
-    turnover: int
-    interest_income: int
-    total_expenses: int
-    profit_before_tax: int
-    corporation_tax: Decimal
-    profit_after_tax: Decimal
-    called_up_share_capital_not_paid: int
-    fixed_assets: int
-    current_assets: int
-    prepayments_and_accrued_income: int
-    creditors_within_one_year: int
-    net_current_assets: int
-    total_assets_less_current_liabilities: int
-    creditors_after_one_year: int
-    provisions: int
-    accruals_and_deferred_income: int
-    net_assets: int
-    called_up_share_capital: int
-    profit_and_loss_reserve: int
-
-
-@dataclass(frozen=True)
-class ReturnComputation:
-    """The computed CT600: boxes, tax computation, accounts and loss position.
-
-    Attributes:
-        pages: The completed supplementary page trees, by page code. For now these are the
-            validated answers as given; computed page boxes are not yet filled in.
-    """
-
-    boxes: tuple[CT600Box, ...]
-    tax: TaxComputation
-    accounts: AccountsSummary
-    trading_loss_arising: int
-    losses_carried_forward: int
-    pages: dict[str, dict[str, JsonValue]]
-
-
-def _box(number: int, label: str, value: int | Decimal, kind: BoxKind = "pounds") -> CT600Box:
-    """A main return box; their ids are plain numbers."""
-    return CT600Box(box=str(number), label=label, value=Decimal(value), kind=kind)
-
-
-@dataclass(frozen=True)
-class _ProfitPosition:
-    boxes: list[CT600Box]
-    chargeable: int
-    losses_used: int
-    trading_loss_arising: int
-
-
-def _profit_boxes(ct600: CT600Return) -> _ProfitPosition:
-    """Compute boxes 145 to 315 and the trading loss position."""
-    pnl, adjustments = ct600.profit_and_loss, ct600.tax_adjustments
-    trading_result = (
-        pnl.turnover
-        - pnl.total_expenses
-        + pnl.depreciation
-        + adjustments.disallowable_expenses
-        - adjustments.capital_allowances
-    )
-    trading_profits = max(trading_result, 0)
-    losses_used = min(adjustments.losses_brought_forward, trading_profits)
-    net_trading_profits = trading_profits - losses_used
-    before_deductions = net_trading_profits + pnl.interest_income + adjustments.chargeable_gains
-    donations = min(adjustments.qualifying_donations, before_deductions)
-    chargeable = before_deductions - donations
-    boxes = [
-        _box(145, "Total turnover from trade", pnl.turnover),
-        _box(155, "Trading profits", trading_profits),
-        _box(160, "Trading losses brought forward set against trading profits", losses_used),
-        _box(165, "Net trading profits", net_trading_profits),
-        _box(
-            170,
-            "Bank, building society or other interest, and profits from non-trading "
-            "loan relationships",
-            pnl.interest_income,
-        ),
-        _box(210, "Chargeable gains", adjustments.chargeable_gains),
-        _box(235, "Profits before other deductions and reliefs", before_deductions),
-        _box(300, "Profits before qualifying donations and group relief", before_deductions),
-        _box(305, "Qualifying donations", donations),
-        _box(315, "Profits chargeable to Corporation Tax", chargeable),
-    ]
-    return _ProfitPosition(
-        boxes=boxes,
-        chargeable=chargeable,
-        losses_used=losses_used,
-        trading_loss_arising=max(-trading_result, 0),
-    )
-
-
-_FINANCIAL_YEAR_BOXES = ((330, 335, 340, 345), (380, 385, 390, 395))
-
-
-def _tax_boxes(tax: TaxComputation) -> list[CT600Box]:
-    """Compute boxes 326 to 525 from the tax computation."""
-    claims_relief = any(s.band in {"small", "marginal"} for s in tax.slices)
-    boxes = [
-        _box(
-            326, "Number of associated companies in this period", tax.associated_companies, "count"
-        ),
-        _box(329, "Small profits rate or marginal relief entitlement", int(claims_relief), "flag"),
-    ]
-    for (year_box, profit_box, rate_box, tax_box), part in zip(
-        _FINANCIAL_YEAR_BOXES, tax.slices, strict=False
-    ):
-        boxes += [
-            _box(year_box, "Financial year", part.financial_year, "year"),
-            _box(profit_box, "Amount of profit", part.profits),
-            _box(rate_box, "Rate of tax", part.rate * 100, "rate"),
-            _box(tax_box, "Tax", part.tax, "money"),
-        ]
-    boxes += [
-        _box(430, "Corporation Tax", tax.tax_before_relief, "money"),
-        _box(435, "Marginal relief", tax.marginal_relief, "money"),
-        _box(440, "Corporation Tax chargeable", tax.tax_chargeable, "money"),
-        _box(475, "Net Corporation Tax liability", tax.tax_chargeable, "money"),
-        _box(510, "Tax payable", tax.tax_chargeable, "money"),
-        _box(525, "Self-assessment of tax payable", tax.tax_chargeable, "money"),
-    ]
-    return boxes
-
-
-def _accounts(ct600: CT600Return, corporation_tax: Decimal) -> AccountsSummary:
-    pnl, sheet = ct600.profit_and_loss, ct600.balance_sheet
-    profit_before_tax = pnl.turnover + pnl.interest_income - pnl.total_expenses
-    net_current_assets = (
-        sheet.current_assets
-        + sheet.prepayments_and_accrued_income
-        - sheet.creditors_within_one_year
-    )
-    total_less_current = (
-        sheet.called_up_share_capital_not_paid + sheet.fixed_assets + net_current_assets
-    )
-    net_assets = (
-        total_less_current
-        - sheet.creditors_after_one_year
-        - sheet.provisions
-        - sheet.accruals_and_deferred_income
-    )
-    return AccountsSummary(
-        turnover=pnl.turnover,
-        interest_income=pnl.interest_income,
-        total_expenses=pnl.total_expenses,
-        profit_before_tax=profit_before_tax,
-        corporation_tax=corporation_tax,
-        profit_after_tax=profit_before_tax - corporation_tax,
-        called_up_share_capital_not_paid=sheet.called_up_share_capital_not_paid,
-        fixed_assets=sheet.fixed_assets,
-        current_assets=sheet.current_assets,
-        prepayments_and_accrued_income=sheet.prepayments_and_accrued_income,
-        creditors_within_one_year=sheet.creditors_within_one_year,
-        net_current_assets=net_current_assets,
-        total_assets_less_current_liabilities=total_less_current,
-        creditors_after_one_year=sheet.creditors_after_one_year,
-        provisions=sheet.provisions,
-        accruals_and_deferred_income=sheet.accruals_and_deferred_income,
-        net_assets=net_assets,
-        called_up_share_capital=sheet.called_up_share_capital,
-        profit_and_loss_reserve=net_assets - sheet.called_up_share_capital,
-    )
-
-
 def compute_return(ct600: CT600Return) -> ReturnComputation:
-    """Compute the CT600 boxes, Corporation Tax and accounts for a return.
+    """Compute the CT600 boxes, supplementary pages, reliefs, tax and accounts for a return.
 
     Args:
         ct600: A validated return.
 
     Returns:
         The computed return.
+
+    Raises:
+        InvalidReturnError: If the return has problems; a validated return never does.
     """
-    position = _profit_boxes(ct600)
-    adjustments = ct600.tax_adjustments
-    tax = compute_corporation_tax(
-        ct600.period.start,
-        ct600.period.end,
-        taxable_profits=position.chargeable,
-        associated_companies=adjustments.associated_companies,
-        exempt_distributions=adjustments.exempt_distributions,
-    )
-    return ReturnComputation(
-        boxes=(*position.boxes, *_tax_boxes(tax)),
-        tax=tax,
-        accounts=_accounts(ct600, tax.tax_chargeable),
-        trading_loss_arising=position.trading_loss_arising,
-        losses_carried_forward=(
-            adjustments.losses_brought_forward
-            - position.losses_used
-            + position.trading_loss_arising
-        ),
-        pages={str(code): tree for code, tree in ct600.supplementary_pages.items()},
-    )
+    computation, problems = evaluate(ct600)
+    if computation is None:
+        raise InvalidReturnError(problems)
+    return computation

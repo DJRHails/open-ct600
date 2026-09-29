@@ -40,6 +40,25 @@ _TWO_PLACES = Decimal("0.01")
 _WRITTEN_WHEN_NIL: dict[str, str | None] = {
     "326": "329",  # 9240: an associated companies section (329 ticked) must give box 326.
     "430": None,  # 9146: box 430 must be completed when box 345 or 395 is, even at 0.00.
+    # Boxes a supplementary page's box is copied to must be given even at nil; CORE only
+    # computes them when the page is filed.
+    "200": None,  # 9127: CT600F (box 120) needs box 200.
+    "310": None,  # 9506: C10 is copied to box 310.
+    "312": None,  # 9550: C130 is copied to box 312.
+    "480": None,  # 9428: A80 is copied to box 480.
+    "490": None,  # 9465: B30 is copied to box 490.
+    "497": None,  # 9865: N285 is copied to box 497.
+    "500": None,  # 9434: box 500 totals 490 to 497.
+    "527": None,  # 9239: K35 is copied to box 527.
+    "528": None,  # 9367: box 527 needs box 528.
+    "530": None,  # 9791: L210 is copied to box 530.
+    "540": None,  # 9932: P325 is copied to box 540.
+    "541": None,  # 9904: P245 is copied to box 541.
+    "545": None,  # 9355, 9357: box 545 totals 530 to 541.
+    "585": None,  # 9271: I80 is copied to box 585.
+    "590": None,  # 9274: I85 is copied to box 590.
+    "875": None,  # 9394: L180 is copied to box 875.
+    "880": None,  # 9396: L125 is copied to box 880.
 }
 """Optional boxes HMRC's rules need written at nil, and the box that must be given for that."""
 _TICKED_BY_PAGE = {

@@ -120,7 +120,7 @@ def test_main_return_boxes_and_kinds():
     assert (tick.box, tick.kind) == ("95", "yes")
 
 
-def test_boxes_whose_box_map_paths_were_cut_off_are_matched_in_order():
+def test_boxes_with_long_paths_are_matched():
     income = f"{RETURN_PATH}/CompanyTaxCalculation/Income"
     associated = f"{RETURN_PATH}/CompanyTaxCalculation/CorporationTaxChargeable/AssociatedCompanies"
 
@@ -129,6 +129,28 @@ def test_boxes_whose_box_map_paths_were_cut_off_are_matched_in_order():
     assert SPEC.node(f"{associated}/AssociatedCompaniesFinancialYears/FirstYear").box == "327"
     assert SPEC.node(f"{associated}/AssociatedCompaniesFinancialYears/SecondYear").box == "328"
     assert SPEC.node(f"{associated}/StartingOrSmallCompaniesRate").box == "329"
+
+
+def test_boxes_the_cut_off_box_map_lost_are_present():
+    parents = {node.box: node.path.split("/")[-2] for node in SPEC.root.walk() if node.box}
+
+    assert {box: parents.get(box) for box in ("L20", "L75", "L167A", "L205", "P130", "P170")} == {
+        "L20": "Step1",
+        "L75": "Step3",
+        "L167A": "SME",
+        "L205": "TotalRandDSetOffAgainstLiabilities",
+        "P130": "Step2",
+        "P170": "Step5",
+    }
+
+
+def test_box_labels_are_hmrcs_full_descriptions():
+    total = SPEC.node(f"{LOANS}/LoansInformation/TotalLoans")
+
+    assert total.label == (
+        "Total Loans within S419 ICTA 1988 made during the return period which have not been "
+        "repaid, released or written off before the end of the period"
+    )
 
 
 def test_internal_ids_are_not_boxes_but_still_label_the_element():
@@ -207,21 +229,19 @@ def test_humanise(name, label):
     assert humanise(name) == label
 
 
-def test_cut_off_rows_are_consumed_in_schema_order_and_exact_rows_win():
-    group = "/IRenvelope/CompanyTaxReturn/CompanyTaxCalculation/CorporationTaxChargeable"
-    cut_off = f"{group}/AssociatedC"
+def test_box_map_matches_the_most_specific_key_and_first_duplicate_row():
+    absolute = "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/LoansInformation/TotalLoans"
+    relative = "[CTA]/LoansInformation/TotalLoans"
     rows = [
-        BoxRow(f"{group}/Exact", "[1]", "Exact"),
-        BoxRow(cut_off, "[2]", "First"),
-        BoxRow(cut_off, "[3]", "Second"),
+        BoxRow(relative, "[A15]", "Total"),
+        BoxRow(absolute, "[X1]", "Absolute"),
+        BoxRow(relative, "[A99]", "Duplicate"),
     ]
-    first, second = f"{group}/AssociatedCompanies", f"{group}/AssociatedCharges"
-    box_map = BoxMap(rows, {f"{group}/Exact", first, second})
+    box_map = BoxMap(rows)
 
-    assert box_map.match([f"{group}/Exact"]) == rows[0]
-    assert box_map.match([first]) == rows[1]
-    assert box_map.match([second]) == rows[2]
-    assert box_map.match([first + "/Child"]) is None
+    assert box_map.match([absolute, relative]) == rows[1]
+    assert box_map.match([relative]) == rows[0]
+    assert box_map.match([absolute + "Cut"]) is None
 
 
 XSD_TEMPLATE = """<?xml version="1.0"?>
