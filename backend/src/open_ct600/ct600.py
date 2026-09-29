@@ -310,12 +310,15 @@ class Comparatives(StrictModel):
         balance_sheet: The balance sheet at the end of the previous period.
         tax_on_profit: The previous period's tax charge in its profit and loss account, in
             whole pounds.
+        average_employees: The previous period's average number of employees (including
+            directors); ``None`` only when it is not known.
     """
 
     period: PeriodOfAccount
     profit_and_loss: ProfitAndLoss
     balance_sheet: BalanceSheet
     tax_on_profit: Pounds = 0
+    average_employees: Annotated[int, Field(ge=0, le=9_999_999)] | None = None
 
 
 LegalForm = Literal[

@@ -201,6 +201,8 @@ export type Comparatives = {
   balance_sheet: CT600Return["balance_sheet"];
   /** The previous period's tax charge in its profit and loss account, in whole pounds. */
   tax_on_profit: number;
+  /** The previous period's average number of employees; null only when it is not known. */
+  average_employees: number | null;
 };
 
 /** ``sme`` and ``rdec`` (large companies) before 1 April 2024; ``rdec`` (merged) and ``eris`` after. */

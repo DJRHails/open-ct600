@@ -375,6 +375,20 @@ def _notes(
     document: InlineDocument, ct600: CT600Return, contexts: _Contexts
 ) -> list[etree._Element]:
     period = ct600.period
+    comparatives = ct600.accounts.comparatives
+    previous: list[str | etree._Element] = []
+    if comparatives is not None and comparatives.average_employees is not None:
+        before = comparatives.period
+        previous = [
+            " (previous period: ",
+            document.non_fraction(
+                "core:AverageNumberEmployeesDuringPeriod",
+                Context("prev-dur", Duration(before.start, before.end)),
+                comparatives.average_employees,
+                unit=Unit.PURE,
+            ),
+            ")",
+        ]
     return [
         html.h2("Notes to the accounts"),
         html.h3("Employees"),
@@ -387,6 +401,7 @@ def _notes(
                 ct600.accounts.average_employees,
                 unit=Unit.PURE,
             ),
+            *previous,
             ".",
         ),
     ]

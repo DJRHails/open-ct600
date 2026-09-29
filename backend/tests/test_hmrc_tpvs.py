@@ -125,6 +125,7 @@ COMPARATIVES = {
         "called_up_share_capital": 100,
     },
     "tax_on_profit": 11_210,
+    "average_employees": 2,
 }
 END_TO_END = {
     "trading micro-entity (FRS 105)": {},

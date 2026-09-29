@@ -8,6 +8,7 @@ COMPARATIVES = {
     "profit_and_loss": {"turnover": 90_000, "staff_costs": 20_000},
     "balance_sheet": {"current_assets": 15_000, "called_up_share_capital": 100},
     "tax_on_profit": 13_300,
+    "average_employees": 4,
 }
 
 
@@ -29,6 +30,14 @@ def test_comparatives_are_read():
     assert comparatives.profit_and_loss.turnover == 90_000
     assert comparatives.balance_sheet.current_assets == 15_000
     assert comparatives.tax_on_profit == 13_300
+    assert comparatives.average_employees == 4
+
+
+def test_previous_average_employees_may_be_unknown():
+    comparatives = make_return(**with_comparatives(average_employees=None)).accounts.comparatives
+
+    assert comparatives is not None
+    assert comparatives.average_employees is None
 
 
 def test_a_previous_period_of_up_to_18_months_is_allowed():
@@ -70,6 +79,7 @@ def test_a_reversed_previous_period_is_refused():
         {"profit_and_loss": {"turnover": -1}},
         {"balance_sheet": {"current_assets": -1}},
         {"tax_on_profit": -1},
+        {"average_employees": -1},
     ],
 )
 def test_previous_figures_cannot_be_negative(changes):

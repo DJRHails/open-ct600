@@ -34,6 +34,7 @@ COMPARATIVES: dict[str, Any] = {
     "profit_and_loss": PREVIOUS_PROFIT_AND_LOSS,
     "balance_sheet": PREVIOUS_BALANCE_SHEET,
     "tax_on_profit": 10_000,
+    "average_employees": 3,
 }
 NIL_PROFIT_AND_LOSS = dict.fromkeys(PREVIOUS_PROFIT_AND_LOSS, 0)
 DORMANT: dict[str, Any] = {
@@ -127,6 +128,21 @@ def test_previous_period_facts_equal_the_comparatives(validations, name):
         "prev-end-after-one-year": "3000",
     }
     assert validations[name].values("core:Equity")["prev-end-retained-earnings"] == "30350"
+
+
+@pytest.mark.parametrize("name", ["micro-with-comparatives", "small-with-comparatives"])
+def test_previous_average_employees_are_tagged(validations, name):
+    assert validations[name].values("core:AverageNumberEmployeesDuringPeriod") == {
+        "dur": "1",
+        "prev-dur": "3",
+    }
+    assert "(previous period: " in DOCUMENTS[name]
+
+
+def test_unknown_previous_average_employees_are_left_out(validations):
+    document = validations["dormant-with-nil-comparatives"]
+
+    assert document.values("core:AverageNumberEmployeesDuringPeriod") == {"dur": "1"}
 
 
 def test_micro_previous_other_income_and_expenses(validations):
