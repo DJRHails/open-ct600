@@ -3,6 +3,8 @@ import { NodePackageImporter } from "sass-embedded";
 import { createLogger } from "vite";
 import { defineConfig } from "vitest/config";
 
+import packageJson from "./package.json" with { type: "json" };
+
 // GOV.UK Frontend's service navigation still ships an Internet Explorer 11 media query hack,
 // `(min-width: 0\0)`, which LightningCSS reports while dropping it. The query only ever
 // matched IE, so dropping it is correct; hide exactly that report and nothing else.
@@ -15,6 +17,7 @@ logger.warn = (message, options) => {
 
 export default defineConfig({
   customLogger: logger,
+  define: { APP_VERSION: JSON.stringify(packageJson.version) },
   plugins: [react()],
   resolve: {
     alias: { "@": new URL("./src", import.meta.url).pathname },

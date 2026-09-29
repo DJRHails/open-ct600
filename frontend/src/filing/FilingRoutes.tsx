@@ -14,6 +14,9 @@ import { CreativeFormPage } from "@/filing/reliefs/CreativeFormPage";
 import { LoanDatesPage } from "@/filing/reliefs/LoanDatesPage";
 import { ResearchAndDevelopmentPage } from "@/filing/reliefs/ResearchAndDevelopmentPage";
 import { SurrenderersPage } from "@/filing/reliefs/SurrenderersPage";
+import { DeleteReturnPage } from "@/filing/returns/DeleteReturnPage";
+import { ImportReturnPage } from "@/filing/returns/ImportReturnPage";
+import { ReturnsPage } from "@/filing/returns/ReturnsPage";
 import { StartPage } from "@/filing/StartPage";
 import { ChoosePagesPage } from "@/filing/supplementary/ChoosePagesPage";
 import { PageAnswersPage } from "@/filing/supplementary/PageAnswersPage";
@@ -37,6 +40,9 @@ function FilingPages() {
     <Routes>
       <Route index element={<StartPage />} />
       <Route path="tasks" element={<TaskListPage />} />
+      <Route path="returns" element={<ReturnsPage />} />
+      <Route path="returns/import" element={<ImportReturnPage />} />
+      <Route path="returns/:id/delete" element={<DeleteReturnPage />} />
       <Route path="company-details" element={<CompanyDetailsPage />} />
       <Route path="accounting-period" element={<AccountingPeriodPage />} />
       <Route

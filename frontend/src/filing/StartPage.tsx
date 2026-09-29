@@ -2,7 +2,24 @@ import { Link } from "react-router";
 
 import { TwoThirds, usePageTitle, WarningText } from "@/components/content";
 import { StartButton } from "@/components/forms";
-import { TASK_LIST } from "@/filing/paths";
+import { useDraft } from "@/filing/draft";
+import { RETURNS, TASK_LIST } from "@/filing/paths";
+
+function SavedReturnsLink() {
+  const { returns } = useDraft();
+  const count = returns.length;
+  return (
+    <p className="govuk-body">
+      {count > 0
+        ? `You have ${count} ${count === 1 ? "return" : "returns"} saved in this browser. `
+        : "Have a return exported from Open CT600? "}
+      <Link className="govuk-link" to={RETURNS}>
+        {count > 0 ? "Go to your returns" : "Import it from Your returns"}
+      </Link>
+      .
+    </p>
+  );
+}
 
 export function StartPage() {
   usePageTitle("File your Company Tax Return");
@@ -25,7 +42,8 @@ export function StartPage() {
         or research and development, you can complete them too.
       </p>
       <p className="govuk-body">
-        It takes around 20 minutes. Your answers are saved in this browser as you go.
+        It takes around 20 minutes. Your answers are saved in this browser as you go. You can export
+        a return to a file to keep a copy, or to carry on in another browser.
       </p>
 
       <WarningText>
@@ -36,6 +54,7 @@ export function StartPage() {
       </WarningText>
 
       <StartButton to={TASK_LIST} />
+      <SavedReturnsLink />
 
       <h2 className="govuk-heading-m">Before you start</h2>
       <p className="govuk-body">You'll need your company's:</p>
