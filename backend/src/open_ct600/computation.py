@@ -205,6 +205,34 @@ class ReliefsSummary:
 
 
 @dataclass(frozen=True)
+class TradingAdjustments:
+    """Adjustments to the trading result that come from reliefs, not from the answers.
+
+    The trading result for tax (box 155 less the trading loss) is the profit per accounts,
+    adjusted as the answers say (depreciation, disallowable expenses, capital allowances, bank
+    interest), plus ``taxable_credits``, less both additional deductions, less
+    ``exempt_charitable_result``.
+
+    Attributes:
+        research_and_development_deduction: The SME or ERIS additional deduction.
+        creative_deduction: CT600P's predecessor and cultural additional deductions (P315).
+        taxable_credits: RDEC (L15) and AVEC/VGEC (P95), taxable trading income, in whole
+            pounds rounded down.
+        exempt_charitable_result: A charity whose income is all exempt (E20): its trading
+            result, which is left out of box 155.
+        losses_surrendered: Trading losses surrendered for R&D and creative payable credits and
+            as group relief (including carried-forward losses, C160); they do not carry
+            forward.
+    """
+
+    research_and_development_deduction: int
+    creative_deduction: int
+    taxable_credits: int
+    exempt_charitable_result: int
+    losses_surrendered: int
+
+
+@dataclass(frozen=True)
 class ReturnComputation:
     """The computed CT600: boxes, tax computation, accounts, loss position and reliefs.
 
@@ -219,6 +247,8 @@ class ReturnComputation:
         pages: The completed supplementary page trees by page code: the answers with every
             calculated box filled in (see ``open_ct600.pages.definitions``).
         reliefs: The reliefs claimed through supplementary pages.
+        trading_adjustments: How reliefs change the trading result and the losses carried
+            forward, for the tax computation document.
     """
 
     boxes: tuple[CT600Box, ...]
@@ -228,6 +258,7 @@ class ReturnComputation:
     losses_carried_forward: int
     pages: dict[str, dict[str, JsonValue]]
     reliefs: ReliefsSummary
+    trading_adjustments: TradingAdjustments
 
 
 BOX_LABELS: dict[int, str] = {
@@ -959,15 +990,28 @@ def _accounts(ct600: "CT600Return", corporation_tax: Decimal) -> AccountsSummary
 
 
 def _losses_carried_forward(
-    run: _Evaluation,
-    profits: _Profits,
-    surrendered: tuple[int, int, int],
-    group: GroupRelief | None,
+    run: _Evaluation, profits: _Profits, adjustments: TradingAdjustments
 ) -> int:
     brought_forward = run.ct600.tax_adjustments.losses_brought_forward
-    carried_forward_surrendered = group.carried_forward_trading_losses_surrendered if group else 0
-    remaining = brought_forward - profits.losses_used - carried_forward_surrendered
-    return max(remaining + profits.loss_arising - sum(surrendered), 0)
+    remaining = brought_forward - profits.losses_used + profits.loss_arising
+    return max(remaining - adjustments.losses_surrendered, 0)
+
+
+def _trading_adjustments(
+    stages: "_Stages", surrendered: tuple[int, int, int]
+) -> TradingAdjustments:
+    claim, creative = stages.claim, stages.standalone.creative
+    credits = (claim.rdec if claim else ZERO) + (creative.expenditure_credit if creative else ZERO)
+    group = stages.group
+    carried_forward = group.carried_forward_trading_losses_surrendered if group else 0
+    exempt = stages.standalone.exempt_charity
+    return TradingAdjustments(
+        research_and_development_deduction=claim.additional_deduction if claim else 0,
+        creative_deduction=creative.additional_deduction if creative else 0,
+        taxable_credits=whole_pounds_down(credits),
+        exempt_charitable_result=stages.profits.trading_result if exempt else 0,
+        losses_surrendered=sum(surrendered) + carried_forward,
+    )
 
 
 @dataclass(frozen=True)
@@ -1052,14 +1096,13 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     _check_completed_pages(run)
     if run.problems:
         return None, run.problems
+    trading_adjustments = _trading_adjustments(stages, surrendered)
     computation = ReturnComputation(
         boxes=tuple(run.boxes[number] for number in sorted(run.boxes)),
         tax=tax,
         accounts=_accounts(ct600, tax.tax_chargeable),
         trading_loss_arising=stages.profits.loss_arising,
-        losses_carried_forward=_losses_carried_forward(
-            run, stages.profits, surrendered, stages.group
-        ),
+        losses_carried_forward=_losses_carried_forward(run, stages.profits, trading_adjustments),
         pages={str(code): page.tree for code, page in run.pages.items()},
         reliefs=ReliefsSummary(
             group_relief=stages.group,
@@ -1067,5 +1110,6 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
             loans_to_participators=stages.loans,
             creative_industries=run.creative_industries,
         ),
+        trading_adjustments=trading_adjustments,
     )
     return computation, []

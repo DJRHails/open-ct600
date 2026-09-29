@@ -4,8 +4,9 @@ Micro-entity accounts (FRS 105) use the Companies Act micro-entity profit and lo
 small company accounts (FRS 102 section 1A) use format 1 (cost of sales, gross profit,
 administrative expenses). Both use the micro-entity balance sheet the return collects.
 
-A company whose profit and loss account is entirely nil is treated as dormant: its accounts
-claim the section 480 audit exemption and omit the profit and loss account.
+A company that answers that it was dormant (``AccountsDetails.dormant``, which requires a nil
+profit and loss account) has accounts that claim the section 480 audit exemption and omit the
+profit and loss account.
 """
 
 from dataclasses import dataclass
@@ -64,8 +65,8 @@ class _Contexts:
 
 
 def is_dormant(ct600: CT600Return) -> bool:
-    """Whether the profit and loss account is entirely nil."""
-    return not any(ct600.profit_and_loss.model_dump().values())
+    """Whether the company says it was dormant throughout the period."""
+    return ct600.accounts.dormant
 
 
 def _whole_pounds(amount: Decimal) -> int:

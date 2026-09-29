@@ -177,6 +177,10 @@ class _TradeResult:
     disallowable: int
     non_trading_credits: int
     capital_allowances: int
+    taxable_credits: int
+    research_and_development_deduction: int
+    creative_deduction: int
+    exempt_charitable_result: int
 
     @property
     def adjusted(self) -> int:
@@ -186,17 +190,26 @@ class _TradeResult:
             + self.disallowable
             - self.non_trading_credits
             - self.capital_allowances
+            + self.taxable_credits
+            - self.research_and_development_deduction
+            - self.creative_deduction
+            - self.exempt_charitable_result
         )
 
 
 def _trade_result(ct600: CT600Return, computation: ReturnComputation) -> _TradeResult:
     pnl, adjustments = ct600.profit_and_loss, ct600.tax_adjustments
+    reliefs = computation.trading_adjustments
     result = _TradeResult(
         profit_per_accounts=computation.accounts.profit_before_tax,
         depreciation=pnl.depreciation,
         disallowable=adjustments.disallowable_expenses,
         non_trading_credits=pnl.interest_income,
         capital_allowances=adjustments.capital_allowances,
+        taxable_credits=reliefs.taxable_credits,
+        research_and_development_deduction=reliefs.research_and_development_deduction,
+        creative_deduction=reliefs.creative_deduction,
+        exempt_charitable_result=reliefs.exempt_charitable_result,
     )
     boxes = {box.box: box.value for box in computation.boxes}
     if result.adjusted != boxes["155"] - computation.trading_loss_arising:
@@ -263,10 +276,63 @@ def _trade(
                 document.money("ct-comp:TotalCapitalAllowances", trade, result.capital_allowances),
                 deduction=True,
             ),
+            *_relief_rows(document, trade, result),
             adjusted,
         ),
         *_trade_losses(document, ct600, computation, contexts),
     ]
+
+
+def _untagged_row(label: str, amount: int, *, deduction: bool = False) -> etree._Element:
+    shown = f"({amount:,})" if deduction else f"{amount:,}"
+    return html.tr(html.td(label), html.td(shown, {"class": "n"}))
+
+
+def _relief_rows(
+    document: InlineDocument, trade: Context, result: _TradeResult
+) -> list[etree._Element]:
+    """Rows for the trade adjustments reliefs make; shown only when they apply.
+
+    The R&D additional deduction has a ct-comp element; the others (taxable RDEC and
+    expenditure credits, creative additional deductions, exempt charitable profits) are shown
+    untagged, like marginal relief.
+    """
+    rows = []
+    if result.taxable_credits:
+        rows.append(
+            _untagged_row(
+                "Add: R&D and creative expenditure credits (taxable)", result.taxable_credits
+            )
+        )
+    if result.research_and_development_deduction:
+        rows.append(
+            amount_row(
+                "Less: R&D additional deduction",
+                document.money(
+                    "ct-comp:AdjustmentsAdditionalDeductionForQualifyingRDExpenditureSME",
+                    trade,
+                    result.research_and_development_deduction,
+                ),
+                deduction=True,
+            )
+        )
+    if result.creative_deduction:
+        rows.append(
+            _untagged_row(
+                "Less: creative industries additional deduction",
+                result.creative_deduction,
+                deduction=True,
+            )
+        )
+    if result.exempt_charitable_result:
+        rows.append(
+            _untagged_row(
+                "Less: trading result exempt as a charity",
+                result.exempt_charitable_result,
+                deduction=True,
+            )
+        )
+    return rows
 
 
 def _trade_losses(
@@ -302,6 +368,17 @@ def _trade_losses(
                     computation.trading_loss_arising,
                 ),
             ),
+            *(
+                [
+                    _untagged_row(
+                        "Less: surrendered for tax credits or as group relief",
+                        computation.trading_adjustments.losses_surrendered,
+                        deduction=True,
+                    )
+                ]
+                if computation.trading_adjustments.losses_surrendered
+                else []
+            ),
             amount_row(
                 "Losses carried forward",
                 document.money(
@@ -321,7 +398,12 @@ def _profits(
     company = contexts.company
 
     def row(label: str, concept: str, box: str, **style: bool) -> etree._Element:
-        return amount_row(label, document.money(concept, company, boxes[box]), **style)
+        value = boxes.get(box, Decimal(0))
+        return amount_row(label, document.money(concept, company, value), **style)
+
+    def given(label: str, concept: str, box: str, **style: bool) -> list[etree._Element]:
+        """A row for a box the return only has for some companies (tonnage tax, group relief)."""
+        return [row(label, concept, box, **style)] if box in boxes else []
 
     return [
         html.h2("Profits chargeable to Corporation Tax"),
@@ -339,7 +421,8 @@ def _profits(
                 "ct-comp:ProfitsAndGainsFromNon-tradingLoanRelationships",
                 "170",
             ),
-            row("Chargeable gains", "ct-comp:NetChargeableGains", "210"),
+            *given("Tonnage tax profits", "ct-comp:TonnageTaxProfits", "200"),
+            row("Chargeable gains", "ct-comp:NetChargeableGains", "220"),
             row(
                 "Profits before other deductions and reliefs",
                 "ct-comp:ProfitsBeforeOtherDeductionsAndReliefs",
@@ -353,6 +436,13 @@ def _profits(
                 total=True,
             ),
             row("Less: qualifying donations", "ct-comp:QualifyingDonations", "305", deduction=True),
+            *given("Less: group relief", "ct-comp:GroupReliefClaimed", "310", deduction=True),
+            *given(
+                "Less: group relief for carried-forward losses",
+                "ct-comp:GroupReliefClaimedForCarriedForwardLosses",
+                "312",
+                deduction=True,
+            ),
             row(
                 "Total profits chargeable to Corporation Tax",
                 "ct-comp:TotalProfitsChargeableToCorporationTax",

@@ -68,8 +68,59 @@ def make_return(**overrides: dict[str, Any]) -> CT600Return:
         },
     }
     for section, values in overrides.items():
-        answers[section] = {**answers[section], **values}
+        answers[section] = {**answers.get(section, {}), **values}
     return CT600Return.model_validate(answers)
+
+
+RD_FORMS = {"claimed_in_previous_three_years": True, "additional_information_submitted": True}
+GROUP_RELIEF_CLAIM = {
+    "ClaimToGroupRelief": {
+        "CompanyInformation": {
+            "Company": [{"Name": "Sub Ltd", "TaxReference": "1234567891", "AmountClaimed": "10000"}]
+        },
+        "ClaimAuthorisation": {"CopyOfNoticesOfConsentAttached": "yes"},
+    }
+}
+TONNAGE_TAX = {
+    "TonnageTax": {
+        "Information": {
+            "TrainingCertificate": "yes",
+            "CompanyMetCharteredInLimit": "yes",
+            "NotRegistered": "na",
+            "OffshoreActivities": "no",
+        },
+        "QualifyingShips": {
+            "Ship": [
+                {
+                    "Name": "Northern Star",
+                    "IMOnumber": "9123456",
+                    "InterestInShip": "O",
+                    "GrossTonnage": "45000",
+                    "NetTonnage": "30099",
+                    "NumberDays": "365",
+                    "Flagged": "yes",
+                    "FirstTime": "no",
+                }
+            ]
+        },
+    }
+}
+ALL_EXEMPT_CHARITY = {
+    "ClaimExemption": {
+        "Status": {"ClaimingExemptionAllOrPart": "yes", "AllCharitable": {"AllExempt": "yes"}}
+    }
+}
+THEATRE = {
+    "CulturalReliefs": {
+        "Theatre": {
+            "CoreExpenditure": "500000",
+            "UKcoreExpenditure": "450000",
+            "AdditionalDeduction": "400000",
+            "LossesSurrenderedForTaxCredit": "300000",
+            "TaxCreditClaimed": "120000.00",
+        }
+    }
+}
 
 
 RETURNS = {
@@ -97,7 +148,7 @@ RETURNS = {
             "accruals_and_deferred_income": 0,
         },
         accounts={"trading_status": "never_traded", "directors": ["Ada Lovelace"]}
-        | {"signing_director": "Ada Lovelace", "average_employees": 0},
+        | {"signing_director": "Ada Lovelace", "average_employees": 0, "dormant": True},
     ),
     "loss-making-no-longer-trading": make_return(
         profit_and_loss={"turnover": 10_000},
@@ -117,6 +168,32 @@ RETURNS = {
             "current_assets": 5_000,
             "creditors_within_one_year": 30_000,
         },
+    ),
+    "eris-payable-credit": make_return(
+        profit_and_loss={"turnover": 10_000},
+        research_and_development={
+            **RD_FORMS,
+            "scheme": "eris",
+            "qualifying_expenditure": 50_000,
+            "intensity": "35",
+            "claim_payable_credit": True,
+        },
+        supplementary_pages={"L": {}},
+    ),
+    "merged-rdec": make_return(
+        research_and_development={**RD_FORMS, "scheme": "rdec", "qualifying_expenditure": 50_000},
+        supplementary_pages={"L": {}},
+    ),
+    "group-relief-and-tonnage-tax": make_return(
+        supplementary_pages={"C": GROUP_RELIEF_CLAIM, "F": TONNAGE_TAX},
+    ),
+    "charity-all-exempt": make_return(
+        company={"company_type": 8},
+        supplementary_pages={"E": ALL_EXEMPT_CHARITY},
+    ),
+    "theatre-tax-relief": make_return(
+        creative_industries={"additional_information_submitted": True},
+        supplementary_pages={"P": THEATRE},
     ),
 }
 COMPUTATIONS = {name: compute_return(ct600) for name, ct600 in RETURNS.items()}
