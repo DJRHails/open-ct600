@@ -11,7 +11,6 @@ assert that failed. Its ``exslt`` query binding runs on libxslt: every function 
 ``date:day-in-month``, ``date:date``, ``math:abs``) is implemented by libexslt.
 """
 
-import csv
 import re
 import threading
 from dataclasses import dataclass
@@ -21,6 +20,7 @@ from pathlib import Path
 from lxml import etree, isoschematron
 
 from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS
+from open_ct600.schema.spec import load_spec
 
 ARTEFACTS = Path(__file__).parent / "artefacts"
 _SCH_NS = "http://purl.oclc.org/dsdl/schematron"
@@ -90,8 +90,8 @@ class Problem:
         code: HMRC's error code: 4000-4999 for schema errors, 5004/5005/9xxx for business rules.
         message: HMRC's message for a business rule; libxml2's (naming the element and value)
             for a schema error.
-        box: The CT600 box (``"475"``, ``"N095"``...) of the element at fault, where HMRC's box
-            map places one.
+        box: The CT600 box (``"475"``, ``"A80"``...) of the element at fault, when that
+            element is a box in the schema spec (``open_ct600.schema``).
         path: The element at fault, such as
             ``/IRenvelope/CompanyTaxReturn/Declaration/Name``; ``[n]`` marks the n-th of
             repeated elements.
@@ -214,35 +214,15 @@ def _path(element: etree._Element) -> str:
 
 
 def _box(path: str | None) -> str | None:
-    """Return the box HMRC's box map gives the element at ``path``.
-
-    The box map is extracted from HMRC's specDoc PDF: main-return paths are absolute (some cut
-    short mid-name by the PDF layout, matched here as unique prefixes); supplementary-page
-    paths are relative to XSD types and are not resolved here.
-    """
+    """Return the CT600 box of the element at ``path``, from the schema spec."""
     if path is None:
         return None
-    bare = _POSITION.sub("", path)
-    boxes = _box_map()
-    if bare in boxes:
-        return boxes[bare]
-    truncated = {
-        box
-        for prefix, box in boxes.items()
-        if bare.startswith(prefix) and not bare.startswith(f"{prefix}/")
-    }
-    return truncated.pop() if len(truncated) == 1 else None
-
-
-@cache
-def _box_map() -> dict[str, str]:
-    with (ARTEFACTS / "box-map-v1.995.tsv").open(encoding="utf-8", newline="") as file:
-        rows = csv.DictReader(file, delimiter="\t")
-        return {
-            row["path"]: row["box_id"].strip("[]")
-            for row in rows
-            if row["path"].startswith("/IRenvelope/") and any(c.isdigit() for c in row["box_id"])
-        }
+    try:
+        return load_spec().node(_POSITION.sub("", path)).box
+    except LookupError:
+        # Outside the return (the GovTalk header), unknown to the schema (the element at fault
+        # in a schema error), or in both branches of a choice (AttachedFiles): no single box.
+        return None
 
 
 class _LocalArtefacts(etree.Resolver):

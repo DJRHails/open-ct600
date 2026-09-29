@@ -82,7 +82,7 @@ def test_business_rule_box_475_required_when_440_positive():
         Problem(
             code=9319,
             message="Box 475 must be completed if Box 440 is greater than 0 (zero)",
-            box="N002",
+            box=None,
             path="/IRenvelope/CompanyTaxReturn",
         )
         in problems
@@ -135,7 +135,8 @@ def test_utr_must_match_box_3():
         (b"<RegistrationNumber>12345678", b"<RegistrationNumber>ab", 4085, "2"),
         (b"<Name>Test</Name>", b"", 4065, "985"),
         (b"<Total>100000.00</Total>", b"<Total>lots</Total>", 4020, "145"),
-        (b'ReturnType="new"', b'ReturnType="old"', 4080, "N002"),
+        (b'ReturnType="new"', b'ReturnType="old"', 4080, None),
+        (b"<TaxRate>19.00</TaxRate>", b"<TaxRate>101.00</TaxRate>", 4083, "340"),
         (b"<Declaration>", b"<Declaration><Bogus/>", 4065, None),
     ],
 )
@@ -175,7 +176,6 @@ def test_packaged_artefacts_match_the_published_specs():
         "CT-2014-v1-994.sch": "ct600-v1.994/CT-2014-v1-994.sch",
         "envelope-v2-0-HMRC.xsd": "ct600-v1.994/envelope-v2-0-HMRC.xsd",
         "xmldsig-core-schema.xsd": "ct600-v1.994/xmldsig-core-schema.xsd",
-        "box-map-v1.995.tsv": "box-map-v1.995.tsv",
     }
 
     assert sorted(path.name for path in ARTEFACTS.iterdir()) == sorted(published)
