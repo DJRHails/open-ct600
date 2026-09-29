@@ -189,7 +189,6 @@ class _TradeResult:
     disallowable: int
     non_trading_credits: int
     capital_allowances: int
-    taxable_credits: int
     research_and_development_deduction: int
     creative_deduction: int
     exempt_charitable_result: int
@@ -202,7 +201,6 @@ class _TradeResult:
             + self.disallowable
             - self.non_trading_credits
             - self.capital_allowances
-            + self.taxable_credits
             - self.research_and_development_deduction
             - self.creative_deduction
             - self.exempt_charitable_result
@@ -218,7 +216,6 @@ def _trade_result(ct600: CT600Return, computation: ReturnComputation) -> _TradeR
         disallowable=adjustments.disallowable_expenses,
         non_trading_credits=pnl.interest_income,
         capital_allowances=adjustments.capital_allowances,
-        taxable_credits=reliefs.taxable_credits,
         research_and_development_deduction=reliefs.research_and_development_deduction,
         creative_deduction=reliefs.creative_deduction,
         exempt_charitable_result=reliefs.exempt_charitable_result,

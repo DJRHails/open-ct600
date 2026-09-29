@@ -89,7 +89,11 @@ def tax_and_credit_rows(
 def taxable_credit_rows(
     document: InlineDocument, computation: ReturnComputation, trade: Context
 ) -> list[etree._Element]:
-    """The RDEC and AVEC/VGEC added to trading profits, and their rounding to whole pounds."""
+    """The RDEC and AVEC/VGEC in trading profits, shown for information.
+
+    The accounts take them as other income (``AccountsSummary.other_income``, in whole pounds
+    rounded down), so they are already in the profit per accounts and are not added again.
+    """
     claim = computation.reliefs.research_and_development
     creative = computation.reliefs.creative_industries
     rdec = claim.rdec if claim is not None else Decimal(0)
@@ -97,22 +101,17 @@ def taxable_credit_rows(
     rows = []
     if rdec:
         rows.append(
-            amount_row(
-                "Add: R&D expenditure credit (taxable)",
+            text_row(
+                "Included in the profit per accounts: R&D expenditure credit (taxable) of £",
                 document.money("ct-comp:AmountOfRDExpenditureCredit", trade, rdec, decimals=2),
             )
         )
     if expenditure_credit:
         rows.append(
-            untagged_row(
-                "Add: audio-visual and video games expenditure credits (taxable)",
-                expenditure_credit,
+            text_row(
+                "Included in the profit per accounts: audio-visual and video games expenditure "
+                f"credits (taxable) of £{expenditure_credit:,.2f}"
             )
-        )
-    rounding = rdec + expenditure_credit - computation.trading_adjustments.taxable_credits
-    if rounding:
-        rows.append(
-            untagged_row("Less: credits rounded down to whole pounds", rounding, deduction=True)
         )
     return rows
 

@@ -110,6 +110,16 @@ class AccountsSummary:
     plus prepayments less creditors due within a year; total assets less current liabilities
     add fixed assets and share capital not paid; net assets then deduct creditors due after a
     year, provisions, and accruals and deferred income.
+
+    Attributes:
+        other_income: The RDEC and AVEC/VGEC credits, which the profit and loss answers leave
+            out and the service adds: they are income in the accounts (above the line) and
+            taxable trading income, so profit before tax includes them.
+        corporation_tax: The tax on profit in the accounts: the Corporation Tax after reliefs
+            in terms of tax (box 475), CFC tax and RPDT (500), the supplementary charge (505)
+            and restitution tax (527), less payable tax credits (SME/ERIS R&D, L170, and
+            predecessor and cultural creative credits, P320), which are tax credits. s455 tax
+            (box 480) is not a tax on profit and is left out (review finding L3).
     """
 
     turnover: int
@@ -118,6 +128,7 @@ class AccountsSummary:
     profit_before_tax: int
     corporation_tax: Decimal
     profit_after_tax: Decimal
+    other_income: int
     called_up_share_capital_not_paid: int
     fixed_assets: int
     current_assets: int
@@ -1055,9 +1066,19 @@ def _check_completed_pages(run: _Evaluation) -> None:
             )
 
 
-def _accounts(ct600: "CT600Return", corporation_tax: Decimal) -> AccountsSummary:
+def _tax_on_profit(run: _Evaluation) -> Decimal:
+    """The accounts' tax charge (see ``AccountsSummary.corporation_tax``)."""
+    taxes = sum((run.value(box) for box in (475, 500, 505, 527)), ZERO)
+    research = run.research_and_development
+    creative = run.creative_industries
+    credits = (research.credit_claimed or ZERO) if research else ZERO
+    credits += creative.tax_credit if creative else ZERO
+    return taxes - credits
+
+
+def _accounts(ct600: "CT600Return", corporation_tax: Decimal, other_income: int) -> AccountsSummary:
     pnl, sheet = ct600.profit_and_loss, ct600.balance_sheet
-    profit_before_tax = pnl.turnover + pnl.interest_income - pnl.total_expenses
+    profit_before_tax = pnl.turnover + pnl.interest_income + other_income - pnl.total_expenses
     net_current_assets = (
         sheet.current_assets
         + sheet.prepayments_and_accrued_income
@@ -1079,6 +1100,7 @@ def _accounts(ct600: "CT600Return", corporation_tax: Decimal) -> AccountsSummary
         profit_before_tax=profit_before_tax,
         corporation_tax=corporation_tax,
         profit_after_tax=profit_before_tax - corporation_tax,
+        other_income=other_income,
         called_up_share_capital_not_paid=sheet.called_up_share_capital_not_paid,
         fixed_assets=sheet.fixed_assets,
         current_assets=sheet.current_assets,
@@ -1202,7 +1224,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     computation = ReturnComputation(
         boxes=tuple(run.boxes[number] for number in sorted(run.boxes)),
         tax=tax,
-        accounts=_accounts(ct600, tax.tax_chargeable),
+        accounts=_accounts(ct600, _tax_on_profit(run), trading_adjustments.taxable_credits),
         trading_loss_arising=stages.profits.loss_arising,
         losses_carried_forward=_losses_carried_forward(run, stages.profits, trading_adjustments),
         pages={str(code): page.tree for code, page in run.pages.items()},

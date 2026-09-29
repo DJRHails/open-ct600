@@ -204,6 +204,11 @@ RETURNS = {
         },
     ),
     "close-investment-holding-company": make_return(company={"company_type": 2}),
+    "merged-rdec-small-accounts": make_return(
+        accounts={"standard": "small"},
+        research_and_development={**RD_FORMS, "scheme": "rdec", "qualifying_expenditure": 50_000},
+        supplementary_pages={"L": {}},
+    ),
 }
 COMPUTATIONS = {name: compute_return(ct600) for name, ct600 in RETURNS.items()}
 
@@ -447,4 +452,15 @@ def test_ring_fence_profits_are_tagged_at_their_own_rate(validations):
     assert _only(document, "ct-comp:FY1SecondRateOfTax") == "0.30"
     assert Decimal(_only(document, "ct-comp:FY1AmountOfProfitChargeableAtSecondRate")) == _box(
         computation, "350"
+    )
+
+
+@pytest.mark.parametrize("name", ["merged-rdec", "merged-rdec-small-accounts"])
+def test_accounts_include_the_rdec_so_the_tax_charge_reconciles(validations, name):
+    # Review L3: the RDEC (20% x 50,000 = 10,000) is other income in the accounts.
+    accounts, summary = validations[f"{name}-accounts"], COMPUTATIONS[name].accounts
+
+    assert summary.other_income == 10_000
+    assert _only(accounts, "core:ProfitLossOnOrdinaryActivitiesBeforeTax") == str(
+        summary.profit_before_tax
     )

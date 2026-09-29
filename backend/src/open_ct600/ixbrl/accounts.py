@@ -246,9 +246,9 @@ def _profit_and_loss(
     tax = _whole_pounds(summary.corporation_tax)
     dur = contexts.duration
     rows = (
-        _micro_operating_rows(document, ct600, dur)
+        _micro_operating_rows(document, ct600, dur, summary.other_income)
         if ct600.accounts.standard == "micro"
-        else _small_operating_rows(document, ct600, dur)
+        else _small_operating_rows(document, ct600, dur, summary.other_income)
     )
     return [
         html.h2(f"Profit and loss account for the {period_ended(period.start, period.end)}"),
@@ -276,14 +276,15 @@ def _profit_and_loss(
 
 
 def _micro_operating_rows(
-    document: InlineDocument, ct600: CT600Return, dur: Context
+    document: InlineDocument, ct600: CT600Return, dur: Context, credits: int
 ) -> list[etree._Element]:
+    """The micro-entity format's lines; other income includes the RDEC and AVEC/VGEC."""
     pnl = ct600.profit_and_loss
     return [
         amount_row("Turnover", document.money("core:TurnoverRevenue", dur, pnl.turnover)),
         amount_row(
             "Other income",
-            document.money("core:OtherOperatingIncomeFormat2", dur, pnl.interest_income),
+            document.money("core:OtherOperatingIncomeFormat2", dur, pnl.interest_income + credits),
         ),
         amount_row(
             "Cost of raw materials and consumables",
@@ -309,11 +310,22 @@ def _micro_operating_rows(
 
 
 def _small_operating_rows(
-    document: InlineDocument, ct600: CT600Return, dur: Context
+    document: InlineDocument, ct600: CT600Return, dur: Context, credits: int
 ) -> list[etree._Element]:
+    """Format 1's lines; the RDEC and AVEC/VGEC are other operating income."""
     pnl = ct600.profit_and_loss
     gross_profit = pnl.turnover - pnl.cost_of_sales
     administrative = pnl.staff_costs + pnl.depreciation + pnl.other_expenses
+    other_income = (
+        [
+            amount_row(
+                "Other operating income",
+                document.money("core:OtherOperatingIncomeFormat1", dur, credits),
+            )
+        ]
+        if credits
+        else []
+    )
     return [
         amount_row("Turnover", document.money("core:TurnoverRevenue", dur, pnl.turnover)),
         amount_row(
@@ -331,9 +343,12 @@ def _small_operating_rows(
             document.money("core:AdministrativeExpenses", dur, administrative),
             deduction=True,
         ),
+        *other_income,
         amount_row(
             "Operating profit (loss)",
-            document.money("core:OperatingProfitLoss", dur, gross_profit - administrative),
+            document.money(
+                "core:OperatingProfitLoss", dur, gross_profit - administrative + credits
+            ),
             total=True,
         ),
         amount_row(
