@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { Link } from "react-router";
 
 import { TwoThirds, usePageTitle } from "@/components/content";
 import { Button } from "@/components/forms";
 import { useDraft } from "@/filing/draft";
-import { CHECK_ANSWERS, CHOOSE_PAGES, pagePath } from "@/filing/paths";
+import { CHECK_ANSWERS, CHOOSE_PAGES, pagePath, RETURNS } from "@/filing/paths";
 import {
   completedCount,
   needsSchema,
@@ -112,7 +113,7 @@ function useSupplementaryTasks(): Task[] {
 
 export function TaskListPage() {
   usePageTitle("Company Tax Return");
-  const { draft, receipt, deleteAnswers } = useDraft();
+  const { draft, receipt } = useDraft();
   const supplementary = useSupplementaryTasks();
   const sections: Task[] = SECTION_ORDER.map((section) => ({
     id: section,
@@ -151,18 +152,54 @@ export function TaskListPage() {
         <CheckTask canStart={completed === total} />
       </ul>
 
-      {started || receipt !== null ? (
+      <SavedAnswers canDelete={started || receipt !== null} />
+    </TwoThirds>
+  );
+}
+
+/** Where the answers are kept, how to take them elsewhere, and how to delete them. */
+function SavedAnswers({ canDelete }: { canDelete: boolean }) {
+  const { returns, deleteAnswers } = useDraft();
+  const [deleted, setDeleted] = useState(false);
+  const remaining = returns.length;
+
+  function remove() {
+    deleteAnswers();
+    setDeleted(true);
+  }
+
+  return (
+    <>
+      <h2 className="govuk-heading-s">Your saved answers</h2>
+      <div aria-live="polite">
+        {deleted ? (
+          <div className="govuk-inset-text">
+            Your answers have been deleted.{" "}
+            {remaining > 0
+              ? `You still have ${remaining} ${remaining === 1 ? "return" : "returns"} saved. `
+              : ""}
+            <Link className="govuk-link" to={RETURNS}>
+              Go to your returns
+            </Link>
+          </div>
+        ) : null}
+      </div>
+      <p className="govuk-body">
+        Your answers, and the receipt for any return you have submitted, are saved in this browser
+        only. To keep a copy or carry on in another browser, export this return from{" "}
+        <Link className="govuk-link" to={RETURNS}>
+          your returns
+        </Link>
+        .
+      </p>
+      {canDelete ? (
         <>
-          <h2 className="govuk-heading-s">Your saved answers</h2>
-          <p className="govuk-body">
-            Your answers, and the receipt for any return you have submitted, are saved in this
-            browser only. Delete them if you are using a shared computer.
-          </p>
-          <Button type="button" variant="warning" onClick={deleteAnswers}>
+          <p className="govuk-body">Delete your answers if you are using a shared computer.</p>
+          <Button type="button" variant="warning" onClick={remove}>
             Delete your answers
           </Button>
         </>
       ) : null}
-    </TwoThirds>
+    </>
   );
 }

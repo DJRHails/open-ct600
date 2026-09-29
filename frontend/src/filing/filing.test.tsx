@@ -3,7 +3,8 @@ import type { UserEvent } from "@testing-library/user-event";
 
 import type { ReturnComputation, SubmissionReceipt } from "@/api";
 import { schemaPages } from "@/test-schema";
-import { bodySentTo, renderApp, stubApi } from "@/test-utils";
+import { RETURNS_KEY } from "@/filing/returns/savedReturns";
+import { bodySentTo, openDraft, renderApp, seedDraft, stubApi } from "@/test-utils";
 
 const TAX = {
   period_start: "2024-04-01",
@@ -204,7 +205,11 @@ describe("filing a return", () => {
     expect(bodySentTo(fetchMock, "/returns/submit")).toMatchObject({
       declaration: { name: "Ada Lovelace", capacity: "director", confirmed: true },
     });
-    expect(window.localStorage.getItem("open-ct600:draft:v1")).toBeNull();
+    expect(openDraft()).toEqual({});
+    const stored = JSON.parse(window.localStorage.getItem(RETURNS_KEY) ?? "{}");
+    expect(stored.returns).toEqual([
+      expect.objectContaining({ submitted_at: expect.any(String), draft: expect.any(Object) }),
+    ]);
 
     await user.click(screen.getByRole("link", { name: "Start another return" }));
     expect(screen.getByText("You have completed 0 of 8 sections.")).toBeInTheDocument();
@@ -240,7 +245,7 @@ describe("filing a return", () => {
       expect.stringContaining("in the correct format"),
     );
     expect(document.title).toBe("Error: Company details – Open CT600");
-    expect(window.localStorage.getItem("open-ct600:draft:v1")).toBeNull();
+    expect(window.localStorage.getItem(RETURNS_KEY)).toBeNull();
   });
 
   it("sends the user back to the section the service rejected", async () => {
@@ -255,30 +260,27 @@ describe("filing a return", () => {
         ],
       },
     }));
-    window.localStorage.setItem(
-      "open-ct600:draft:v1",
-      JSON.stringify({
-        company: { ...COMPANY, company_type: "0" },
-        period: {
-          start: { day: "1", month: "4", year: "2027" },
-          end: { day: "31", month: "3", year: "2028" },
-        },
-        profit_and_loss: {},
-        tax_adjustments: {},
-        balance_sheet: {},
-        accounts: {
-          standard: "micro",
-          directors: ["Ada Lovelace"],
-          signing_director: "Ada Lovelace",
-          approval_date: { day: "1", month: "6", year: "2028" },
-          average_employees: "1",
-          trading_status: "trading",
-          dormant: "no",
-        },
-        chosen_pages: [],
-        research_and_development: { claiming: "no" },
-      }),
-    );
+    seedDraft({
+      company: { ...COMPANY, company_type: "0" },
+      period: {
+        start: { day: "1", month: "4", year: "2027" },
+        end: { day: "31", month: "3", year: "2028" },
+      },
+      profit_and_loss: {},
+      tax_adjustments: {},
+      balance_sheet: {},
+      accounts: {
+        standard: "micro",
+        directors: ["Ada Lovelace"],
+        signing_director: "Ada Lovelace",
+        approval_date: { day: "1", month: "6", year: "2028" },
+        average_employees: "1",
+        trading_status: "trading",
+        dormant: "no",
+      },
+      chosen_pages: [],
+      research_and_development: { claiming: "no" },
+    });
     renderApp("/file/check-your-answers");
 
     const link = await screen.findByRole("link", { name: /have not been set yet/ });
@@ -335,8 +337,7 @@ describe("filing a return", () => {
     await save(user);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Company Tax Return");
-    const saved = JSON.parse(window.localStorage.getItem("open-ct600:draft:v1") ?? "{}");
-    expect(saved.accounts).toMatchObject({
+    expect(openDraft().accounts).toMatchObject({
       directors: ["Ada Lovelace"],
       signing_director: "Ada Lovelace",
       standard: "small",
@@ -364,8 +365,7 @@ describe("filing a return", () => {
     await user.type(question, "4,000");
     await save(user);
 
-    const saved = JSON.parse(window.localStorage.getItem("open-ct600:draft:v1") ?? "{}");
-    expect(saved.tax_adjustments).toMatchObject({
+    expect(openDraft().tax_adjustments).toMatchObject({
       losses_brought_forward: "10,000",
       losses_brought_forward_before_april_2017: "4,000",
     });
@@ -373,33 +373,30 @@ describe("filing a return", () => {
 
   it("shows the losses from before 1 April 2017 in check your answers and sends them", async () => {
     const fetchMock = stubApi(demoReplies);
-    window.localStorage.setItem(
-      "open-ct600:draft:v1",
-      JSON.stringify({
-        company: { ...COMPANY, company_type: "0" },
-        period: {
-          start: { day: "1", month: "4", year: "2024" },
-          end: { day: "31", month: "3", year: "2025" },
-        },
-        profit_and_loss: { turnover: "100000" },
-        tax_adjustments: {
-          losses_brought_forward: "10000",
-          losses_brought_forward_before_april_2017: "4000",
-        },
-        balance_sheet: {},
-        accounts: {
-          standard: "micro",
-          directors: ["Ada Lovelace"],
-          signing_director: "Ada Lovelace",
-          approval_date: { day: "30", month: "6", year: "2025" },
-          average_employees: "1",
-          trading_status: "trading",
-          dormant: "no",
-        },
-        chosen_pages: [],
-        research_and_development: { claiming: "no" },
-      }),
-    );
+    seedDraft({
+      company: { ...COMPANY, company_type: "0" },
+      period: {
+        start: { day: "1", month: "4", year: "2024" },
+        end: { day: "31", month: "3", year: "2025" },
+      },
+      profit_and_loss: { turnover: "100000" },
+      tax_adjustments: {
+        losses_brought_forward: "10000",
+        losses_brought_forward_before_april_2017: "4000",
+      },
+      balance_sheet: {},
+      accounts: {
+        standard: "micro",
+        directors: ["Ada Lovelace"],
+        signing_director: "Ada Lovelace",
+        approval_date: { day: "30", month: "6", year: "2025" },
+        average_employees: "1",
+        trading_status: "trading",
+        dormant: "no",
+      },
+      chosen_pages: [],
+      research_and_development: { claiming: "no" },
+    });
     renderApp("/file/check-your-answers");
 
     const row = (await screen.findByText(/arose before 1 April 2017/)).closest("div");

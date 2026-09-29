@@ -13,9 +13,14 @@ import {
 } from "@/filing/reliefs";
 import { getAt, type RawTree, setAt } from "@/filing/supplementary/answers";
 import { schemaPages } from "@/test-schema";
-import { bodySentTo, renderApp, type Reply, stubApi } from "@/test-utils";
-
-const DRAFT_KEY = "open-ct600:draft:v1";
+import {
+  bodySentTo,
+  openDraft as saved,
+  renderApp,
+  type Reply,
+  seedDraft as seed,
+  stubApi,
+} from "@/test-utils";
 
 const SECTIONS = {
   company: {
@@ -75,14 +80,6 @@ const GROUP_RELIEF = {
     },
   },
 };
-
-function seed(draft: object) {
-  window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-}
-
-function saved() {
-  return JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "{}");
-}
 
 function stub(handler: (path: string) => Reply | undefined = () => undefined) {
   return stubApi((path) => {

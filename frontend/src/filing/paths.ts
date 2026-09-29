@@ -7,6 +7,13 @@ export const CHECK_ANSWERS = "/file/check-your-answers";
 export const DECLARATION = "/file/declaration";
 export const CONFIRMATION = "/file/confirmation";
 export const CHOOSE_PAGES = "/file/supplementary-pages";
+export const RETURNS = "/file/returns";
+export const IMPORT_RETURN = "/file/returns/import";
+
+/** The page that asks the user to confirm deleting a saved return. */
+export function deleteReturnPath(id: string): string {
+  return `${RETURNS}/${id}/delete`;
+}
 
 /** A supplementary page's own check your answers page. */
 export function pagePath(code: PageCode): string {

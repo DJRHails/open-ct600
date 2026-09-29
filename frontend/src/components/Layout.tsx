@@ -1,12 +1,13 @@
 import { ServiceNavigation } from "govuk-frontend";
 import { useEffect, useRef } from "react";
-import { Link, Outlet, useLocation, useMatch } from "react-router";
+import { Link, matchPath, Outlet, useLocation } from "react-router";
 
 export const SERVICE_NAME = "Open CT600";
 export const REPOSITORY_URL = "https://github.com/DJRHails/open-ct600";
 
 const NAVIGATION = [
   { to: "/file", label: "File a return" },
+  { to: "/file/returns", label: "Your returns" },
   { to: "/calculator", label: "Tax calculator" },
   { to: "/pricing", label: "Pricing" },
   { to: "/guides", label: "Guides" },
@@ -16,6 +17,7 @@ const NAVIGATION = [
 function Header() {
   const navigation = useRef<HTMLElement>(null);
   const toggle = useRef<ServiceNavigation>(null);
+  const active = useActiveItem();
 
   useEffect(() => {
     if (navigation.current && !toggle.current) {
@@ -56,7 +58,12 @@ function Header() {
               </button>
               <ul className="govuk-service-navigation__list" id="navigation">
                 {NAVIGATION.map((item) => (
-                  <NavigationItem key={item.to} to={item.to} label={item.label} />
+                  <NavigationItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    isActive={item.to === active}
+                  />
                 ))}
               </ul>
             </nav>
@@ -67,8 +74,18 @@ function Header() {
   );
 }
 
-function NavigationItem({ to, label }: { to: string; label: string }) {
-  const isActive = useMatch({ path: to, end: false }) !== null;
+/** The navigation item for this page: the longest one it is under, so /file/returns is not /file. */
+function useActiveItem(): string | undefined {
+  const { pathname } = useLocation();
+  const matching = NAVIGATION.filter(
+    ({ to }) => matchPath({ path: to, end: false }, pathname) !== null,
+  );
+  return matching.toSorted((a, b) => b.to.length - a.to.length)[0]?.to;
+}
+
+type NavigationItemProps = { to: string; label: string; isActive: boolean };
+
+function NavigationItem({ to, label, isActive }: NavigationItemProps) {
   const itemClass = isActive
     ? "govuk-service-navigation__item govuk-service-navigation__item--active"
     : "govuk-service-navigation__item";
