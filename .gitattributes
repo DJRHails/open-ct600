@@ -2,3 +2,4 @@
 specs/hmrc/** -text
 specs/ixbrl/examples/** -text
 backend/tests/fixtures/** -text
+backend/src/open_ct600/hmrc/artefacts/** -text
