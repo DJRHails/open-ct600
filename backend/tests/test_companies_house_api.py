@@ -329,6 +329,51 @@ def test_unknown_company_is_a_404():
     assert response.json() == {"detail": "Companies House has no company with that number"}
 
 
+NOT_FOUND = json_answer({"errors": [{"error": "not-found"}]}, status=404)
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [NOT_FOUND, lambda: httpx2.Response(500), failing(httpx2.ConnectError("refused"))],
+    ids=["404", "500", "connect"],
+)
+def test_officers_failing_still_gives_the_record_without_directors(answer, caplog):
+    stub = StubCompaniesHouse()
+    stub.answers[f"/company/{COMPANY}/officers"] = answer
+
+    with caplog.at_level(logging.DEBUG):
+        response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["name"] == "ACME WIDGETS LTD"
+    assert record["directors"] == []
+    assert record["previous_accounts"] is not None
+    assert "officers" in caplog.text
+    assert API_KEY not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [NOT_FOUND, lambda: httpx2.Response(500), failing(httpx2.ConnectError("refused"))],
+    ids=["404", "500", "connect"],
+)
+def test_filing_history_failing_still_gives_the_record_without_previous_accounts(answer):
+    stub = StubCompaniesHouse()
+    stub.answers[f"/company/{COMPANY}/filing-history"] = answer
+
+    response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["name"] == "ACME WIDGETS LTD"
+    assert len(record["directors"]) == 2
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "Companies House couldn't provide the latest accounts just now. Try again later."
+    )
+
+
 @pytest.mark.parametrize(
     ("answer", "message"),
     [

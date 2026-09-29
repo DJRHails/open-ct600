@@ -165,13 +165,17 @@ async def search(client: CompaniesHouseClient, query: str) -> SearchResults:
 async def company_record(client: CompaniesHouseClient, number: str) -> CompanyRecord:
     """Assemble a company's record from its profile, officers and latest accounts.
 
+    Only the profile is essential. If the officers can't be fetched (Companies House answers
+    404 for some companies without officer records), the record has no directors; if the
+    accounts can't, ``previous_accounts_unavailable`` says why.
+
     Raises:
         CompanyNotFoundError: If Companies House has no such company.
-        CompaniesHouseUnavailableError: If the profile or officers cannot be fetched.
+        CompaniesHouseUnavailableError: If the profile cannot be fetched.
     """
     profile = await client.company(number)
     officers, (previous, unavailable) = await asyncio.gather(
-        client.officers(number), _previous_accounts(client, number)
+        _safely(client.officers(number), "Company officers"), _previous_accounts(client, number)
     )
     sic_codes = [
         SicCode(code=code, description=sic_description(code))
@@ -187,7 +191,7 @@ async def company_record(client: CompaniesHouseClient, number: str) -> CompanyRe
         registered_office=_address(profile.get("registered_office_address")),
         sic_codes=sic_codes,
         principal_activity=sic_codes[0].description if sic_codes else None,
-        directors=_current_directors(officers),
+        directors=_current_directors(officers or {}),
         accounts=accounts,
         suggested_period=_suggested_period(accounts.next_period),
         previous_accounts=previous,
@@ -271,7 +275,7 @@ async def _previous_accounts(
     client: CompaniesHouseClient, number: str
 ) -> tuple[PreviousAccounts | None, str | None]:
     """The latest filed accounts' figures, or why there are none."""
-    filings = await _safely(client.accounts_filings(number))
+    filings = await _safely(client.accounts_filings(number), "Previous accounts")
     if filings is None:
         return None, UNAVAILABLE_FAILED
     latest = next((item for item in filings.get("items", []) if item.get("type") == "AA"), None)
@@ -288,12 +292,12 @@ async def _previous_accounts(
 async def _read_document(
     client: CompaniesHouseClient, document_id: str, *, filed_on: str
 ) -> tuple[PreviousAccounts | None, str | None]:
-    metadata = await _safely(client.document_metadata(document_id))
+    metadata = await _safely(client.document_metadata(document_id), "Previous accounts")
     if metadata is None:
         return None, UNAVAILABLE_FAILED
     if XHTML not in (metadata.get("resources") or {}):
         return None, UNAVAILABLE_PDF
-    content = await _safely(client.document_content(document_id, XHTML))
+    content = await _safely(client.document_content(document_id, XHTML), "Previous accounts")
     if content is None:
         return None, UNAVAILABLE_FAILED
     try:
@@ -303,14 +307,15 @@ async def _read_document(
     return PreviousAccounts(**filed.model_dump(), filed_on=date.fromisoformat(filed_on)), None
 
 
-async def _safely[T](request: Coroutine[Any, Any, T]) -> T | None:
+async def _safely[T](request: Coroutine[Any, Any, T], part: str) -> T | None:
     """The request's result, or ``None`` if Companies House could not provide it.
 
-    Previous accounts are extra: a failure there leaves the rest of the record usable, is
-    logged, and is reported as ``previous_accounts_unavailable``.
+    Everything but the profile is extra: a failure (even a 404) fetching ``part`` leaves the
+    rest of the record usable, and is logged (the error names the path and status, never the
+    key).
     """
     try:
         return await request
     except (CompaniesHouseUnavailableError, CompanyNotFoundError) as error:
-        logger.warning("Previous accounts unavailable: %s", error)
+        logger.warning("%s unavailable: %s", part, error)
         return None
