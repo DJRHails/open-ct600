@@ -11,6 +11,7 @@ import {
   LEGAL_FORMS,
   supportedLegalForm,
 } from "@/filing/companiesHouse";
+import { PREVIOUS_EMPLOYEES, validatePreviousEmployees } from "@/filing/comparatives";
 import { useDraft } from "@/filing/draft";
 import {
   type AccountsAnswers,
@@ -152,15 +153,27 @@ export function AccountsDetailsPage() {
     ...(draft.accounts ?? prefill),
   });
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [previousEmployees, setPreviousEmployees] = useState(() => {
+    const filed = record?.previous_accounts?.average_employees;
+    return draft.comparatives?.average_employees ?? (filed == null ? "" : String(filed));
+  });
   const named = [...new Set(values.directors.map((d) => d.trim()).filter(Boolean))];
 
   function save() {
     const result = validateAccounts(values, periodEnd(draft));
-    if (!result.ok) {
-      setErrors(result.errors);
+    const previous = validatePreviousEmployees(previousEmployees);
+    const previousError = values.first_period === "no" && !previous.ok ? previous.error : null;
+    if (!result.ok || previousError) {
+      setErrors({
+        ...(result.ok ? {} : result.errors),
+        ...(previousError ? { [PREVIOUS_EMPLOYEES]: previousError } : {}),
+      });
       return;
     }
     saveSection("accounts", values);
+    if (values.first_period === "no") {
+      saveSection("comparatives", { ...draft.comparatives, average_employees: previousEmployees });
+    }
     navigate(next);
   }
 
@@ -186,6 +199,7 @@ export function AccountsDetailsPage() {
         "signing_director",
         "approval_date",
         "average_employees",
+        PREVIOUS_EMPLOYEES,
         "dormant",
         "trading_status",
       ]}
@@ -258,6 +272,18 @@ export function AccountsDetailsPage() {
         width="5"
         inputMode="numeric"
       />
+      {values.first_period === "no" ? (
+        <TextInput
+          id={PREVIOUS_EMPLOYEES}
+          label="Average number of employees during the previous period (optional)"
+          hint="The accounts show it beside this period’s."
+          value={previousEmployees}
+          onChange={setPreviousEmployees}
+          error={errors[PREVIOUS_EMPLOYEES]}
+          width="5"
+          inputMode="numeric"
+        />
+      ) : null}
       <Radios
         name="dormant"
         legend="Was the company dormant during this period?"

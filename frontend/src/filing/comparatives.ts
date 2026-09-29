@@ -13,6 +13,8 @@ import {
   addMonths,
   formatDate,
   isoToDateParts,
+  type Parsed,
+  parseCount,
   parseDateParts,
   parseWholePounds,
 } from "@/format";
@@ -26,7 +28,18 @@ export type ComparativesAnswers = {
   balance_sheet?: Record<string, string>;
   /** The previous period's tax charge, asked with its profit and loss account. */
   tax_on_profit?: string;
+  /** The previous period's average number of employees, asked with the accounts details. */
+  average_employees?: string;
 };
+
+export const PREVIOUS_EMPLOYEES = "previous_average_employees";
+const MAX_EMPLOYEES = 9_999_999;
+
+/** The previous period's average number of employees: optional, so a blank answer is ``null``. */
+export function validatePreviousEmployees(raw: string | undefined): Parsed<number | null> {
+  if (!raw?.trim()) return { ok: true, value: null };
+  return parseCount(raw, "average number of employees in the previous period", MAX_EMPLOYEES);
+}
 
 /** A period of account can be extended to at most 18 months (Companies Act 2006 s392). */
 const MAX_PERIOD_OF_ACCOUNT_MONTHS = 18;
@@ -160,12 +173,14 @@ export function comparativesFor(
   const pnl = validatePreviousFigures(fields.profit_and_loss, draft.comparatives?.profit_and_loss);
   const sheet = validatePreviousFigures(fields.balance_sheet, draft.comparatives?.balance_sheet);
   const tax = validateTaxOnProfit(draft.comparatives);
-  if (!period.ok || !pnl.ok || !sheet.ok || !tax.ok) return undefined;
+  const employees = validatePreviousEmployees(draft.comparatives?.average_employees);
+  if (!period.ok || !pnl.ok || !sheet.ok || !tax.ok || !employees.ok) return undefined;
   return {
     period: period.value,
     profit_and_loss: pnl.value as CT600Return["profit_and_loss"],
     balance_sheet: sheet.value as CT600Return["balance_sheet"],
     tax_on_profit: tax.value,
+    average_employees: employees.value,
   };
 }
 

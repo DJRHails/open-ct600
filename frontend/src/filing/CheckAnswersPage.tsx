@@ -140,6 +140,13 @@ function ComparativesCard({ comparatives }: { comparatives: Comparatives }) {
       value: formatPounds(comparatives.profit_and_loss[field.key]),
     })),
     { key: "Tax on profit", value: formatPounds(comparatives.tax_on_profit) },
+    {
+      key: "Average number of employees",
+      value:
+        comparatives.average_employees === null
+          ? "Not given"
+          : String(comparatives.average_employees),
+    },
     ...BALANCE_SHEET.fields.map((field) => ({
       key: field.label,
       value: formatPounds(comparatives.balance_sheet[field.key]),

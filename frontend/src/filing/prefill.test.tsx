@@ -251,6 +251,11 @@ describe("later sections from the Companies House record", () => {
     const first = line("Is this the company’s first period of account?");
     expect(within(first).getByLabelText("No")).toBeChecked();
     expect(screen.getByRole("region", { name: "Important" })).toBeInTheDocument();
+    const previousEmployees = /employees during the previous period/;
+    expect(screen.getByLabelText(previousEmployees)).toHaveValue("3");
+    await user.click(within(first).getByLabelText("Yes"));
+    expect(screen.queryByLabelText(previousEmployees)).toBeNull();
+    await user.click(within(first).getByLabelText("No"));
 
     await user.click(within(directors).getByLabelText("Charles Babbage"));
     await user.click(screen.getByRole("button", { name: "Add another person" }));
@@ -292,6 +297,7 @@ describe("later sections from the Companies House record", () => {
       legal_form: "private-limited-company",
       first_period: "no",
     });
+    expect(savedDraft().comparatives).toMatchObject({ average_employees: "3" });
   });
 
   it("types directors in when the record lists none", () => {
@@ -440,6 +446,7 @@ describe("the previous period's figures (comparatives)", () => {
         profit_and_loss: { turnover: "120,000" },
         balance_sheet: { fixed_assets: "10000" },
         tax_on_profit: "9,000",
+        average_employees: "2",
       },
       chosen_pages: [],
       research_and_development: { claiming: "no" },
@@ -460,6 +467,7 @@ describe("the previous period's figures (comparatives)", () => {
           profit_and_loss: { turnover: 120_000, staff_costs: 0 },
           balance_sheet: { fixed_assets: 10_000, current_assets: 0 },
           tax_on_profit: 9_000,
+          average_employees: 2,
         },
       },
     });
