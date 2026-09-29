@@ -5,11 +5,12 @@ of adjusted ring fence profits: the ring fence profit or loss (I5) with financin
 back (I30), adjusted for decommissioning (I40), less losses (I50), the decommissioning
 reduction (I55) and allowances (I60) (CTA 2010 s330, rules 9802 to 9818). I70 is box 505 of the
 CT600; the ring fence Corporation Tax and supplementary charge net of deductions in terms of tax
-(I80, I85) are entered by the company and carried to boxes 585 and 590.
+(I80, I85) are calculated and carried to boxes 585 and 590.
 
-Not modelled: ring fence Corporation Tax itself (30%, with 19% and 11/400 marginal relief for
-small ring fence profits). The main return taxes all profits at the ordinary rates, so a
-company with ring fence profits must check boxes 330 to 440 against its own computation.
+Ring fence Corporation Tax itself (CTA 2010 s279A: 30%, or 19% with 11/400 marginal relief for
+small ring fence profits) is worked out on the main return (``open_ct600.tax``): the company's
+net trading profits are its ring fence profits (box 320), taxed in their own rows of boxes 335
+to 425.
 
 The transferred tax history tables (I135 to I160) are tracked per asset: carried forward is
 brought forward less transferred and used (I135D, I140D), tracked profits add this period's
@@ -31,13 +32,22 @@ class RingFence:
 
     Attributes:
         supplementary_charge: I70 (box 505), or ``None`` when there are no net profits.
-        corporation_tax_included: I80 (box 585), if entered.
-        supplementary_charge_included: I85 (box 590), if entered.
     """
 
     supplementary_charge: Decimal | None
-    corporation_tax_included: Decimal | None
-    supplementary_charge_included: Decimal | None
+
+
+def fill_net_ring_fence_trade(
+    page: PageTree, corporation_tax: Decimal, supplementary_charge: Decimal | None
+) -> None:
+    """I80 and I85: the ring fence Corporation Tax and supplementary charge in the return.
+
+    Both are "net of any deductions in terms of tax"; the service gives none against them
+    (no income tax deducted, box 515), so they are the ring fence tax after ring fence marginal
+    relief (boxes 350 to 435) and I70. They go to boxes 585 and 590.
+    """
+    page.set("I80", corporation_tax if corporation_tax else None)
+    page.set("I85", supplementary_charge)
 
 
 def _adjusted_profits(page: PageTree) -> Decimal:
@@ -126,8 +136,4 @@ def compute_ring_fence(page: PageTree) -> RingFence:
     page.set("I70", charge)
     for asset in page.rows("I110"):
         _tracking(asset)
-    return RingFence(
-        supplementary_charge=charge,
-        corporation_tax_included=page.amount("I80") if page.has("I80") else None,
-        supplementary_charge_included=page.amount("I85") if page.has("I85") else None,
-    )
+    return RingFence(supplementary_charge=charge)

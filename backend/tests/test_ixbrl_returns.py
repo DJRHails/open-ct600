@@ -195,6 +195,15 @@ RETURNS = {
         creative_industries={"additional_information_submitted": True},
         supplementary_pages={"P": THEATRE},
     ),
+    "ring-fence-trade": make_return(
+        profit_and_loss={"interest_income": 10_000},
+        supplementary_pages={
+            "I": {
+                "CalculationOfSupplementaryCharge": {"Trade": {"Amount": "58000", "Profits": "yes"}}
+            }
+        },
+    ),
+    "close-investment-holding-company": make_return(company={"company_type": 2}),
 }
 COMPUTATIONS = {name: compute_return(ct600) for name, ct600 in RETURNS.items()}
 
@@ -426,3 +435,16 @@ def test_more_directors_than_the_taxonomy_can_name_are_refused():
 
     with pytest.raises(IxbrlRenderError, match="at most 40 directors"):
         render_accounts(ct600, compute_return(ct600))
+
+
+def test_ring_fence_profits_are_tagged_at_their_own_rate(validations):
+    document = validations["ring-fence-trade-computations"]
+    computation = COMPUTATIONS["ring-fence-trade"]
+
+    # Net trading profits (box 165) are ring fence profits, taxed at 30% in the second row;
+    # the interest, less donations, is taxed at the main rate in the first.
+    assert _only(document, "ct-comp:FY1FirstRateOfTax") == "0.25"
+    assert _only(document, "ct-comp:FY1SecondRateOfTax") == "0.30"
+    assert Decimal(_only(document, "ct-comp:FY1AmountOfProfitChargeableAtSecondRate")) == _box(
+        computation, "350"
+    )

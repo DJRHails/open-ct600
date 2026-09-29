@@ -27,7 +27,7 @@ COMPUTED_BOXES: dict[PageCode, frozenset[str]] = {
     "F": _boxes("F70G F70"),
     "G": frozenset(),
     "H": _boxes("H5G"),
-    "I": _boxes("I30 I35 I45 I65 I70 I135D I140D I145D I150D I155C I160C"),
+    "I": _boxes("I30 I35 I45 I65 I70 I80 I85 I135D I140D I145D I150D I155C I160C"),
     "J": frozenset(),
     "K": _boxes(
         "K5 K15.1A K15.1B K15.1C K15.1D K15.2A K15.2B K15.2C K15.2D K20 K30 K35",

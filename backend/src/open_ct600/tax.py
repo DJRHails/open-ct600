@@ -181,6 +181,36 @@ class FinancialYearSlice:
     marginal_relief: Decimal
     ring_fence: RingFenceSlice | None = None
 
+    @property
+    def rows(self) -> tuple["RateRow", ...]:
+        """The slice's lines of profit at a rate, as on the CT600 (boxes 335 to 375).
+
+        The ordinary profits, then the ring fence profits at the ring fence rate; the ordinary
+        line is left out when a ring fence company has no other profits.
+        """
+        rows = []
+        if self.profits or self.ring_fence is None:
+            rows.append(RateRow(self.profits, self.rate, self.tax))
+        if self.ring_fence is not None:
+            part = self.ring_fence
+            rows.append(RateRow(part.profits, part.rate, part.tax))
+        return tuple(rows)
+
+
+@dataclass(frozen=True)
+class RateRow:
+    """Profits charged at one rate in one financial year.
+
+    Attributes:
+        profits: The profits, in whole pounds.
+        rate: The rate.
+        tax: The tax at that rate, in pounds and pence.
+    """
+
+    profits: int
+    rate: Decimal
+    tax: Decimal
+
 
 @dataclass(frozen=True)
 class TaxComputation:

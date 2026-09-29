@@ -236,9 +236,7 @@ def ring_fence(trade: dict, **boxes: str) -> dict:
 
 def test_ring_fence_worked_example_scaled_down():
     # The research example divided by 1,000: I5 50,000, I20 4,000, I50 10,000, I60 6,000
-    page = ring_fence(
-        {"Amount": "50000", "Profits": "yes"}, I20="4000", I50="10000", I60="6000", I85="3800.00"
-    )
+    page = ring_fence({"Amount": "50000", "Profits": "yes"}, I20="4000", I50="10000", I60="6000")
 
     computation = compute(supplementary_pages={"I": page})
 
@@ -572,3 +570,45 @@ def test_information_pages_tick_their_boxes():
 
     result = boxes(computation)
     assert (result["65"], result["110"], result["140"]) == (1, 1, 1)
+
+
+RING_FENCE_TRADE = ring_fence({"Amount": "100000", "Profits": "yes"})
+
+
+def test_ring_fence_profits_are_taxed_at_the_ring_fence_rates():
+    # Review M6. CTA 2010 s279A: ring fence profits pay 30% (19% small), with ring fence
+    # marginal relief of 11/400 x (250,000 - 100,000) = 4,125: 30,000 - 4,125 = 25,875.
+    computation = compute(supplementary_pages={"I": RING_FENCE_TRADE})
+
+    result = boxes(computation)
+    assert (result["320"], result["335"], result["340"]) == (100_000, 100_000, 30)
+    assert (result["435"], result["440"]) == (Decimal("4125.00"), Decimal("25875.00"))
+    net = page_of(computation, "I")["NetRingFenceTrade"]
+    # I80: ring fence Corporation Tax, carried to box 585
+    assert net == {"RingFenceCorpTaxIncluded": "25875.00", "SupplementaryChargeTax": "10000.00"}
+    assert (result["585"], result["590"]) == (Decimal("25875.00"), Decimal("10000.00"))
+
+
+def test_ring_fence_and_other_profits_are_taxed_in_separate_rows():
+    # Interest of 60,000 besides ring fence profits of 100,000: augmented profits 160,000.
+    # Main rate row 60,000 x 25% = 15,000; ring fence row 100,000 x 30% = 30,000.
+    # Marginal relief: 3/200 x 90,000 x 60/160 = 506.25 and 11/400 x 90,000 x 100/160 =
+    # 1,546.875 -> 1,546.88. Tax 45,000 - 2,053.13 = 42,946.87.
+    computation = compute(
+        profit_and_loss={"turnover": 100_000, "interest_income": 60_000},
+        supplementary_pages={"I": RING_FENCE_TRADE},
+    )
+
+    result = boxes(computation)
+    assert (result["335"], result["340"], result["345"]) == (60_000, 25, Decimal("15000.00"))
+    assert (result["350"], result["355"], result["360"]) == (100_000, 30, Decimal("30000.00"))
+    assert (result["435"], result["440"]) == (Decimal("2053.13"), Decimal("42946.87"))
+
+
+def test_ring_fence_profits_before_april_2023_are_refused():
+    found = problems(
+        **period("2022-04-01", "2023-03-31", "2023-06-01"),
+        supplementary_pages={"I": RING_FENCE_TRADE},
+    )
+
+    assert "1 April 2023" in found[("supplementary_pages", "I")]

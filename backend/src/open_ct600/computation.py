@@ -36,7 +36,7 @@ from open_ct600.pages.freeports import Freeports, compute_freeports
 from open_ct600.pages.information import compute_royalties
 from open_ct600.pages.residential_property import compute_residential_property_developer_tax
 from open_ct600.pages.restitution import compute_restitution_tax
-from open_ct600.pages.ring_fence import RingFence, compute_ring_fence
+from open_ct600.pages.ring_fence import RingFence, compute_ring_fence, fill_net_ring_fence_trade
 from open_ct600.pages.tonnage_tax import TonnageTax, compute_tonnage_tax
 from open_ct600.pages.tree import PageTree
 from open_ct600.problems import Problem
@@ -78,6 +78,8 @@ if TYPE_CHECKING:
 
 BoxKind = Literal["pounds", "money", "count", "rate", "year", "flag"]
 
+RING_FENCE_RATES_FROM = date(2023, 4, 1)
+"""Ring fence profits are taxed for periods starting on or after this date (FY2023)."""
 ASSOCIATED_COMPANIES_FROM = date(2023, 4, 1)
 """Box 326 is only given for periods ending on or after this date (rule 9389)."""
 
@@ -301,14 +303,27 @@ BOX_LABELS: dict[int, str] = {
     315: "Profits chargeable to Corporation Tax",
     326: "Number of associated companies in this period",
     329: "Small profits rate or marginal relief entitlement",
+    320: "Ring fence profits included",
     330: "Financial year",
     335: "Amount of profit",
     340: "Rate of tax",
     345: "Tax",
+    350: "Amount of profit",
+    355: "Rate of tax",
+    360: "Tax",
+    365: "Amount of profit",
+    370: "Rate of tax",
+    375: "Tax",
     380: "Financial year",
     385: "Amount of profit",
     390: "Rate of tax",
     395: "Tax",
+    400: "Amount of profit",
+    405: "Rate of tax",
+    410: "Tax",
+    415: "Amount of profit",
+    420: "Rate of tax",
+    425: "Tax",
     430: "Corporation Tax",
     435: "Marginal relief",
     440: "Corporation Tax chargeable",
@@ -376,7 +391,21 @@ _PAGE_TICKS: dict[PageCode, int] = {
 }
 _TICKED_BY_PAGE: dict[PageCode, int] = {"H": 645, "J": 65}
 """Tick boxes that filing a page implies: royalty payments (rule 9130), schemes (9134)."""
-_FINANCIAL_YEAR_BOXES = ((330, 335, 340, 345), (380, 385, 390, 395))
+_FINANCIAL_YEAR_BOXES = (
+    (330, (335, 340, 345), (350, 355, 360), (365, 370, 375)),
+    (380, (385, 390, 395), (400, 405, 410), (415, 420, 425)),
+)
+"""Each financial year's box, then its rows of profit, rate and tax (up to three rates)."""
+
+TAX_DETAIL_ROWS: dict[str, tuple[str, int]] = {
+    str(box): (str(first), row)
+    for _, first_row, *later_rows in _FINANCIAL_YEAR_BOXES
+    for row, boxes in enumerate(later_rows, start=1)
+    for box, first in zip(boxes, first_row, strict=True)
+}
+"""The second and third rate rows' boxes (350 to 375, 400 to 425): the first row's box in the
+same column, and the row. The schema's ``Details`` element repeats; HMRC's box map only names
+the first row's boxes."""
 
 
 def main_return_boxes() -> frozenset[str]:
@@ -392,7 +421,7 @@ def main_return_boxes() -> frozenset[str]:
             found.add(node.box)
         found |= set(node.box_parts())
         stack.extend(node.children)
-    return frozenset(found)
+    return frozenset(found | set(TAX_DETAIL_ROWS))
 
 
 @dataclass
@@ -410,11 +439,16 @@ class _Profits:
     donations: int
     group_relief: int
     group_relief_carried_forward: int
+    ring_fence_profits: int
 
     @property
     def ring_fenced(self) -> int:
-        """Profits no donation or group relief can be set against: tonnage tax (box 200)."""
-        return self.tonnage_tax
+        """Profits no donation or group relief can be set against.
+
+        Tonnage tax profits (box 200, FA 2000 Sch 22 para 55) and ring fence profits (box 320:
+        CTA 2010 s304 bars relief for amounts from outside the ring fence against them).
+        """
+        return self.tonnage_tax + self.ring_fence_profits
 
     @property
     def chargeable(self) -> int:
@@ -550,7 +584,11 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
     tonnage = standalone.tonnage_tax.profits if standalone.tonnage_tax else 0
     before = trading_profits - losses_used + interest + gains + tonnage
     group_relief = run.pages.get("C")
+    # A company filing CT600I carries on its (single) trade as a ring fence trade (CTA 2010
+    # s277), so its net trading profits are ring fence profits (box 320).
+    ring_fence = trading_profits - losses_used if standalone.ring_fence else 0
     return _Profits(
+        ring_fence_profits=ring_fence,
         trading_result=trading_result,
         trading_profits=trading_profits,
         losses_used=losses_used,
@@ -559,7 +597,7 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
         tonnage_tax=tonnage,
         gains=gains,
         before_deductions=before,
-        donations=min(adjustments.qualifying_donations, max(before - tonnage, 0)),
+        donations=min(adjustments.qualifying_donations, max(before - tonnage - ring_fence, 0)),
         group_relief=int(group_relief.amount("C10")) if group_relief else 0,
         group_relief_carried_forward=int(group_relief.amount("C130")) if group_relief else 0,
     )
@@ -583,6 +621,8 @@ def _profit_boxes(run: _Evaluation, profits: _Profits) -> None:
         run.box(310, profits.group_relief)
         run.box(312, profits.group_relief_carried_forward)
     run.box(315, profits.chargeable)
+    if "I" in run.pages:
+        run.box(320, min(profits.ring_fence_profits, profits.chargeable))
 
 
 def _loss_boxes(run: _Evaluation, loss: int, surrendered: tuple[int, int, int]) -> None:
@@ -604,13 +644,12 @@ def _tax_boxes(run: _Evaluation, tax: TaxComputation) -> None:
     if run.period[1] >= ASSOCIATED_COMPANIES_FROM:
         run.box(326, tax.associated_companies, "count")
     run.box(329, int(claims_relief), "flag")
-    for (year_box, profit_box, rate_box, tax_box), part in zip(
-        _FINANCIAL_YEAR_BOXES, tax.slices, strict=False
-    ):
+    for (year_box, *rows), part in zip(_FINANCIAL_YEAR_BOXES, tax.slices, strict=False):
         run.box(year_box, part.financial_year, "year")
-        run.box(profit_box, part.profits)
-        run.box(rate_box, part.rate * 100, "rate")
-        run.box(tax_box, part.tax, "money")
+        for (profit_box, rate_box, tax_box), row in zip(rows, part.rows, strict=False):
+            run.box(profit_box, row.profits)
+            run.box(rate_box, row.rate * 100, "rate")
+            run.box(tax_box, row.tax, "money")
     run.box(430, tax.tax_before_relief, "money")
     run.box(435, tax.marginal_relief, "money")
     run.box(440, tax.tax_chargeable, "money")
@@ -747,13 +786,33 @@ def _main_rate_company(
 def _corporation_tax(run: _Evaluation, profits: _Profits) -> TaxComputation:
     """Tax box 315 at the rates the company's type allows (box 4, review finding H1)."""
     adjustments = run.ct600.tax_adjustments
+    ring_fence = min(profits.ring_fence_profits, profits.chargeable)
+    if run.period[0] < RING_FENCE_RATES_FROM:
+        ring_fence = 0  # refused by _check_ring_fence_period
     return compute_corporation_tax(
         *run.period,
         taxable_profits=profits.chargeable,
         associated_companies=adjustments.associated_companies,
         exempt_distributions=adjustments.exempt_distributions,
         basis=COMPANY_TYPE_RATES[run.ct600.company.company_type],
+        ring_fence_profits=ring_fence,
     )
+
+
+def _check_ring_fence_period(run: _Evaluation) -> None:
+    """Ring fence Corporation Tax is only worked out for periods from 1 April 2023.
+
+    Before FY2023 small ring fence profits had their own limits (£300,000 and £1.5 million),
+    which this service does not apply (review finding M6).
+    """
+    if "I" in run.pages and run.period[0] < RING_FENCE_RATES_FROM:
+        run.problems.append(
+            Problem(
+                ("supplementary_pages", "I"),
+                "This service only works out ring fence Corporation Tax for accounting periods "
+                "starting on or after 1 April 2023",
+            )
+        )
 
 
 def _scheme_name(claim: Claim) -> str:
@@ -864,7 +923,10 @@ def _redeem_creative(run: _Evaluation, claims: CreativeClaims | None) -> Decimal
 
 
 def _other_tax(
-    run: _Evaluation, standalone: _StandalonePages, loans: LoansToParticipators | None
+    run: _Evaluation,
+    standalone: _StandalonePages,
+    loans: LoansToParticipators | None,
+    tax: TaxComputation,
 ) -> None:
     """Boxes 480 to 528."""
     if loans is not None:
@@ -885,26 +947,17 @@ def _other_tax(
         run.money(527, compute_restitution_tax(restitution, *run.period, chargeable))
     run.money(528, chargeable + run.value(527))
     if ring_fence is not None:
-        _ring_fence_included(run, ring_fence)
+        _ring_fence_included(run, ring_fence, tax)
 
 
-def _ring_fence_included(run: _Evaluation, ring_fence: RingFence) -> None:
-    """Boxes 585 and 590, the ring fence tax included in the totals."""
+def _ring_fence_included(run: _Evaluation, ring_fence: RingFence, tax: TaxComputation) -> None:
+    """I80/I85 and boxes 585 and 590, the ring fence tax included in the totals (review M6)."""
+    parts = [part.ring_fence for part in tax.slices if part.ring_fence is not None]
+    corporation_tax = sum((part.tax - part.marginal_relief for part in parts), ZERO)
     page = run.pages["I"]
-    included = ring_fence.corporation_tax_included
-    if included is not None and included > run.value(525):
-        page.problem(
-            "I80", "Ring fence Corporation Tax must be no more than the tax payable (box 525)"
-        )
-    charge = ring_fence.supplementary_charge_included
-    if charge is not None and charge > run.value(505):
-        page.problem(
-            "I85",
-            "The supplementary charge included must be no more than the "
-            "supplementary charge payable (I70)",
-        )
-    run.money(585, included)
-    run.money(590, charge)
+    fill_net_ring_fence_trade(page, corporation_tax, ring_fence.supplementary_charge)
+    run.money(585, corporation_tax if corporation_tax else None)
+    run.money(590, ring_fence.supplementary_charge)
 
 
 def _reconciliation(run: _Evaluation) -> None:
@@ -1106,6 +1159,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
         ct600, {code: PageTree(code, tree) for code, tree in ct600.supplementary_pages.items()}
     )
     stages = _before_tax(run)
+    _check_ring_fence_period(run)
     surrendered = (
         stages.credit.loss_surrendered if stages.credit else 0,
         stages.standalone.creative.losses_surrendered if stages.standalone.creative else 0,
@@ -1122,7 +1176,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     )
     _claim_without_page(run, stages.claim)
     creative_used = _redeem_creative(run, stages.standalone.creative)
-    _other_tax(run, stages.standalone, stages.loans)
+    _other_tax(run, stages.standalone, stages.loans, tax)
     _reconciliation(run)
     _enhanced_expenditure(run, stages.claim)
     _freeport_allowances(run, stages.standalone.freeports)

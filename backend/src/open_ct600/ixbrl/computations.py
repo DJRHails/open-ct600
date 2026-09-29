@@ -474,7 +474,7 @@ def _financial_year_rows(
     document: InlineDocument, number: int, part: FinancialYearSlice, company: Context
 ) -> list[etree._Element]:
     prefix = f"ct-comp:FY{number}"
-    return [
+    rows = [
         text_row(
             "Financial year",
             document.non_numeric(
@@ -483,21 +483,28 @@ def _financial_year_rows(
                 str(part.financial_year),
             ),
             f" ({_describe_slice(part.start, part.end)})",
-        ),
-        amount_row(
-            "Profits chargeable",
-            document.money(f"{prefix}AmountOfProfitChargeableAtFirstRate", company, part.profits),
-        ),
-        text_row(
-            "Rate of tax",
-            document.percentage(f"{prefix}FirstRateOfTax", company, part.rate),
-            "%",
-        ),
-        amount_row(
-            "Tax at this rate",
-            document.money(f"{prefix}TaxAtFirstRate", company, part.tax, decimals=2),
-        ),
+        )
     ]
+    # One set of rows per rate, as boxes 335 to 375 (ring fence profits at their own rate).
+    for ordinal, row in zip(("First", "Second", "Third"), part.rows, strict=False):
+        rows += [
+            amount_row(
+                "Profits chargeable",
+                document.money(
+                    f"{prefix}AmountOfProfitChargeableAt{ordinal}Rate", company, row.profits
+                ),
+            ),
+            text_row(
+                "Rate of tax",
+                document.percentage(f"{prefix}{ordinal}RateOfTax", company, row.rate),
+                "%",
+            ),
+            amount_row(
+                "Tax at this rate",
+                document.money(f"{prefix}TaxAt{ordinal}Rate", company, row.tax, decimals=2),
+            ),
+        ]
+    return rows
 
 
 def _describe_slice(start: date, end: date) -> str:
