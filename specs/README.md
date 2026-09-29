@@ -1,0 +1,16 @@
+# Specifications
+
+Official material this project is built against. HMRC documents and schemas are Crown copyright,
+published under the Open Government Licence v3.0.
+
+| Path | What it is | Source |
+| --- | --- | --- |
+| `hmrc/ct600-v1.994/` | CT600 XML schema (v1.994, live), HMRC schematron business rules, GovTalk envelope and xmldsig schemas | HMRC Local Test Service artefacts `ct_ct600_v1-994.zip`, identical to the RIM artefacts on gov.uk |
+| `hmrc/box-map-v1.995.tsv` | CT600 box id → XML path, parsed from HMRC's v1.995 specification document | [CT600 RIM artefacts](https://www.gov.uk/government/publications/corporation-tax-technical-specifications-ct600-rim-artefacts) |
+| `hmrc/rules-v1.995.tsv` | Business rules with HMRC error codes and messages | as above |
+| `hmrc/samples/` | HMRC's valid CT600 XML samples | [valid XML samples](https://www.gov.uk/government/publications/corporation-tax-technical-specifications-ct600-valid-xml-samples) |
+| `hmrc/irmark/` | HMRC's IRmark worked example | [IRmark support](https://www.gov.uk/government/collections/hmrcirmark-support-for-software-developers) |
+| `hmrc/SuccessResponse-v1-1.xsd` | Transaction Engine success response schema | as above |
+| `ixbrl/taxonomies.tsv` | FRC and HMRC computational taxonomy packages, fetched by URL and checked by SHA-256 (not redistributed) | FRC, HMRC |
+| `ixbrl/examples/` | Minimal iXBRL accounts and computations that pass Arelle offline validation | written for this project |
+| `research/` | Research notes: submission protocol, iXBRL tagging, CT600 main return and supplementary pages A–P, group relief, R&D and s455 rules | compiled 2026-09-28 from gov.uk and HMRC manuals |

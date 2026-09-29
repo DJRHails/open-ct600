@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"
+      xmlns:ixt="http://www.xbrl.org/inlineXBRL/transformation/2011-07-31"
+      xmlns:xbrli="http://www.xbrl.org/2003/instance"
+      xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+      xmlns:link="http://www.xbrl.org/2003/linkbase"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+      xmlns:core="http://xbrl.frc.org.uk/fr/2026-01-01/core"
+      xmlns:bus="http://xbrl.frc.org.uk/cd/2026-01-01/business"
+      xmlns:direp="http://xbrl.frc.org.uk/reports/2026-01-01/direp"
+      xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Example Trading Ltd - Micro-entity accounts for the year ended 31 March 2026</title>
+  <style type="text/css">
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; }
+    td.n { text-align: right; width: 110px; }
+  </style>
+</head>
+<body>
+<div style="display:none">
+<ix:header>
+  <ix:hidden>
+    <ix:nonNumeric name="bus:StartDateForPeriodCoveredByReport" contextRef="end" format="ixt:datedaymonthyearen">1 April 2025</ix:nonNumeric>
+    <ix:nonNumeric name="bus:EndDateForPeriodCoveredByReport" contextRef="end" format="ixt:datedaymonthyearen">31 March 2026</ix:nonNumeric>
+    <ix:nonNumeric name="bus:AccountingStandardsApplied" contextRef="dur-std-small"/>
+    <ix:nonNumeric name="bus:AccountsStatusAuditedOrUnaudited" contextRef="dur-status-exempt"/>
+    <ix:nonNumeric name="bus:AccountsType" contextRef="dur-type-full"/>
+    <ix:nonNumeric name="bus:LegalFormEntity" contextRef="dur-legal-ltd"/>
+    <ix:nonNumeric name="bus:ApplicableLegislation" contextRef="dur-legis-small"/>
+    <ix:nonNumeric name="bus:EntityTradingStatus" contextRef="dur"/>
+    <ix:nonNumeric name="bus:EntityDormantTruefalse" contextRef="dur">false</ix:nonNumeric>
+    <ix:nonNumeric name="bus:DescriptionPrincipalActivities" contextRef="dur">Software consultancy</ix:nonNumeric>
+    <ix:nonNumeric name="bus:NameProductionSoftware" contextRef="dur">open-ct600</ix:nonNumeric>
+    <ix:nonNumeric name="bus:VersionProductionSoftware" contextRef="dur">0.1.0</ix:nonNumeric>
+    <ix:nonNumeric name="core:DirectorSigningFinancialStatements" contextRef="dur-director1"/>
+  </ix:hidden>
+  <ix:references>
+    <link:schemaRef xlink:type="simple" xlink:href="https://xbrl.frc.org.uk/FRS-102/2026-01-01/FRS-102-2026-01-01.xsd"/>
+  </ix:references>
+  <ix:resources>
+    <xbrli:context id="dur">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="end">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-std-small">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:AccountingStandardsDimension">bus:SmallEntities</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-status-exempt">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:AccountsStatusDimension">bus:AuditExempt-NoAccountantsReport</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-type-full">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:AccountsTypeDimension">bus:FullAccounts</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-legal-ltd">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:LegalFormEntityDimension">bus:PrivateLimitedCompanyLtd</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-legis-small">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:ApplicableLegislationDimension">bus:SmallCompaniesRegimeForAccounts</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="dur-director1">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="bus:EntityOfficersDimension">bus:Director1</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="end-within1y">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:WithinOneYear</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="end-after1y">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:AfterOneYear</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="end-sharecap">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="core:EquityClassesDimension">core:ShareCapital</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="end-retained">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="core:EquityClassesDimension">core:RetainedEarningsAccumulatedLosses</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:unit id="GBP"><xbrli:measure>iso4217:GBP</xbrli:measure></xbrli:unit>
+    <xbrli:unit id="pure"><xbrli:measure>xbrli:pure</xbrli:measure></xbrli:unit>
+  </ix:resources>
+</ix:header>
+</div>
+
+<h1><ix:nonNumeric name="bus:EntityCurrentLegalOrRegisteredName" contextRef="dur">Example Trading Ltd</ix:nonNumeric></h1>
+<p>Company registration number <ix:nonNumeric name="bus:UKCompaniesHouseRegisteredNumber" contextRef="dur">12345678</ix:nonNumeric></p>
+<p>Unaudited financial statements (FRS 102 Section 1A) for the year ended 31 March 2026</p>
+
+<h2>Profit and loss account for the year ended 31 March 2026</h2>
+<table>
+  <tr><td>Turnover</td><td class="n"><ix:nonFraction name="core:TurnoverRevenue" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">120,000</ix:nonFraction></td></tr>
+  <tr><td>Cost of sales</td><td class="n">(<ix:nonFraction name="core:CostSales" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">50,000</ix:nonFraction>)</td></tr>
+  <tr><td>Gross profit</td><td class="n"><ix:nonFraction name="core:GrossProfitLoss" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">70,000</ix:nonFraction></td></tr>
+  <tr><td>Administrative expenses</td><td class="n">(<ix:nonFraction name="core:AdministrativeExpenses" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">42,000</ix:nonFraction>)</td></tr>
+  <tr><td>Other operating income</td><td class="n"><ix:nonFraction name="core:OtherOperatingIncomeFormat1" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">1,000</ix:nonFraction></td></tr>
+  <tr><td>Operating profit</td><td class="n"><ix:nonFraction name="core:OperatingProfitLoss" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">29,000</ix:nonFraction></td></tr>
+  <tr><td>Profit before tax</td><td class="n"><ix:nonFraction name="core:ProfitLossOnOrdinaryActivitiesBeforeTax" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">29,000</ix:nonFraction></td></tr>
+  <tr><td>Tax on profit</td><td class="n">(<ix:nonFraction name="core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">5,510</ix:nonFraction>)</td></tr>
+  <tr><td>Profit for the financial year</td><td class="n"><ix:nonFraction name="core:ProfitLoss" contextRef="dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">23,490</ix:nonFraction></td></tr>
+</table>
+
+<h2>Balance sheet as at <ix:nonNumeric name="bus:BalanceSheetDate" contextRef="end" format="ixt:datedaymonthyearen">31 March 2026</ix:nonNumeric></h2>
+<table>
+  <tr><td>Fixed assets</td><td class="n"><ix:nonFraction name="core:FixedAssets" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">8,000</ix:nonFraction></td></tr>
+  <tr><td>Current assets</td><td class="n"><ix:nonFraction name="core:CurrentAssets" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">50,000</ix:nonFraction></td></tr>
+  <tr><td>Prepayments and accrued income</td><td class="n"><ix:nonFraction name="core:PrepaymentsAccruedIncomeNotExpressedWithinCurrentAssetSubtotal" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">1,000</ix:nonFraction></td></tr>
+  <tr><td>Creditors: amounts falling due within one year</td><td class="n">(<ix:nonFraction name="core:Creditors" contextRef="end-within1y" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">15,000</ix:nonFraction>)</td></tr>
+  <tr><td>Net current assets</td><td class="n"><ix:nonFraction name="core:NetCurrentAssetsLiabilities" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">36,000</ix:nonFraction></td></tr>
+  <tr><td>Total assets less current liabilities</td><td class="n"><ix:nonFraction name="core:TotalAssetsLessCurrentLiabilities" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">44,000</ix:nonFraction></td></tr>
+  <tr><td>Creditors: amounts falling due after more than one year</td><td class="n">(<ix:nonFraction name="core:Creditors" contextRef="end-after1y" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">5,000</ix:nonFraction>)</td></tr>
+  <tr><td>Provisions for liabilities</td><td class="n">(<ix:nonFraction name="core:ProvisionsForLiabilitiesBalanceSheetSubtotal" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">1,000</ix:nonFraction>)</td></tr>
+  <tr><td>Accruals and deferred income</td><td class="n">(<ix:nonFraction name="core:AccruedLiabilitiesNotExpressedWithinCreditorsSubtotal" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">2,000</ix:nonFraction>)</td></tr>
+  <tr><td>Net assets</td><td class="n"><ix:nonFraction name="core:NetAssetsLiabilities" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">36,000</ix:nonFraction></td></tr>
+  <tr><td>Called up share capital</td><td class="n"><ix:nonFraction name="core:Equity" contextRef="end-sharecap" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">100</ix:nonFraction></td></tr>
+  <tr><td>Profit and loss account</td><td class="n"><ix:nonFraction name="core:Equity" contextRef="end-retained" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">35,900</ix:nonFraction></td></tr>
+  <tr><td>Shareholders' funds</td><td class="n"><ix:nonFraction name="core:Equity" contextRef="end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">36,000</ix:nonFraction></td></tr>
+</table>
+
+<p><ix:nonNumeric name="direp:StatementThatCompanyEntitledToExemptionFromAuditUnderSection477CompaniesAct2006RelatingToSmallCompanies" contextRef="dur">For the year ending 31 March 2026 the company was entitled to exemption from audit under section 477 of the Companies Act 2006 relating to small companies.</ix:nonNumeric></p>
+<p><ix:nonNumeric name="direp:StatementThatMembersHaveNotRequiredCompanyToObtainAnAudit" contextRef="dur">The members have not required the company to obtain an audit in accordance with section 476 of the Companies Act 2006.</ix:nonNumeric></p>
+<p><ix:nonNumeric name="direp:StatementThatDirectorsAcknowledgeTheirResponsibilitiesUnderCompaniesAct" contextRef="dur">The directors acknowledge their responsibilities for complying with the requirements of the Companies Act 2006 with respect to accounting records and the preparation of accounts.</ix:nonNumeric></p>
+<p><ix:nonNumeric name="direp:StatementThatAccountsHaveBeenPreparedInAccordanceWithProvisionsSmallCompaniesRegime" contextRef="dur">These financial statements have been prepared in accordance with the provisions applicable to companies subject to the small companies regime and in accordance with FRS 102 Section 1A.</ix:nonNumeric></p>
+<p>Approved by the board on <ix:nonNumeric name="core:DateAuthorisationFinancialStatementsForIssue" contextRef="end" format="ixt:datedaymonthyearen">15 June 2026</ix:nonNumeric> and signed on its behalf by
+  <ix:nonNumeric name="bus:NameEntityOfficer" contextRef="dur-director1">Jane Smith</ix:nonNumeric>, Director.</p>
+
+<h2>Notes</h2>
+<p>Average number of employees during the year: <ix:nonFraction name="core:AverageNumberEmployeesDuringPeriod" contextRef="dur" unitRef="pure" decimals="0">2</ix:nonFraction></p>
+</body>
+</html>

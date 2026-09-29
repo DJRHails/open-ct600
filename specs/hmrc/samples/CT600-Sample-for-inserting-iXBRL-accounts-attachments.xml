@@ -1,0 +1,137 @@
+<!--  Please note that this is an example of how to form a full TPVS valid CT600 XML - it may not be a realistic CT600 scenario  -->
+<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<EnvelopeVersion>2.0</EnvelopeVersion>
+	<Header>
+		<MessageDetails>
+			<Class>HMRC-CT-CT600</Class>
+			<Qualifier>request</Qualifier>
+			<Function>submit</Function>
+			<CorrelationID/>
+			<Transformation>XML</Transformation>
+			<GatewayTest>1</GatewayTest>
+		</MessageDetails>
+		<SenderDetails>
+			<IDAuthentication>
+				<SenderID>Provided by the SDST</SenderID>
+				<Authentication>
+					<Method>clear</Method>
+					<Role>Principal</Role>
+					<Value>Provided by the SDST</Value>
+				</Authentication>
+			</IDAuthentication>
+		</SenderDetails>
+	</Header>
+	<GovTalkDetails>
+		<Keys>
+			<Key Type="UTR">8596148860</Key>
+		</Keys>
+		<TargetDetails>
+			<Organisation>HMRC</Organisation>
+		</TargetDetails>
+		<ChannelRouting>
+			<Channel>
+				<URI>Enter your 4 digit vendor ID</URI>
+				<Product>Enter your product details</Product>
+				<Version>Enter a version number</Version>
+			</Channel>
+		</ChannelRouting>
+	</GovTalkDetails>
+	<Body>
+		<IRenvelope xmlns="http://www.govtalk.gov.uk/taxation/CT/5">
+			<IRheader>
+				<Keys>
+					<Key Type="UTR">8596148860</Key>
+				</Keys>
+				<PeriodEnd>2022-03-31</PeriodEnd>
+				<DefaultCurrency>GBP</DefaultCurrency>
+				<Manifest>
+					<Contains>
+						<Reference>
+							<Namespace>http://www.govtalk.gov.uk/taxation/CT/5</Namespace>
+							<SchemaVersion>2022-v1.99</SchemaVersion>
+							<TopElementName>CompanyTaxReturn</TopElementName>
+						</Reference>
+					</Contains>
+				</Manifest>
+				<IRmark Type="generic">Enter IRmark here</IRmark>
+				<Sender>Company</Sender>
+			</IRheader>
+			<CompanyTaxReturn ReturnType="new">
+				<CompanyInformation>
+					<CompanyName>Enter Company Name</CompanyName>
+					<RegistrationNumber>12345678</RegistrationNumber>
+					<!--  Will need to match the CH number in the accounts  -->
+					<Reference>8596148860</Reference>
+					<!--  Reference will need to match the UTR used in the keys and the reference in the computations -->
+					<CompanyType>6</CompanyType>
+					<PeriodCovered>
+						<From>2021-04-01</From>
+						<To>2022-03-31</To>
+						<!--  Period covered To date will need to match the End period date in accounts -->
+					</PeriodCovered>
+				</CompanyInformation>
+				<ReturnInfoSummary>
+					<Accounts>
+						<ThisPeriodAccounts>yes</ThisPeriodAccounts>
+					</Accounts>
+					<Computations>
+						<NoComputationsReason>Company in liquidation</NoComputationsReason>
+					</Computations>
+				</ReturnInfoSummary>
+				<Turnover>
+					<Total>100000.00</Total>
+				</Turnover>
+				<CompanyTaxCalculation>
+					<Income>
+						<Trading>
+							<Profits>100000.00</Profits>
+							<LossesBroughtForward>0.00</LossesBroughtForward>
+							<NetProfits>100000.00</NetProfits>
+						</Trading>
+					</Income>
+					<ProfitsBeforeOtherDeductions>100000.00</ProfitsBeforeOtherDeductions>
+					<ChargesAndReliefs>
+						<ProfitsBeforeDonationsAndGroupRelief>100000.00</ProfitsBeforeDonationsAndGroupRelief>
+					</ChargesAndReliefs>
+					<ChargeableProfits>100000.00</ChargeableProfits>
+					<CorporationTaxChargeable>
+						<FinancialYearOne>
+							<Year>2021</Year>
+							<Details>
+								<Profit>100000.00</Profit>
+								<TaxRate>19.00</TaxRate>
+								<Tax>19000.00</Tax>
+							</Details>
+						</FinancialYearOne>
+					</CorporationTaxChargeable>
+					<CorporationTax>19000.00</CorporationTax>
+					<NetCorporationTaxChargeable>19000.00</NetCorporationTaxChargeable>
+					<TaxReliefsAndDeductions>
+						<TotalReliefsAndDeductions>0.00</TotalReliefsAndDeductions>
+					</TaxReliefsAndDeductions>
+				</CompanyTaxCalculation>
+				<CalculationOfTaxOutstandingOrOverpaid>
+					<NetCorporationTaxLiability>19000.00</NetCorporationTaxLiability>
+					<TaxChargeable>19000.00</TaxChargeable>
+					<TaxPayable>19000.00</TaxPayable>
+				</CalculationOfTaxOutstandingOrOverpaid>
+				<Declaration>
+					<AcceptDeclaration>yes</AcceptDeclaration>
+					<Name>Test</Name>
+					<Status>Test</Status>
+				</Declaration>
+				<AttachedFiles>
+					<XBRLsubmission>
+						<Accounts>
+							<Instance>
+								<InlineXBRLDocument>
+									<!--  Place your iXBRL accounts here -->
+								</InlineXBRLDocument>
+							</Instance>
+						</Accounts>
+					</XBRLsubmission>
+				</AttachedFiles>
+			</CompanyTaxReturn>
+		</IRenvelope>
+	</Body>
+</GovTalkMessage>

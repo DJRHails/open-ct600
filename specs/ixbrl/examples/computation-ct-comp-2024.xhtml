@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"
+      xmlns:ixt="http://www.xbrl.org/inlineXBRL/transformation/2011-07-31"
+      xmlns:xbrli="http://www.xbrl.org/2003/instance"
+      xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+      xmlns:link="http://www.xbrl.org/2003/linkbase"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+      xmlns:ct-comp="http://www.hmrc.gov.uk/schemas/ct/comp/2024-01-01"
+      xml:lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>Example Trading Ltd - Corporation Tax computation for the period ended 31 March 2026</title>
+  <style type="text/css">td.n { text-align: right; width: 110px; }</style>
+</head>
+<body>
+<div style="display:none">
+<ix:header>
+  <ix:hidden>
+    <ix:nonNumeric name="ct-comp:NameOfProductionSoftware" contextRef="info-end">open-ct600</ix:nonNumeric>
+    <ix:nonNumeric name="ct-comp:VersionOfProductionSoftware" contextRef="info-end">0.1.0</ix:nonNumeric>
+  </ix:hidden>
+  <ix:references>
+    <link:schemaRef xlink:type="simple" xlink:href="http://www.hmrc.gov.uk/schemas/ct/comp/2024-01-01/ct-comp-2024.xsd"/>
+  </ix:references>
+  <ix:resources>
+    <!-- Company-level facts: BusinessTypeDimension has NO default, so ct-comp:Company must be explicit. -->
+    <xbrli:context id="info-end">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Company</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="company-dur">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment><xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Company</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <!-- Trade-level facts: BusinessType=Trade, the typed BusinessNameDimension (no default), and an
+         explicit TerritoryDimension=UK: the UK-trade hypercube's default (AllDefault) is not a usable
+         member there, so omitting Territory makes every trade fact dimensionally invalid. -->
+    <xbrli:context id="trade-dur">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Trade</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="ct-comp:TerritoryDimension">ct-comp:UK</xbrldi:explicitMember>
+          <xbrldi:typedMember dimension="ct-comp:BusinessNameDimension"><ct-comp:BusinessNameDomain>Software consultancy</ct-comp:BusinessNameDomain></xbrldi:typedMember>
+        </xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="trade-start">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Trade</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="ct-comp:TerritoryDimension">ct-comp:UK</xbrldi:explicitMember>
+          <xbrldi:typedMember dimension="ct-comp:BusinessNameDimension"><ct-comp:BusinessNameDomain>Software consultancy</ct-comp:BusinessNameDomain></xbrldi:typedMember>
+        </xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2025-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <xbrli:context id="trade-end">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Trade</xbrldi:explicitMember>
+          <xbrldi:explicitMember dimension="ct-comp:TerritoryDimension">ct-comp:UK</xbrldi:explicitMember>
+          <xbrldi:typedMember dimension="ct-comp:BusinessNameDimension"><ct-comp:BusinessNameDomain>Software consultancy</ct-comp:BusinessNameDomain></xbrldi:typedMember>
+        </xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period>
+    </xbrli:context>
+    <!-- s455: loans to participators use the typed ParticipatorDimension (no default). -->
+    <xbrli:context id="participator1-dur">
+      <xbrli:entity><xbrli:identifier scheme="http://www.companieshouse.gov.uk/">12345678</xbrli:identifier>
+        <xbrli:segment>
+          <xbrldi:explicitMember dimension="ct-comp:BusinessTypeDimension">ct-comp:Company</xbrldi:explicitMember>
+          <xbrldi:typedMember dimension="ct-comp:ParticipatorDimension"><ct-comp:ParticipatorDomain>Jane Smith</ct-comp:ParticipatorDomain></xbrldi:typedMember>
+        </xbrli:segment></xbrli:entity>
+      <xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period>
+    </xbrli:context>
+    <xbrli:unit id="GBP"><xbrli:measure>iso4217:GBP</xbrli:measure></xbrli:unit>
+    <xbrli:unit id="pure"><xbrli:measure>xbrli:pure</xbrli:measure></xbrli:unit>
+  </ix:resources>
+</ix:header>
+</div>
+
+<h1><ix:nonNumeric name="ct-comp:CompanyName" contextRef="info-end">Example Trading Ltd</ix:nonNumeric></h1>
+<table>
+  <tr><td>Tax reference</td><td><ix:nonNumeric name="ct-comp:TaxReference" contextRef="info-end">1234567890</ix:nonNumeric></td></tr>
+  <tr><td>Period of account</td><td><ix:nonNumeric name="ct-comp:PeriodOfAccountStartDate" contextRef="info-end" format="ixt:datedaymonthyearen">1 April 2025</ix:nonNumeric> to <ix:nonNumeric name="ct-comp:PeriodOfAccountEndDate" contextRef="info-end" format="ixt:datedaymonthyearen">31 March 2026</ix:nonNumeric></td></tr>
+  <tr><td>Period covered by return</td><td><ix:nonNumeric name="ct-comp:StartOfPeriodCoveredByReturn" contextRef="info-end" format="ixt:datedaymonthyearen">1 April 2025</ix:nonNumeric> to <ix:nonNumeric name="ct-comp:EndOfPeriodCoveredByReturn" contextRef="info-end" format="ixt:datedaymonthyearen">31 March 2026</ix:nonNumeric></td></tr>
+  <tr><td>Company is a partner in a firm</td><td><ix:nonNumeric name="ct-comp:CompanyIsAPartnerInAFirm" contextRef="company-dur" format="ixt:booleanfalse">No</ix:nonNumeric></td></tr>
+</table>
+
+<h2>Adjustment of trading profit - <ix:nonNumeric name="ct-comp:DescriptionOfTrade" contextRef="trade-dur">Software consultancy</ix:nonNumeric></h2>
+<table>
+  <tr><td>Profit per accounts</td><td class="n"><ix:nonFraction name="ct-comp:ProfitLossPerAccounts" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">29,000</ix:nonFraction></td></tr>
+  <tr><td>Add: depreciation</td><td class="n"><ix:nonFraction name="ct-comp:AdjustmentsDepreciation" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">2,000</ix:nonFraction></td></tr>
+  <tr><td>Add: entertaining</td><td class="n"><ix:nonFraction name="ct-comp:AdjustmentsEntertaining" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">500</ix:nonFraction></td></tr>
+  <tr><td>Less: non-trading loan relationship credits</td><td class="n">(<ix:nonFraction name="ct-comp:AdjustmentsNon-tradingLoanRelationshipCreditsPerAccounts" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">200</ix:nonFraction>)</td></tr>
+  <tr><td>Less: capital allowances</td><td class="n">(<ix:nonFraction name="ct-comp:TotalCapitalAllowances" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">3,000</ix:nonFraction>)</td></tr>
+  <tr><td>Adjusted trading profit</td><td class="n"><ix:nonFraction name="ct-comp:AdjustedProfitForThePeriod" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,300</ix:nonFraction></td></tr>
+</table>
+
+<h2>Capital allowances - main pool</h2>
+<table>
+  <tr><td>Written down value brought forward</td><td class="n"><ix:nonFraction name="ct-comp:MainPoolWrittenDownValue" contextRef="trade-start" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">0</ix:nonFraction></td></tr>
+  <tr><td>Expenditure qualifying for AIA</td><td class="n"><ix:nonFraction name="ct-comp:MainPoolExpenditureQualifyingForAnnualInvestmentAllowance" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">3,000</ix:nonFraction></td></tr>
+  <tr><td>Annual investment allowance</td><td class="n"><ix:nonFraction name="ct-comp:MainPoolAnnualInvestmentAllowance" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">3,000</ix:nonFraction></td></tr>
+  <tr><td>Total allowances</td><td class="n"><ix:nonFraction name="ct-comp:MainPoolTotalAllowances" contextRef="trade-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">3,000</ix:nonFraction></td></tr>
+  <tr><td>Written down value carried forward</td><td class="n"><ix:nonFraction name="ct-comp:MainPoolWrittenDownValue" contextRef="trade-end" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">0</ix:nonFraction></td></tr>
+</table>
+
+<h2>Corporation tax computation</h2>
+<table>
+  <tr><td>Net trading profits</td><td class="n"><ix:nonFraction name="ct-comp:NetTradingProfits" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,300</ix:nonFraction></td></tr>
+  <tr><td>Non-trading loan relationship profits</td><td class="n"><ix:nonFraction name="ct-comp:ProfitsAndGainsFromNon-tradingLoanRelationships" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">200</ix:nonFraction></td></tr>
+  <tr><td>Profits before other deductions and reliefs</td><td class="n"><ix:nonFraction name="ct-comp:ProfitsBeforeOtherDeductionsAndReliefs" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,500</ix:nonFraction></td></tr>
+  <tr><td>Profits before qualifying donations and group relief</td><td class="n"><ix:nonFraction name="ct-comp:ProfitsBeforeChargesAndGroupRelief" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,500</ix:nonFraction></td></tr>
+  <tr><td>Total profits chargeable to corporation tax</td><td class="n"><ix:nonFraction name="ct-comp:TotalProfitsChargeableToCorporationTax" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,500</ix:nonFraction></td></tr>
+  <tr><td>Financial year</td><td class="n"><ix:nonNumeric name="ct-comp:FinancialYear1CoveredByTheReturn" contextRef="company-dur">2025</ix:nonNumeric></td></tr>
+  <tr><td>Profit chargeable at small profits rate</td><td class="n"><ix:nonFraction name="ct-comp:FY1AmountOfProfitChargeableAtFirstRate" contextRef="company-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">28,500</ix:nonFraction></td></tr>
+  <tr><td>Rate</td><td class="n"><ix:nonFraction name="ct-comp:FY1FirstRateOfTax" contextRef="company-dur" unitRef="pure" decimals="2" scale="-2">19</ix:nonFraction>%</td></tr>
+  <tr><td>Tax at small profits rate</td><td class="n"><ix:nonFraction name="ct-comp:FY1TaxAtFirstRate" contextRef="company-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">5,415.00</ix:nonFraction></td></tr>
+  <tr><td>Corporation tax chargeable</td><td class="n"><ix:nonFraction name="ct-comp:CorporationTaxChargeable" contextRef="company-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">5,415.00</ix:nonFraction></td></tr>
+  <tr><td>Tax payable on loans to participators (s455)</td><td class="n"><ix:nonFraction name="ct-comp:TaxPayableOnLoansToParticipators" contextRef="company-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">3,375.00</ix:nonFraction></td></tr>
+  <tr><td>Tax chargeable</td><td class="n"><ix:nonFraction name="ct-comp:TaxChargeable" contextRef="company-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">8,790.00</ix:nonFraction></td></tr>
+  <tr><td>Tax payable</td><td class="n"><ix:nonFraction name="ct-comp:TaxPayable" contextRef="company-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">8,790.00</ix:nonFraction></td></tr>
+</table>
+
+<h2>Loans to participators</h2>
+<table>
+  <tr><td>Participator</td><td><ix:nonNumeric name="ct-comp:NameOfParticipator" contextRef="participator1-dur">Jane Smith</ix:nonNumeric></td></tr>
+  <tr><td>Loans made and outstanding</td><td class="n"><ix:nonFraction name="ct-comp:LoansMadeAndOutstanding" contextRef="participator1-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">10,000</ix:nonFraction></td></tr>
+  <tr><td>Amount taxable</td><td class="n"><ix:nonFraction name="ct-comp:LoanToParticipatorAmountTaxable" contextRef="participator1-dur" unitRef="GBP" decimals="0" format="ixt:numdotdecimal">10,000</ix:nonFraction></td></tr>
+  <tr><td>Tax rate</td><td class="n"><ix:nonFraction name="ct-comp:LoanToParticipatorTaxRate" contextRef="participator1-dur" unitRef="pure" decimals="4" scale="-2">33.75</ix:nonFraction>%</td></tr>
+  <tr><td>Tax payable</td><td class="n"><ix:nonFraction name="ct-comp:LoanToParticipatorTaxPayable" contextRef="participator1-dur" unitRef="GBP" decimals="2" format="ixt:numdotdecimal">3,375.00</ix:nonFraction></td></tr>
+</table>
+</body>
+</html>
