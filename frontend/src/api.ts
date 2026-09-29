@@ -92,6 +92,52 @@ export type PageCode =
   | "N"
   | "P";
 
+export type ResearchAndDevelopmentScheme = "sme" | "large_company_rdec" | "merged_rdec" | "eris";
+
+/**
+ * The reliefs and credits claimed through supplementary pages (``null`` when not claimed); see
+ * backend ``open_ct600.computation.ReliefsSummary``.
+ */
+export type ReliefsSummary = {
+  group_relief: {
+    claimed: number;
+    claimed_for_carried_forward_losses: number;
+    available: number;
+    unused: number;
+  } | null;
+  research_and_development: {
+    scheme: ResearchAndDevelopmentScheme;
+    qualifying_expenditure: number;
+    additional_deduction: number;
+    enhanced_expenditure: number;
+    rdec: string;
+    notional_tax_rate: string | null;
+    set_off: string;
+    payable_rdec: string | null;
+    payable_credit: string | null;
+    credit_claimed: string | null;
+    losses_surrendered: number;
+    rdec_carried_forward: string;
+  } | null;
+  loans_to_participators: {
+    tax_payable: string;
+    relief_for_later_repayments: boolean;
+    statutory_tax_payable: string;
+    amendment_due: string;
+  } | null;
+  creative_industries: {
+    expenditure_credit: string;
+    expenditure_credit_set_off: string | null;
+    expenditure_credit_payable: string | null;
+    expenditure_credit_carried_forward: string;
+    additional_deduction: number;
+    tax_credit: string;
+    tax_credit_set_off: string | null;
+    tax_credit_payable: string | null;
+    losses_surrendered: number;
+  } | null;
+};
+
 export type ReturnComputation = {
   boxes: CT600Box[];
   tax: TaxComputation;
@@ -99,6 +145,7 @@ export type ReturnComputation = {
   trading_loss_arising: number;
   losses_carried_forward: number;
   pages: Partial<Record<PageCode, ElementTree>>;
+  reliefs?: ReliefsSummary;
 };
 
 export type CompanyDetails = {
@@ -157,6 +204,11 @@ export type SpecNode = {
   maxValue: number | string | null;
   choices: { id: string; min: number }[];
   children: SpecNode[];
+  /**
+   * The service works this element out (a total, a tax at a rate), so the user is not asked.
+   * Set by the frontend from ``SchemaPage.computed``.
+   */
+  computed?: boolean;
 };
 
 export type SchemaPage = {
@@ -165,6 +217,11 @@ export type SchemaPage = {
   title: string;
   dormant: boolean;
   node: SpecNode;
+  /**
+   * The box ids the service calculates; a group whose every box is calculated is calculated
+   * as a whole. Absent from services older than the page calculations, where none are.
+   */
+  computed?: string[];
 };
 
 export type CT600Return = {
@@ -206,6 +263,7 @@ export type SignatoryCapacity = "director" | "company_secretary" | "authorised_a
 
 export type Declaration = { name: string; capacity: SignatoryCapacity; confirmed: true };
 
+/** The receipt for a demonstration submission: nothing is sent to HMRC. */
 export type SubmissionReceipt = {
   reference: string;
   received_at: string;
@@ -214,6 +272,97 @@ export type SubmissionReceipt = {
   signatory: string;
   computation: ReturnComputation;
 };
+
+/** Where a real submission goes: HMRC's live service, or Test in Live (real data, no filing). */
+export type HmrcEnvironment = "live" | "test-in-live";
+
+export type HmrcSubmission = {
+  ct600: CT600Return;
+  declaration: Declaration;
+  environment: HmrcEnvironment;
+  gateway_user_id: string;
+  gateway_password: string;
+};
+
+/**
+ * HMRC accepted the return. ``irmark`` is HMRC's digest in Base64 and ``irmark_base32`` the form
+ * HMRC quotes on its receipt; ``receipt_xml`` is HMRC's signed response, for the company's records.
+ */
+export type HmrcReceipt = {
+  environment: HmrcEnvironment;
+  correlation_id: string;
+  irmark: string | null;
+  irmark_base32: string;
+  accepted_time: string | null;
+  messages: string[];
+  receipt_xml: string;
+};
+
+/**
+ * One reason HMRC rejects (or would reject) a return: HMRC's error code and message, the
+ * CT600 box and supplementary page where there is one, and where HMRC places the fault, like
+ * ``/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/LoansInformation/Loan[2]/Name``.
+ */
+export type HmrcProblem = {
+  code: number | null;
+  message: string;
+  box: string | null;
+  page: PageCode | null;
+  path: string | null;
+};
+
+export type ValidationResult = {
+  valid: boolean;
+  documents_attached: boolean;
+  problems: HmrcProblem[];
+};
+
+/** An error as HMRC's Transaction Engine reports it, before it becomes an ``HmrcProblem``. */
+type HmrcError = {
+  number: number | null;
+  type: string;
+  message: string;
+  box: string | null;
+  page: PageCode | null;
+  location: string | null;
+};
+
+export type HmrcOutcome =
+  | ({ status: "accepted" } & HmrcReceipt)
+  | {
+      status: "rejected";
+      environment: HmrcEnvironment;
+      correlation_id: string;
+      problems: HmrcProblem[];
+    };
+
+type HmrcReply =
+  | ({ status: "accepted" } & HmrcReceipt)
+  | {
+      status: "rejected";
+      environment: HmrcEnvironment;
+      correlation_id: string;
+      errors: HmrcError[];
+    };
+
+function fromHmrcError(error: HmrcError): HmrcProblem {
+  const { number, message, box, page, location } = error;
+  return { code: number, message, box, page, path: location };
+}
+
+/**
+ * The typed ``detail.error`` codes the submission routes give, among others:
+ *
+ * - ``submission_disabled``: this deployment has no HMRC vendor ID or has not enabled submission
+ * - ``authentication_failed``: HMRC refused the Government Gateway user ID or password
+ * - ``invalid_return``: HMRC's rules reject the return; nothing was sent
+ * - ``hmrc_timeout``: HMRC has not answered yet; the return may still be accepted
+ */
+export type ErrorCode =
+  | "submission_disabled"
+  | "authentication_failed"
+  | "invalid_return"
+  | "hmrc_timeout";
 
 export type CalculatorRequest = {
   period_start: string;
@@ -225,19 +374,42 @@ export type CalculatorRequest = {
 /** A problem with one input, located by its path in the request body. */
 export type FieldProblem = { path: string[]; message: string };
 
+type ErrorDetails = {
+  problems?: FieldProblem[];
+  code?: string | null;
+  correlationId?: string | null;
+  hmrcErrors?: HmrcProblem[];
+};
+
 export class ApiError extends Error {
   readonly status: number;
   readonly problems: FieldProblem[];
+  /** The typed error code, when the service gave one. */
+  readonly code: string | null;
+  /** HMRC's identifier for the submission, when it has one. */
+  readonly correlationId: string | null;
+  readonly hmrcErrors: HmrcProblem[];
 
-  constructor(status: number, message: string, problems: FieldProblem[] = []) {
+  constructor(status: number, message: string, details: ErrorDetails = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.problems = problems;
+    this.problems = details.problems ?? [];
+    this.code = details.code ?? null;
+    this.correlationId = details.correlationId ?? null;
+    this.hmrcErrors = details.hmrcErrors ?? [];
   }
 }
 
 type ValidationDetail = { loc: (string | number)[]; msg: string };
+
+/** ``errors`` are ``HmrcProblem``s for ``invalid_return`` and HMRC's own errors otherwise. */
+type TypedDetail = {
+  error: string;
+  message: string;
+  correlation_id?: string | null;
+  errors?: (HmrcProblem | HmrcError)[];
+};
 
 function toProblems(detail: ValidationDetail[]): FieldProblem[] {
   return detail.map((item) => ({
@@ -246,37 +418,111 @@ function toProblems(detail: ValidationDetail[]): FieldProblem[] {
   }));
 }
 
-function post<T>(path: string, body: unknown): Promise<T> {
-  return send<T>(path, {
+function isTypedDetail(detail: unknown): detail is TypedDetail {
+  if (typeof detail !== "object" || detail === null) return false;
+  const candidate = detail as Record<string, unknown>;
+  return typeof candidate.error === "string" && typeof candidate.message === "string";
+}
+
+function toHmrcProblem(error: HmrcProblem | HmrcError): HmrcProblem {
+  return "number" in error ? fromHmrcError(error) : error;
+}
+
+function toApiError(status: number, payload: unknown): ApiError {
+  const detail = (payload as { detail?: unknown } | null)?.detail;
+  if (status === 422 && Array.isArray(detail)) {
+    const problems = toProblems(detail as ValidationDetail[]);
+    return new ApiError(422, problems[0]?.message ?? "Check your answers", { problems });
+  }
+  if (isTypedDetail(detail)) {
+    return new ApiError(status, detail.message, {
+      code: detail.error,
+      correlationId: detail.correlation_id ?? null,
+      hmrcErrors: (detail.errors ?? []).map(toHmrcProblem),
+    });
+  }
+  const message = typeof detail === "string" ? detail : `The service returned ${status}`;
+  return new ApiError(status, message);
+}
+
+function jsonRequest(body: unknown): RequestInit {
+  return {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  };
 }
 
-async function send<T>(path: string, init?: RequestInit): Promise<T> {
+async function request(path: string, init?: RequestInit): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(`/api${path}`, init);
   } catch (error) {
     throw new ApiError(0, `Could not reach the Open CT600 service: ${String(error)}`);
   }
+  if (response.ok) return response;
   const payload: unknown = await response.json().catch(() => null);
-  if (response.ok) return payload as T;
+  throw toApiError(response.status, payload);
+}
 
-  const detail = (payload as { detail?: unknown } | null)?.detail;
-  if (response.status === 422 && Array.isArray(detail)) {
-    const problems = toProblems(detail as ValidationDetail[]);
-    throw new ApiError(422, problems[0]?.message ?? "Check your answers", problems);
-  }
-  const message = typeof detail === "string" ? detail : `The service returned ${response.status}`;
-  throw new ApiError(response.status, message);
+async function send<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await request(path, init);
+  return (await response.json()) as T;
+}
+
+function post<T>(path: string, body: unknown): Promise<T> {
+  return send<T>(path, jsonRequest(body));
+}
+
+/** A document the service generates from the return. */
+export type ReturnDocument = "accounts" | "computations" | "ct600";
+
+/**
+ * Where each document comes from, the file name to use if the service does not give one, and
+ * the request body: the iXBRL routes take the return itself, the XML route ``{ct600}``.
+ */
+const DOCUMENTS: Record<
+  ReturnDocument,
+  { path: string; filename: string; body: (ct600: CT600Return) => unknown }
+> = {
+  accounts: { path: "/returns/accounts.xhtml", filename: "accounts.xhtml", body: (ct600) => ct600 },
+  computations: {
+    path: "/returns/computations.xhtml",
+    filename: "computations.xhtml",
+    body: (ct600) => ct600,
+  },
+  ct600: { path: "/returns/ct600.xml", filename: "ct600.xml", body: (ct600) => ({ ct600 }) },
+};
+
+const FILENAME = /filename="?(?<name>[^";]+)"?/;
+
+async function download(document: ReturnDocument, ct600: CT600Return) {
+  const { path, filename, body } = DOCUMENTS[document];
+  const response = await request(path, jsonRequest(body(ct600)));
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const named = FILENAME.exec(disposition)?.groups?.name;
+  return { blob: await response.blob(), filename: named ?? filename };
+}
+
+async function submitToHmrc(submission: HmrcSubmission): Promise<HmrcOutcome> {
+  const reply = await post<HmrcReply>("/returns/submit-to-hmrc", submission);
+  if (reply.status === "accepted") return reply;
+  const { environment, correlation_id: correlationId, errors } = reply;
+  return {
+    status: "rejected",
+    environment,
+    correlation_id: correlationId,
+    problems: errors.map(fromHmrcError),
+  };
 }
 
 export const api = {
-  calculate: (request: CalculatorRequest) => post<TaxComputation>("/calculator", request),
+  calculate: (body: CalculatorRequest) => post<TaxComputation>("/calculator", body),
   computeReturn: (ct600: CT600Return) => post<ReturnComputation>("/returns/compute", ct600),
+  validateReturn: (ct600: CT600Return) => post<ValidationResult>("/returns/validate", { ct600 }),
+  download,
   submitReturn: (ct600: CT600Return, declaration: Declaration) =>
     post<SubmissionReceipt>("/returns/submit", { ct600, declaration }),
+  submitToHmrc,
   schemaPages: () => send<SchemaPage[]>("/schema/pages"),
 };

@@ -19,14 +19,18 @@ export function StartPage() {
         <li>is a UK resident limited company that trades or has been dormant</li>
         <li>qualifies as a micro-entity or small company</li>
         <li>has an accounting period of 12 months or less</li>
-        <li>does not claim specialist reliefs, such as research and development relief</li>
       </ul>
+      <p className="govuk-body">
+        If the company needs supplementary pages, such as for loans to participators, group relief
+        or research and development, you can complete them too.
+      </p>
       <p className="govuk-body">
         It takes around 20 minutes. Your answers are saved in this browser as you go.
       </p>
 
       <WarningText>
-        This is a demonstration. It does not send your return to HMRC. To file for real, use
+        This service only sends returns to HMRC where whoever runs it has switched submission on.
+        Otherwise you can check your return and get a demonstration receipt, and file for real with
         HMRC-recognised software or an accountant.
       </WarningText>
 

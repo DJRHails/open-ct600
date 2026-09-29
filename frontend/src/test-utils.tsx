@@ -28,6 +28,13 @@ export function requestBody(fetchMock: ReturnType<typeof stubApi>, index = 0): u
   return init?.body ? JSON.parse(String(init.body)) : undefined;
 }
 
+/** The JSON body of the last stubbed request to ``/api<path>``. */
+export function bodySentTo(fetchMock: ReturnType<typeof stubApi>, path: string): unknown {
+  const call = fetchMock.mock.calls.findLast(([input]) => String(input) === `/api${path}`);
+  const init = call?.[1];
+  return init?.body ? JSON.parse(String(init.body)) : undefined;
+}
+
 export function renderApp(path: string) {
   const user = userEvent.setup();
   render(

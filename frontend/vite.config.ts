@@ -27,6 +27,8 @@ export default defineConfig({
   },
   server: {
     proxy: { "/api": "http://127.0.0.1:8000" },
+    // Tests read HMRC's page definitions from the backend's committed schema spec.
+    fs: { allow: [".", "../backend/src/open_ct600/schema"] },
   },
   test: {
     environment: "jsdom",

@@ -2,7 +2,8 @@ import { screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 
 import type { ReturnComputation, SubmissionReceipt } from "@/api";
-import { renderApp, requestBody, stubApi } from "@/test-utils";
+import { schemaPages } from "@/test-schema";
+import { bodySentTo, renderApp, stubApi } from "@/test-utils";
 
 const TAX = {
   period_start: "2024-04-01",
@@ -81,6 +82,16 @@ const RECEIPT: SubmissionReceipt = {
   computation: COMPUTATION,
 };
 
+/** The service's replies for a return with no supplementary pages and no HMRC problems. */
+function demoReplies(path: string) {
+  if (path === "/returns/compute") return { status: 200, body: COMPUTATION };
+  if (path === "/schema/pages") return { status: 200, body: schemaPages() };
+  if (path === "/returns/validate") {
+    return { status: 200, body: { valid: true, documents_attached: true, problems: [] } };
+  }
+  return { status: 201, body: RECEIPT };
+}
+
 async function save(user: UserEvent) {
   await user.click(screen.getByRole("button", { name: "Save and continue" }));
 }
@@ -120,6 +131,10 @@ async function completeEverySection(user: UserEvent) {
 
   await user.click(screen.getByRole("link", { name: "Accounts details" }));
   await completeAccountsDetails(user);
+
+  await user.click(screen.getByRole("link", { name: "Choose supplementary pages" }));
+  await user.click(await screen.findByLabelText("None of these"));
+  await save(user);
 }
 
 async function completeAccountsDetails(user: UserEvent) {
@@ -134,21 +149,18 @@ async function completeAccountsDetails(user: UserEvent) {
 
 describe("filing a return", () => {
   it("goes from the task list to a submitted return", async () => {
-    const fetchMock = stubApi((path) =>
-      path === "/returns/compute"
-        ? { status: 200, body: COMPUTATION }
-        : { status: 201, body: RECEIPT },
-    );
+    const fetchMock = stubApi(demoReplies);
     const user = renderApp("/file/tasks");
 
     expect(screen.getByText("Cannot start yet")).toBeInTheDocument();
     await completeEverySection(user);
-    expect(screen.getByText("You have completed 6 of 6 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 7 of 7 sections.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Check your answers and submit" }));
     expect(await screen.findByText("£22,750.00", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByText("Micro-entity accounts (FRS 105)")).toBeInTheDocument();
-    expect(requestBody(fetchMock)).toMatchObject({
+    expect(await screen.findByText(/HMRC's rules found no problems/)).toBeInTheDocument();
+    expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
       company: COMPANY,
       period: { start: "2024-04-01", end: "2025-03-31" },
       profit_and_loss: { turnover: 100_000, staff_costs: 0 },
@@ -161,25 +173,30 @@ describe("filing a return", () => {
         average_employees: 1,
         trading_status: "trading",
       },
+      supplementary_pages: {},
+    });
+    expect(bodySentTo(fetchMock, "/returns/validate")).toMatchObject({
+      ct600: { company: COMPANY },
     });
 
     await user.click(screen.getByRole("link", { name: "Continue" }));
     await user.type(screen.getByLabelText("Full name"), "Ada Lovelace");
     await user.click(screen.getByLabelText("Director"));
+    await user.click(screen.getByLabelText(/demonstration receipt/));
     await user.click(screen.getByLabelText(/correct and complete/));
     await user.click(screen.getByRole("button", { name: "Submit return" }));
 
     expect(await screen.findByRole("heading", { name: "Return submitted" })).toBeInTheDocument();
     expect(screen.getByText(RECEIPT.reference)).toBeInTheDocument();
-    expect(requestBody(fetchMock, 1)).toMatchObject({
+    expect(bodySentTo(fetchMock, "/returns/submit")).toMatchObject({
       declaration: { name: "Ada Lovelace", capacity: "director", confirmed: true },
     });
     expect(window.localStorage.getItem("open-ct600:draft:v1")).toBeNull();
 
     await user.click(screen.getByRole("link", { name: "Start another return" }));
-    expect(screen.getByText("You have completed 0 of 6 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 0 of 7 sections.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete your answers" }));
-    expect(window.sessionStorage.getItem("open-ct600:receipt:v1")).toBeNull();
+    expect(window.sessionStorage.getItem("open-ct600:receipt:v2")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete your answers" })).toBeNull();
   });
 
@@ -244,6 +261,7 @@ describe("filing a return", () => {
           average_employees: "1",
           trading_status: "trading",
         },
+        chosen_pages: [],
       }),
     );
     renderApp("/file/check-your-answers");

@@ -3,31 +3,32 @@ import { Link } from "react-router";
 import { TwoThirds, usePageTitle } from "@/components/content";
 import { Button } from "@/components/forms";
 import { useDraft } from "@/filing/draft";
-import { CHECK_ANSWERS } from "@/filing/paths";
+import { CHECK_ANSWERS, CHOOSE_PAGES, pagePath } from "@/filing/paths";
 import {
   completedCount,
+  needsSchema,
+  pageComplete,
   sectionComplete,
   SECTION_ORDER,
   SECTION_SLUGS,
   SECTION_TITLES,
-  type SectionKey,
 } from "@/filing/model";
+import { pageName } from "@/filing/supplementary/content";
+import { useSchemaPages } from "@/filing/supplementary/schema";
 
-function TaskItem({ section, completed }: { section: SectionKey; completed: boolean }) {
-  const statusId = `${section}-status`;
+type Task = { id: string; title: string; to: string; completed: boolean };
+
+function TaskItem({ task }: { task: Task }) {
+  const statusId = `${task.id}-status`;
   return (
     <li className="govuk-task-list__item govuk-task-list__item--with-link">
       <div className="govuk-task-list__name-and-hint">
-        <Link
-          className="govuk-link govuk-task-list__link"
-          to={`/file/${SECTION_SLUGS[section]}`}
-          aria-describedby={statusId}
-        >
-          {SECTION_TITLES[section]}
+        <Link className="govuk-link govuk-task-list__link" to={task.to} aria-describedby={statusId}>
+          {task.title}
         </Link>
       </div>
       <div className="govuk-task-list__status" id={statusId}>
-        {completed ? (
+        {task.completed ? (
           "Completed"
         ) : (
           <strong className="govuk-tag govuk-tag--blue">Incomplete</strong>
@@ -69,33 +70,74 @@ function CheckTask({ canStart }: { canStart: boolean }) {
   );
 }
 
+/** The supplementary pages tasks: choosing the pages, then one task per page chosen. */
+function useSupplementaryTasks(): Task[] {
+  const { draft } = useDraft();
+  const schema = useSchemaPages(needsSchema(draft));
+  const pages = schema.status === "ready" ? schema.pages : [];
+  const chosen = draft.chosen_pages ?? [];
+  const choose: Task = {
+    id: "supplementary-pages",
+    title: "Choose supplementary pages",
+    to: CHOOSE_PAGES,
+    completed: draft.chosen_pages !== undefined,
+  };
+  return [
+    choose,
+    ...chosen.map((code) => {
+      const page = pages.find((candidate) => candidate.code === code);
+      return {
+        id: `page-${code}`,
+        title: page ? `${pageName(code)}: ${page.title}` : pageName(code),
+        to: pagePath(code),
+        completed: page !== undefined && pageComplete(draft, page),
+      };
+    }),
+  ];
+}
+
 export function TaskListPage() {
   usePageTitle("Company Tax Return");
   const { draft, receipt, deleteAnswers } = useDraft();
-  const completed = completedCount(draft);
-  const allDone = completed === SECTION_ORDER.length;
+  const supplementary = useSupplementaryTasks();
+  const sections: Task[] = SECTION_ORDER.map((section) => ({
+    id: section,
+    title: SECTION_TITLES[section],
+    to: `/file/${SECTION_SLUGS[section]}`,
+    completed: sectionComplete(draft, section),
+  }));
+  const total = sections.length + supplementary.length;
+  const completed = completedCount(draft) + supplementary.filter((task) => task.completed).length;
+  const started = completed > 0 || Object.keys(draft).length > 0;
 
   return (
     <TwoThirds>
       <span className="govuk-caption-l">{draft.company?.name ?? "Your company"}</span>
       <h1 className="govuk-heading-xl">Company Tax Return</h1>
       <p className="govuk-body">
-        You have completed {completed} of {SECTION_ORDER.length} sections.
+        You have completed {completed} of {total} sections.
       </p>
 
       <h2 className="govuk-heading-m">Your company and its accounts</h2>
       <ul className="govuk-task-list">
-        {SECTION_ORDER.map((section) => (
-          <TaskItem key={section} section={section} completed={sectionComplete(draft, section)} />
+        {sections.map((task) => (
+          <TaskItem key={task.id} task={task} />
+        ))}
+      </ul>
+
+      <h2 className="govuk-heading-m">Supplementary pages</h2>
+      <ul className="govuk-task-list">
+        {supplementary.map((task) => (
+          <TaskItem key={task.id} task={task} />
         ))}
       </ul>
 
       <h2 className="govuk-heading-m">Submit</h2>
       <ul className="govuk-task-list">
-        <CheckTask canStart={allDone} />
+        <CheckTask canStart={completed === total} />
       </ul>
 
-      {completed > 0 || receipt !== null ? (
+      {started || receipt !== null ? (
         <>
           <h2 className="govuk-heading-s">Your saved answers</h2>
           <p className="govuk-body">
