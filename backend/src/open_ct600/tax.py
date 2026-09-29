@@ -227,8 +227,8 @@ class TaxComputation:
         marginal_relief: Total marginal relief.
         tax_chargeable: Corporation Tax chargeable after marginal relief.
         effective_rate: ``tax_chargeable`` divided by ``taxable_profits``.
-        payment_due: Normal due date for payment: 9 months after the day after the period
-            ends, so a period ending 30 June is due on 1 April.
+        payment_due: Normal due date for payment (``payment_due_date``): 9 months and 1 day
+            after the period ends, so a period ending 30 June is due on 1 April.
         filing_due: Deadline for filing the CT600 (12 months after the period).
         may_pay_by_instalments: Whether augmented profits exceed the large company threshold,
             in which case tax is usually paid in quarterly instalments instead of on
@@ -267,11 +267,16 @@ def add_months(day: date, months: int) -> date:
 def payment_due_date(period_end: date) -> date:
     """Return the normal date Corporation Tax is due: 9 months and 1 day after the period ends.
 
-    That is 9 months after the day after the period, so a period ending 30 June is due on
-    1 April (https://www.gov.uk/pay-corporation-tax). The frontend's ``filing/deadlines.ts``
-    works this out the same way; both are tested against ``tests/fixtures/deadlines.json``.
+    TMA 1970 s59D: "the day following the expiry of nine months from the end of that period".
+    That is 9 months from the day after the period, so a period ending 30 June is due on
+    1 April (https://www.gov.uk/pay-corporation-tax). When that month has no such day, the nine
+    months end with the month and tax is due on the 1st of the next: a period ending 30 May is
+    due on 1 March, never 28 February. The frontend's ``filing/deadlines.ts`` works this out
+    the same way; both are tested against ``tests/fixtures/deadlines.json``.
     """
-    return add_months(period_end + timedelta(days=1), 9)
+    start = period_end + timedelta(days=1)
+    due = add_months(start, 9)
+    return due + timedelta(days=1) if due.day != start.day else due
 
 
 def filing_due_date(period_end: date) -> date:
