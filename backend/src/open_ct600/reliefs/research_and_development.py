@@ -294,6 +294,15 @@ def assess_claim(
                 "Add CT600L: it is needed for RDEC and for payable R&D tax credits",
             )
         )
+    carries_rdec = page is not None and (page.has("L5") or page.has("L20"))
+    if page is not None and not needs_page and not carries_rdec:
+        problems.append(
+            Problem(
+                ("supplementary_pages", "L"),
+                "Remove CT600L, or claim the payable credit: a claim for the additional "
+                "deduction alone does not use CT600L",
+            )
+        )
     if problems:
         return None, problems
     merged = period_start >= MERGED_SCHEME_START

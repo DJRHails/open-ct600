@@ -52,6 +52,7 @@ from open_ct600.reliefs.loans_to_participators import (
     compute_loans_to_participators,
 )
 from open_ct600.reliefs.research_and_development import (
+    MERGED_SCHEME_START,
     Claim,
     PayableCredit,
     Redemption,
@@ -698,7 +699,7 @@ def _redeem_research_and_development(
         rdec_expenditure=claim.rdec_expenditure if claim else 0,
         corporation_tax=run.value(475),
         notional_rate=rate,
-        merged=run.period[0] >= date(2024, 4, 1),
+        merged=run.period[0] >= MERGED_SCHEME_START,
         old_cap=rd.rd_workers_paye_and_nic if rd else None,
         period=run.period,
     )

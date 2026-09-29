@@ -350,6 +350,16 @@ def test_a_notified_first_claim_ticks_box_656():
     assert boxes(computation)["656"] == 1
 
 
+def test_ct600l_is_refused_for_an_additional_deduction_alone():
+    found = problems(
+        research_and_development=rd("eris", 10_000, intensity="30"),
+        profit_and_loss={"turnover": 5_000, "other_expenses": 10_000},
+        supplementary_pages={"L": {}},
+    )
+
+    assert list(found) == [("supplementary_pages", "L")]
+
+
 def test_ct600l_without_a_claim_or_anything_brought_forward_is_refused():
     found = problems(supplementary_pages={"L": {}})
 

@@ -8,8 +8,9 @@ For example, a CT600A page::
     {"BeforeEndPeriod": "yes",
      "LoansInformation": {"Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "5000"}], ...}}
 
-This validates user input only. The generated XML is checked separately against HMRC's XSD
-and schematron, which also enforce cross-box rules this module does not attempt.
+It checks a page's answers (leaving out the boxes the service calculates) and, again, the
+page once its calculated boxes are filled in. The generated XML is checked separately against
+HMRC's XSD and schematron, which also enforce cross-box rules this module does not attempt.
 """
 
 import binascii
