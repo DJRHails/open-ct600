@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 _BUSINESS_ERRORS = 3001
 _CORRELATION_ID_NOT_FOUND = 2000
 _HTTP_FORBIDDEN = 403
+_EDGE_REFUSAL_RETRY_DELAYS = (2.0, 5.0, 10.0)
+"""Seconds to wait before each resend after Akamai's HTML 403."""
 
 
 class TransactionEngineError(Exception):
@@ -197,8 +199,12 @@ class TransactionEngineClient:
 
     async def _exchange(self, url: str, content: bytes) -> Reply:
         response = await self._post(url, content)
-        if response.status_code == _HTTP_FORBIDDEN and _is_html(response):
-            # TPVS sits behind Akamai, which intermittently answers with an HTML 403.
+        for delay in _EDGE_REFUSAL_RETRY_DELAYS:
+            # TPVS sits behind Akamai, which intermittently refuses a request with an HTML 403
+            # before it reaches HMRC (twice in a row has been seen), so it is safe to resend.
+            if response.status_code != _HTTP_FORBIDDEN or not _is_html(response):
+                break
+            await self._sleep(delay)
             response = await self._post(url, content)
         if response.status_code != httpx2.codes.OK:
             raise UnexpectedResponseError(
