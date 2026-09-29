@@ -403,6 +403,22 @@ def _paye_cap(
     return pence(allowance + PAYE_CAP_MULTIPLE * liabilities)
 
 
+def eris_needs_a_loss(claim: Claim, position: TradingPosition) -> Problem | None:
+    """The problem with an ERIS claim by a company whose trade is profitable, if it is one.
+
+    CIRD121000 (CTA 2009 s1044 as amended by FA 2024): enhanced support is only for R&D
+    intensive SMEs making a trading loss before the additional deduction, whether or not they
+    claim the payable credit; a profitable company claims merged-scheme RDEC (review M1).
+    """
+    if claim.rd.scheme != "eris" or position.loss_before_additional_deduction > 0:
+        return None
+    return Problem(
+        (*_WHERE, "scheme"),
+        "ERIS is only for companies whose trade makes a loss before the additional deduction: "
+        "claim merged-scheme RDEC instead",
+    )
+
+
 def payable_credit(
     claim: Claim, page: PageTree, position: TradingPosition, period: tuple[date, date]
 ) -> tuple[PayableCredit | None, list[Problem]]:
@@ -412,17 +428,8 @@ def payable_credit(
         The credit (``None`` if not claimed), and problems with the claim's answers.
     """
     rd = claim.rd
-    if not rd.claim_payable_credit:
+    if not rd.claim_payable_credit or eris_needs_a_loss(claim, position):
         return None, []
-    if rd.scheme == "eris" and position.loss_before_additional_deduction <= 0:
-        return None, [
-            Problem(
-                (*_WHERE, "scheme"),
-                "ERIS is only for companies whose trade "
-                "makes a loss before the additional deduction: claim "
-                "merged-scheme RDEC instead",
-            )
-        ]
     unrelieved = max(position.loss - position.other_profits - position.group_relief_surrendered, 0)
     surrenderable = min(claim.enhanced_expenditure, unrelieved)
     if surrenderable <= 0:

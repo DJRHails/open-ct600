@@ -404,3 +404,18 @@ def test_income_tax_deducted_cannot_be_given():
     ((location, message),) = found.items()
     assert location[-1] == "IncomeTaxDeductedFromProfitsApplicableToCorporationTaxLiability"
     assert "box 515" in message
+
+
+def test_eris_is_refused_for_a_profitable_trade_even_without_a_payable_credit():
+    # Review M1. CIRD121000: enhanced support under ERIS is only for R&D intensive SMEs that
+    # make a trading loss before the additional deduction; a profitable company claims
+    # merged-scheme RDEC.
+    found = problems(
+        profit_and_loss={"turnover": 500_000},
+        research_and_development=rd("eris", 100_000, intensity="35"),
+    )
+
+    assert (
+        "only for companies whose trade makes a loss"
+        in found[("research_and_development", "scheme")]
+    )

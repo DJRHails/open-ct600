@@ -59,6 +59,7 @@ from open_ct600.reliefs.research_and_development import (
     StepInputs,
     TradingPosition,
     assess_claim,
+    eris_needs_a_loss,
     notional_tax_rate,
     payable_credit,
     redeem,
@@ -649,8 +650,7 @@ def _company_facts(run: _Evaluation) -> CompanyFacts:
 def _payable_credit(
     run: _Evaluation, claim: Claim | None, profits: _Profits, group: GroupRelief | None
 ) -> PayableCredit | None:
-    page = run.pages.get("L")
-    if claim is None or page is None:
+    if claim is None:
         return None
     before_deduction = profits.trading_result + claim.additional_deduction
     position = TradingPosition(
@@ -659,6 +659,13 @@ def _payable_credit(
         other_profits=profits.interest + profits.gains,
         group_relief_surrendered=group.trading_losses_surrendered if group else 0,
     )
+    refused = eris_needs_a_loss(claim, position)
+    if refused is not None:
+        run.problems.append(refused)
+        return None
+    page = run.pages.get("L")
+    if page is None:
+        return None
     credit, problems = payable_credit(claim, page, position, run.period)
     run.problems += problems
     return credit
