@@ -73,6 +73,11 @@ html = ElementMaker(namespace=XHTML, nsmap={None: XHTML})
 """Element factory for the human-readable XHTML, e.g. ``html.p("text", {"class": "n"})``."""
 
 
+def long_date(value: date) -> str:
+    """A date as ``ixt:datedaymonthyearen`` reads it, e.g. ``1 April 2025``, in any locale."""
+    return f"{value.day} {_MONTHS[value.month - 1]} {value.year}"
+
+
 class InlineXbrlError(ValueError):
     """Raised when a document would not be valid Inline XBRL."""
 
@@ -251,10 +256,9 @@ class InlineDocument:
 
     def date_fact(self, concept: str, context: Context, value: date) -> etree._Element:
         """Tag a date, shown as e.g. ``1 April 2025``."""
-        shown = f"{value.day} {_MONTHS[value.month - 1]} {value.year}"
         element = self._fact("nonNumeric", concept, context, None, value.isoformat())
         element.set("format", "ixt:datedaymonthyearen")
-        element.text = shown
+        element.text = long_date(value)
         return element
 
     def boolean(
