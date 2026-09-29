@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      accessible-autocomplete:
+        specifier: 3.0.2
+        version: 3.0.2
       govuk-frontend:
         specifier: 6.5.1
         version: 6.5.1
@@ -786,6 +789,14 @@ packages:
 
   '@vitest/spy@5.0.2':
     resolution: {integrity: sha512-Ijc7T1nT9efNb5LxvjaBrEqw3f/QwUv5EE0nKqZxgqsaV/FxAAZ8baGylA8X/Z2oS4Lp+K74Jr6dTJsDKxJDeg==}
+
+  accessible-autocomplete@3.0.2:
+    resolution: {integrity: sha512-po7fS9YyTFFZjzaenYKtV4JUcb6xh2eFttTsspg5NIX5epQCbderffjW8evYOTuDh+FgJyYPwL9B7qTkhND3gA==}
+    peerDependencies:
+      preact: ^8.0.0
+    peerDependenciesMeta:
+      preact:
+        optional: true
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -1855,6 +1866,8 @@ snapshots:
       vite: 8.3.1(sass-embedded@1.105.0)(sass@1.105.0)
 
   '@vitest/spy@5.0.2': {}
+
+  accessible-autocomplete@3.0.2: {}
 
   ansi-regex@5.0.1: {}
 
