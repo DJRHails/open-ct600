@@ -1,0 +1,270 @@
+from pathlib import Path
+
+import httpx2
+import pytest
+from fastapi.testclient import TestClient
+
+from open_ct600.config import Settings
+from open_ct600.hmrc.irmark import compute_irmark
+from open_ct600.hmrc.routes import IXBRLDocuments, http_client, ixbrl_renderer
+from open_ct600.hmrc.xmldoc import CT_NS, parse_xml
+from open_ct600.main import create_app
+
+FIXTURES = Path(__file__).parent / "fixtures/hmrc"
+PASSWORD = "correct-horse-battery-staple"
+CORRELATION_ID = "46DCD4CC7E194088B99857931C185829"
+XHTML = '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>{}</p></body></html>'
+DOCUMENTS = IXBRLDocuments(accounts=XHTML.format("Accounts"), computations=XHTML.format("Tax"))
+
+CT600 = {
+    "company": {
+        "name": "Acme Widgets Ltd",
+        "registration_number": "01234567",
+        "utr": "1234567890",
+        "principal_activity": "Manufacture of widgets",
+    },
+    "period": {"start": "2024-04-01", "end": "2025-03-31"},
+    "profit_and_loss": {"turnover": 100_000, "staff_costs": 40_000},
+    "tax_adjustments": {},
+    "balance_sheet": {"current_assets": 20_000},
+    "accounts": {
+        "standard": "micro",
+        "approval_date": "2025-06-30",
+        "directors": ["Ada Lovelace"],
+        "signing_director": "Ada Lovelace",
+        "average_employees": 1,
+        "trading_status": "trading",
+    },
+}
+DECLARATION = {"name": "Ada Lovelace", "capacity": "director", "confirmed": True}
+SUBMIT = {
+    "ct600": CT600,
+    "declaration": DECLARATION,
+    "environment": "test-in-live",
+    "gateway_user_id": "123456789012",
+    "gateway_password": PASSWORD,
+}
+LOANS_PAGE = {
+    "BeforeEndPeriod": "no",
+    "LoansInformation": {
+        "Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}],
+        "TotalLoans": "6000",
+        "TaxChargeable": "2025.00",
+    },
+    "TaxPayable": "2025.00",
+}
+ENABLED = Settings(hmrc_submission_enabled=True, hmrc_vendor_id="0000")
+
+
+def te_reply(qualifier, function="submit", body="", errors=""):
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<GovTalkMessage xmlns="http://www.govtalk.gov.uk/CM/envelope"><EnvelopeVersion>2.0</EnvelopeVersion>
+<Header><MessageDetails><Class>HMRC-CT-CT600-TIL</Class><Qualifier>{qualifier}</Qualifier>
+<Function>{function}</Function><CorrelationID>{CORRELATION_ID}</CorrelationID>
+<ResponseEndPoint PollInterval="0"></ResponseEndPoint></MessageDetails><SenderDetails/></Header>
+<GovTalkDetails><Keys/>{errors}</GovTalkDetails><Body>{body}</Body></GovTalkMessage>""".encode()
+
+
+def from_hmrc(fixture):
+    content = (FIXTURES / fixture).read_bytes()
+    return content.replace(
+        b"<CorrelationID></CorrelationID>",
+        f"<CorrelationID>{CORRELATION_ID}</CorrelationID>".encode(),
+    )
+
+
+class StubTransactionEngine:
+    def __init__(self, *replies):
+        self.replies = list(replies)
+        self.messages = []
+
+    def __call__(self, request):
+        self.messages.append(request.content)
+        return httpx2.Response(200, content=self.replies.pop(0))
+
+
+def client_for(settings=ENABLED, *, engine=None, documents=DOCUMENTS):
+    app = create_app(settings)
+    app.dependency_overrides[ixbrl_renderer] = lambda: lambda ct600, computation: documents
+    if engine is not None:
+
+        async def stub_client():
+            async with httpx2.AsyncClient(transport=httpx2.MockTransport(engine)) as client:
+                yield client
+
+        app.dependency_overrides[http_client] = stub_client
+    return TestClient(app)
+
+
+def test_validate_accepts_a_complete_return():
+    with client_for() as client:
+        response = client.post("/api/returns/validate", json={"ct600": CT600})
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "documents_attached": True, "problems": []}
+
+
+def test_validate_reports_missing_ixbrl_until_it_can_be_rendered():
+    with client_for(documents=None) as client:
+        report = client.post("/api/returns/validate", json={"ct600": CT600}).json()
+
+    assert report["valid"] is False
+    assert report["documents_attached"] is False
+    assert sorted(problem["code"] for problem in report["problems"]) == [9113, 9965]
+
+
+def test_validate_locates_problems_on_supplementary_pages():
+    ct600 = {**CT600, "supplementary_pages": {"A": LOANS_PAGE}}
+
+    with client_for() as client:
+        report = client.post("/api/returns/validate", json={"ct600": ct600}).json()
+
+    problem = next(p for p in report["problems"] if p["code"] == 9428)
+    assert problem["page"] == "A"
+    assert problem["box"] == "A80"
+    assert problem["path"] == "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/TaxPayable"
+    assert "Box 480" in problem["message"]
+
+
+def test_validate_rejects_malformed_answers():
+    with client_for() as client:
+        response = client.post("/api/returns/validate", json={"ct600": {**CT600, "period": {}}})
+
+    assert response.status_code == 422
+
+
+def test_download_ct600_xml():
+    with client_for() as client:
+        response = client.post(
+            "/api/returns/ct600.xml", json={"ct600": CT600, "declaration": DECLARATION}
+        )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/xml"
+    assert (
+        response.headers["content-disposition"]
+        == 'attachment; filename="ct600-1234567890-2025-03-31.xml"'
+    )
+    envelope = parse_xml(response.content)
+    assert envelope.tag == f"{{{CT_NS}}}IRenvelope"
+    assert envelope.findtext(f".//{{{CT_NS}}}Declaration/{{{CT_NS}}}Name") == "Ada Lovelace"
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [Settings(), Settings(hmrc_submission_enabled=True), Settings(hmrc_vendor_id="0000")],
+)
+def test_submission_is_off_unless_enabled_with_a_vendor_id(settings):
+    engine = StubTransactionEngine()
+
+    with client_for(settings, engine=engine) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 403
+    assert response.json()["detail"]["error"] == "submission_disabled"
+    assert engine.messages == []
+
+
+def test_submission_needs_ixbrl():
+    engine = StubTransactionEngine()
+
+    with client_for(engine=engine, documents=None) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["error"] == "ixbrl_unavailable"
+    assert engine.messages == []
+
+
+def test_invalid_return_is_not_sent():
+    engine = StubTransactionEngine()
+    submission = {**SUBMIT, "ct600": {**CT600, "supplementary_pages": {"A": LOANS_PAGE}}}
+
+    with client_for(engine=engine) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=submission)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["error"] == "invalid_return"
+    assert [error["code"] for error in detail["errors"]] == [9428]
+    assert engine.messages == []
+
+
+def test_accepted_submission_returns_hmrc_receipt():
+    engine = StubTransactionEngine(
+        te_reply("acknowledgement"),
+        from_hmrc("tpvs-success-response.xml"),
+        te_reply("response", "delete"),
+    )
+
+    with client_for(engine=engine) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 200
+    receipt = response.json()
+    assert receipt["status"] == "accepted"
+    assert receipt["environment"] == "test-in-live"
+    assert receipt["correlation_id"] == CORRELATION_ID
+    assert receipt["irmark_base32"] == compute_irmark(engine.messages[0]).base32
+    assert receipt["receipt_xml"].startswith("<?xml")
+    sent = parse_xml(engine.messages[0])
+    assert sent.findtext(".//{http://www.govtalk.gov.uk/CM/envelope}Class") == "HMRC-CT-CT600-TIL"
+    assert sent.findtext(".//{http://www.govtalk.gov.uk/CM/envelope}URI") == "0000"
+    assert len(engine.messages) == 3
+
+
+def test_rejected_submission_lists_hmrc_errors_on_the_form():
+    engine = StubTransactionEngine(
+        te_reply("acknowledgement"),
+        from_hmrc("tpvs-business-errors-response.xml"),
+        te_reply("response", "delete"),
+    )
+
+    with client_for(engine=engine) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 200
+    rejection = response.json()
+    assert rejection["status"] == "rejected"
+    rate = rejection["errors"][0]
+    assert rate["number"] == 9200
+    assert rate["box"] == "340"
+    assert rate["page"] is None
+    assert rejection["errors"][1]["type"] == "xbrl.ixbrl.HeaderAbsent"
+    assert rejection["errors"][1]["box"] is None
+
+
+def test_authentication_failure_does_not_echo_the_password():
+    engine = StubTransactionEngine(
+        (FIXTURES / "ets-authentication-failure-response.xml").read_bytes()
+    )
+
+    with client_for(engine=engine) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["error"] == "authentication_failed"
+    assert response.json()["detail"]["errors"][0]["number"] == 1046
+    assert PASSWORD not in response.text
+
+
+def test_hmrc_unreachable_is_a_bad_gateway():
+    def unreachable(request):
+        raise httpx2.ConnectError("connection refused")
+
+    with client_for(engine=unreachable) as client:
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["error"] == "hmrc_error"
+    assert PASSWORD not in response.text
+
+
+def test_only_test_in_live_and_live_are_offered():
+    with client_for(engine=StubTransactionEngine()) as client:
+        response = client.post(
+            "/api/returns/submit-to-hmrc", json={**SUBMIT, "environment": "tpvs"}
+        )
+
+    assert response.status_code == 422
+    assert PASSWORD not in response.text
