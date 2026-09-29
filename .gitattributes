@@ -1,0 +1,3 @@
+# Keep HMRC and FRC artefacts byte-for-byte as published.
+specs/hmrc/** -text
+specs/ixbrl/examples/** -text
