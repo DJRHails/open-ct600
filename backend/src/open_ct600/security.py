@@ -5,6 +5,10 @@ request back: FastAPI's default 422 includes each error's ``input`` (for a missi
 whole request, password included).
 """
 
+import base64
+import hashlib
+import re
+
 from fastapi import Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -23,6 +27,15 @@ SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
 }
+DOCS_PATHS = frozenset({"/docs", "/redoc"})
+"""FastAPI's interactive API docs, which get ``docs_policy`` instead of the strict policy."""
+_INLINE_SCRIPT = re.compile(
+    r"""(?xs)
+    <script>              # an inline script: no src attribute
+    (?P<code> .*? )       # its exact text, which is what a CSP hash covers
+    </script>
+    """
+)
 _SAFE_CONTEXT_KEYS = frozenset({"box"})
 """Error context kept in 422s: the CT600 box of a page answer. Other context (a validator's
 exception, a pattern, an expected value) can quote the input, so it is dropped."""
@@ -92,7 +105,7 @@ class BodySizeLimit:
 
 
 class SecurityHeaders:
-    """Add ``SECURITY_HEADERS`` to every HTTP response."""
+    """Add ``SECURITY_HEADERS`` to every HTTP response (``docs_policy`` for the API docs)."""
 
     def __init__(self, app: ASGIApp) -> None:
         """Wrap ``app``."""
@@ -103,15 +116,83 @@ class SecurityHeaders:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        if scope["path"] in DOCS_PATHS:
+            await self.app(scope, receive, _DocsResponse(send))
+            return
 
         async def with_headers(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = list(message.get("headers", []))
-                present = {name.lower() for name, _ in headers}
-                for name, value in SECURITY_HEADERS.items():
-                    if name.lower().encode() not in present:
-                        headers.append((name.lower().encode(), value.encode()))
-                message["headers"] = headers
+                message["headers"] = _with_security_headers(message, SECURITY_HEADERS)
             await send(message)
 
         await self.app(scope, receive, with_headers)
+
+
+class _DocsResponse:
+    """Hold back an API docs page until its body is known, then send it with ``docs_policy``."""
+
+    def __init__(self, send: Send) -> None:
+        self._send = send
+        self._start: Message | None = None
+        self._body = b""
+
+    async def __call__(self, message: Message) -> None:
+        if message["type"] == "http.response.start":
+            self._start = message
+            return
+        if message["type"] != "http.response.body" or self._start is None:
+            await self._send(message)
+            return
+        self._body += message.get("body", b"")
+        if message.get("more_body", False):
+            return
+        policy = docs_policy(self._body.decode("utf-8", errors="replace"))
+        headers = {**SECURITY_HEADERS, "Content-Security-Policy": policy}
+        await self._send({**self._start, "headers": _with_security_headers(self._start, headers)})
+        await self._send({"type": "http.response.body", "body": self._body})
+
+
+def _with_security_headers(start: Message, security: dict[str, str]) -> list[tuple[bytes, bytes]]:
+    headers = list(start.get("headers", []))
+    present = {name.lower() for name, _ in headers}
+    for name, value in security.items():
+        if name.lower().encode() not in present:
+            headers.append((name.lower().encode(), value.encode()))
+    return headers
+
+
+def docs_policy(html: str) -> str:
+    """The Content-Security-Policy for FastAPI's ``/docs`` (Swagger UI) and ``/redoc`` pages.
+
+    They load their scripts and styles from jsDelivr, Redoc its fonts from Google Fonts, and
+    both a favicon from fastapi.tiangolo.com. Swagger UI's inline bootstrap script is allowed
+    by hash, computed from the page being sent, so no other inline script can run. Styles
+    need ``'unsafe-inline'``: Redoc injects ``<style>`` elements at run time, which no hash
+    can name. Swagger UI draws its icons from ``data:`` images; Redoc runs its search in a
+    ``blob:`` worker. Framing, plugins and foreign form targets stay forbidden as everywhere.
+    """
+    scripts = ["'self'", "https://cdn.jsdelivr.net", *_inline_script_hashes(html)]
+    return "; ".join(
+        [
+            "default-src 'self'",
+            f"script-src {' '.join(scripts)}",
+            "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com "
+            "'unsafe-inline'",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data: https://fastapi.tiangolo.com https://cdn.redoc.ly",
+            "worker-src 'self' blob:",
+            "frame-ancestors 'none'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+    )
+
+
+def _inline_script_hashes(html: str) -> list[str]:
+    return [
+        "'sha256-{}'".format(
+            base64.b64encode(hashlib.sha256(match.group("code").encode()).digest()).decode()
+        )
+        for match in _INLINE_SCRIPT.finditer(html)
+    ]

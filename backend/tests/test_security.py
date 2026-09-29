@@ -1,6 +1,9 @@
 """Security properties of the API as a whole (review .data/review/security.md)."""
 
+import base64
+import hashlib
 import json
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -239,3 +242,58 @@ def test_tabs_and_line_breaks_are_still_accepted():
         response = client.post("/api/returns/compute", json=ct600)
 
     assert response.status_code == 200
+
+
+STRICT_POLICY = (
+    "default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; "
+    "form-action 'self'"
+)
+
+
+def directives(policy):
+    return {
+        name: values
+        for name, *values in (part.split() for part in policy.split(";") if part.strip())
+    }
+
+
+def inline_hashes(html, tag):
+    blocks = re.findall(rf"<{tag}>(.*?)</{tag}>", html, flags=re.DOTALL)
+    return {
+        "'sha256-" + base64.b64encode(hashlib.sha256(block.encode()).digest()).decode() + "'"
+        for block in blocks
+    }
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc"])
+def test_api_docs_get_a_policy_that_lets_them_render(path):
+    with client_for() as client:
+        response = client.get(path)
+
+    policy = directives(response.headers["content-security-policy"])
+    assert "https://cdn.jsdelivr.net" in policy["script-src"]
+    assert "'unsafe-inline'" not in policy["script-src"]
+    assert inline_hashes(response.text, "script") <= set(policy["script-src"])
+    # Redoc injects <style> elements at run time, which only 'unsafe-inline' allows.
+    assert "'unsafe-inline'" in policy["style-src"]
+    assert policy["frame-ancestors"] == ["'none'"]
+    assert policy["object-src"] == ["'none'"]
+
+
+def test_swagger_ui_bootstrap_script_is_allowed_by_its_hash_only():
+    with client_for() as client:
+        response = client.get("/docs")
+
+    [script_hash] = inline_hashes(response.text, "script")
+    policy = directives(response.headers["content-security-policy"])
+    assert script_hash in policy["script-src"]
+
+
+@pytest.mark.parametrize("path", ["/", "/file/declaration", "/api/health", "/openapi.json"])
+def test_everything_else_keeps_the_strict_policy(path, tmp_path):
+    (tmp_path / "index.html").write_text("<!doctype html><title>Open CT600</title>")
+
+    with client_for(Settings(static_dir=tmp_path)) as client:
+        response = client.get(path)
+
+    assert response.headers["content-security-policy"] == STRICT_POLICY
