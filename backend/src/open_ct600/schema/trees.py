@@ -91,7 +91,9 @@ _CHARACTER_CLASS = re.compile(
 )
 
 
-def validate_tree(node: SpecNode, tree: object) -> list[TreeProblem]:
+def validate_tree(
+    node: SpecNode, tree: object, computed: frozenset[str] = frozenset()
+) -> list[TreeProblem]:
     """Check an element tree for ``node`` (a group, such as a supplementary page root).
 
     Checks unknown keys, how many times each element occurs, that exactly one branch of each
@@ -101,14 +103,18 @@ def validate_tree(node: SpecNode, tree: object) -> list[TreeProblem]:
     Args:
         node: The spec node the tree is for.
         tree: The element tree (a dict of the node's children).
+        computed: Schema paths of elements the service calculates. Answers must leave them
+            out, and they are not required; see ``open_ct600.pages.definitions``.
 
     Returns:
         The problems found, in schema order; empty if the tree is valid.
     """
-    return _group(node, tree, ())
+    return _group(node, tree, (), computed)
 
 
-def _group(node: SpecNode, tree: object, path: TreePath) -> list[TreeProblem]:
+def _group(
+    node: SpecNode, tree: object, path: TreePath, computed: frozenset[str]
+) -> list[TreeProblem]:
     if not isinstance(tree, dict):
         return [TreeProblem(path, node.box, f"{_sentence(node.label)} must be a set of answers")]
     known = {child.name for child in node.children}
@@ -119,20 +125,32 @@ def _group(node: SpecNode, tree: object, path: TreePath) -> list[TreeProblem]:
     ]
     chosen: set[str] = set()
     for group in node.choices:
-        branches, problem = _choice(node, group, tree, path)
+        branches, problem = _choice(node, group, tree, path, computed)
         chosen |= branches
         problems += problem
     for child in node.children:
+        child_path = (*path, child.name)
+        if child.path in computed:
+            if child.name in tree:
+                problems.append(TreeProblem(child_path, child.box, _calculated(child)))
+            continue
         if child.choice is not None and child.branch not in chosen:
             continue
-        problems += _occurrences(child, tree.get(child.name), (*path, child.name))
+        problems += _occurrences(child, tree.get(child.name), child_path, computed)
     return problems
 
 
+def _calculated(node: SpecNode) -> str:
+    box = f" (box {node.box})" if node.box else ""
+    return f"Remove {_phrase(node.label)}{box}: it is calculated from your other answers"
+
+
 def _choice(
-    node: SpecNode, group: ChoiceGroup, tree: dict, path: TreePath
+    node: SpecNode, group: ChoiceGroup, tree: dict, path: TreePath, computed: frozenset[str]
 ) -> tuple[set[str], list[TreeProblem]]:
     members = [child for child in node.children if child.choice == group.id]
+    if all(child.path in computed for child in members):
+        return set(), []
     branches = {child.branch for child in members if child.name in tree and child.branch}
     heads = {child.branch: child for child in members if child.name == child.branch}
     options = " or ".join(_phrase(head.label) for head in heads.values())
@@ -143,11 +161,13 @@ def _choice(
     return branches, []
 
 
-def _occurrences(node: SpecNode, value: object, path: TreePath) -> list[TreeProblem]:
+def _occurrences(
+    node: SpecNode, value: object, path: TreePath, computed: frozenset[str]
+) -> list[TreeProblem]:
     if value is None:
         return [TreeProblem(path, node.box, _missing(node))] if node.min > 0 else []
     if not node.repeats:
-        return _value(node, value, path)
+        return _value(node, value, path, computed)
     if not isinstance(value, list):
         return [TreeProblem(path, node.box, f"{_sentence(node.label)} must be a list")]
     problems = []
@@ -156,13 +176,15 @@ def _occurrences(node: SpecNode, value: object, path: TreePath) -> list[TreeProb
     if node.max is not None and len(value) > node.max:
         problems.append(TreeProblem(path, node.box, f"Add no more than {node.max}: {node.label}"))
     for index, item in enumerate(value):
-        problems += _value(node, item, (*path, index))
+        problems += _value(node, item, (*path, index), computed)
     return problems
 
 
-def _value(node: SpecNode, value: object, path: TreePath) -> list[TreeProblem]:
+def _value(
+    node: SpecNode, value: object, path: TreePath, computed: frozenset[str]
+) -> list[TreeProblem]:
     if node.kind == "group":
-        return _group(node, value, path)
+        return _group(node, value, path, computed)
     message = _scalar_problem(node, value)
     return [] if message is None else [TreeProblem(path, node.box, message)]
 
