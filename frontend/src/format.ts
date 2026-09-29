@@ -68,6 +68,21 @@ export function parseWholePounds(raw: string, label: string, required = false): 
   return { ok: true, value };
 }
 
+/**
+ * Parse a whole-pounds amount that can be negative, like a tax credit. A minus sign (or the
+ * typographic ``−``) may come before or after the £.
+ */
+export function parseSignedWholePounds(raw: string, label: string): Parsed<number> {
+  const cleaned = raw.replace(/[\s,]/g, "").replace(/^£/, "");
+  const negative = /^[-−]/.test(cleaned);
+  if (negative && cleaned.length === 1) {
+    return { ok: false, error: `${capitalise(label)} must be a number, like -1200` };
+  }
+  const parsed = parseWholePounds(negative ? cleaned.slice(1) : cleaned, label);
+  if (!parsed.ok || !negative) return parsed;
+  return { ok: true, value: withoutNegativeZero(-parsed.value) };
+}
+
 /** Parse a whole count, like a number of associated companies. */
 export function parseCount(raw: string, label: string, max: number): Parsed<number> {
   const cleaned = raw.trim();

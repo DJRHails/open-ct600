@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { api, ApiError, type CompanyRecord, type CompanySearchResult } from "@/api";
 import { PrefilledBanner } from "@/components/content";
 import { Radios, TextInput } from "@/components/forms";
-import { useCompaniesHouseLookup } from "@/filing/companiesHouse";
+import { companyRecord, useCompaniesHouseLookup } from "@/filing/companiesHouse";
 import { useDraft } from "@/filing/draft";
 import {
   type CompanyAnswers,
@@ -29,7 +29,10 @@ export function companiesHouseError(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) {
     return "Companies House has no company with that number. Search again, or enter the company’s details yourself";
   }
-  const reason = error instanceof Error ? error.message : String(error);
+  // GOV.UK error messages have no full stop at the end.
+  const reason = (error instanceof Error ? error.message : String(error)).replace(/\.$/, "");
+  // Lookup switched off, or the rate limit reached: the service already says what to do.
+  if (reason.endsWith("details yourself")) return reason;
   return `We could not get the company’s details from Companies House: ${reason}. Try again, or enter them yourself`;
 }
 
@@ -37,9 +40,10 @@ type CompanyFieldsProps = {
   values: CompanyAnswers;
   setValues: (values: CompanyAnswers) => void;
   errors: FieldErrors;
+  activityNote: string | null;
 };
 
-function CompanyFields({ values, setValues, errors }: CompanyFieldsProps) {
+function CompanyFields({ values, setValues, errors, activityNote }: CompanyFieldsProps) {
   return (
     <>
       <TextInput
@@ -77,7 +81,10 @@ function CompanyFields({ values, setValues, errors }: CompanyFieldsProps) {
       <TextInput
         id="principal_activity"
         label="What does the company do?"
-        hint="Its principal activity, as stated in its accounts. For example, software development."
+        hint={
+          activityNote ??
+          "Its principal activity, as stated in its accounts. For example, software development."
+        }
         value={values.principal_activity}
         onChange={(principalActivity) =>
           setValues({ ...values, principal_activity: principalActivity })
@@ -105,6 +112,14 @@ function fromRecord(values: CompanyAnswers, record: CompanyRecord): CompanyAnswe
     registration_number: record.number,
     principal_activity: record.principal_activity ?? values.principal_activity,
   };
+}
+
+/** Why the principal activity was not filled in, when the record's SIC codes have no description. */
+function undescribedActivity(record: CompanyRecord | null): string | null {
+  if (!record || record.principal_activity !== null || record.sic_codes.length === 0) return null;
+  const codes = record.sic_codes.map((sic) => sic.code).join(", ");
+  const listed = record.sic_codes.length === 1 ? `SIC code ${codes}` : `SIC codes ${codes}`;
+  return `Companies House lists the company under ${listed}, but has no description to fill in here. Describe what the company does.`;
 }
 
 /**
@@ -207,7 +222,14 @@ export function CompanyDetailsPage() {
         </>
       ) : null}
       {!searching && (manual || lookup !== "checking") ? (
-        <CompanyFields values={values} setValues={setValues} errors={errors} />
+        <CompanyFields
+          values={values}
+          setValues={setValues}
+          errors={errors}
+          activityNote={undescribedActivity(
+            companyRecord(draft.companies_house, values.registration_number),
+          )}
+        />
       ) : null}
     </SectionFrame>
   );

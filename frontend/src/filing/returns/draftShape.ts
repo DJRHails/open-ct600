@@ -5,6 +5,7 @@
  */
 import type { CompanyRecord, PageCode, PreviousAccounts } from "@/api";
 import type { DateParts } from "@/components/forms";
+import { LEGAL_FORMS } from "@/filing/companiesHouse";
 import type { ComparativesAnswers } from "@/filing/comparatives";
 import {
   type AccountsAnswers,
@@ -126,21 +127,29 @@ function shape<T>(fields: { [K in keyof Required<T>]: Check }): Check {
   };
 }
 
+const isLegalForm: Check = (value, path) =>
+  LEGAL_FORMS.some((form) => form.value === value) ? null : path;
+
 const ISO_PERIOD = shape<{ start: string; end: string }>({ start: isText, end: isText });
 
 /** The company's record as the Companies House route returned it. */
 const COMPANY_RECORD = shape<CompanyRecord>({
   number: isText,
   name: isText,
-  status: isText,
+  status: orNull(isText),
   incorporated_on: orNull(isText),
-  legal_form: orNull(isText),
-  registered_office: shape<CompanyRecord["registered_office"]>({
-    lines: isTextList,
-    postcode: orNull(isText),
-  }),
+  legal_form: orNull(isLegalForm),
+  registered_office: orNull(
+    shape<NonNullable<CompanyRecord["registered_office"]>>({
+      lines: isTextList,
+      postcode: orNull(isText),
+    }),
+  ),
   sic_codes: listOf(
-    shape<CompanyRecord["sic_codes"][number]>({ code: isText, description: isText }),
+    shape<CompanyRecord["sic_codes"][number]>({
+      code: isText,
+      description: orNull(isText),
+    }),
   ),
   principal_activity: orNull(isText),
   directors: listOf(
@@ -164,7 +173,7 @@ const COMPANY_RECORD = shape<CompanyRecord>({
       filed_on: isText,
       standard: orNull((value, path) => (value === "micro" || value === "small" ? null : path)),
       dormant: orNull(isBoolean),
-      profit_and_loss: numberByKey,
+      profit_and_loss: orNull(numberByKey),
       balance_sheet: numberByKey,
       average_employees: orNull(isNumber),
       directors: isTextList,

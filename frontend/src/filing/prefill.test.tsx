@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 
-import type { CompanyRecord } from "@/api";
+import type { CompanyRecord, PreviousAccounts } from "@/api";
 import { draftShapeProblem } from "@/filing/returns/draftShape";
 import { RECORD, SEARCH_RESULT } from "@/test-companies-house";
 import { bodySentTo, openDraft, renderApp, type Reply, seedDraft, stubApi } from "@/test-utils";
@@ -143,6 +143,46 @@ describe("company details from Companies House", () => {
     expect(group).toHaveClass("govuk-form-group--error");
     expect(within(group).getByText(/Find the company/)).toHaveTextContent(
       /Error: We could not get the company’s details/,
+    );
+  });
+
+  it("passes on the service's own advice when lookup is switched off", async () => {
+    const detail =
+      "Looking companies up at Companies House is switched off on this service. Enter the company's details yourself.";
+    stubCompaniesHouse((path) =>
+      path.startsWith("/companies-house/search") ? { status: 503, body: { detail } } : undefined,
+    );
+    const user = renderApp("/file/company-details");
+
+    await user.type(await screen.findByRole("combobox", { name: /Find the company/ }), "acme");
+
+    const message = await screen.findByText(/switched off on this service/, {
+      selector: ".govuk-error-message",
+    });
+    expect(message).toHaveTextContent(
+      /^Error: Looking companies up at Companies House is switched off on this service\. Enter the company's details yourself$/,
+    );
+  });
+
+  it("leaves what the company does blank when its SIC code has no description", async () => {
+    const undescribed: CompanyRecord = {
+      ...RECORD,
+      sic_codes: [{ code: "74990", description: null }],
+      principal_activity: null,
+    };
+    stubCompaniesHouse((path) =>
+      path === `/companies-house/companies/${RECORD.number}`
+        ? { status: 200, body: undescribed }
+        : undefined,
+    );
+    const user = renderApp("/file/company-details");
+
+    await chooseAcme(user);
+
+    const activity = await screen.findByLabelText("What does the company do?");
+    expect(activity).toHaveValue("");
+    expect(activity).toHaveAccessibleDescription(
+      "Companies House lists the company under SIC code 74990, but has no description to fill in here. Describe what the company does.",
     );
   });
 
@@ -345,6 +385,63 @@ describe("the previous period's figures (comparatives)", () => {
     expect(screen.getByLabelText("Tax on profit in the previous period")).toHaveValue("10825");
   });
 
+  it("take a filed tax credit as a negative figure", () => {
+    stubCompaniesHouse();
+    const filed = RECORD.previous_accounts as PreviousAccounts;
+    withRecord({
+      ...RECORD,
+      previous_accounts: { ...filed, profit_and_loss: { ...filed.profit_and_loss, tax: -1_500 } },
+    });
+    renderApp("/file/profit-and-loss");
+
+    const tax = screen.getByLabelText("Tax on profit in the previous period");
+    expect(tax).toHaveValue("-1500");
+    expect(tax).toHaveAccessibleDescription(/If it was a tax credit, put a minus sign in front/);
+  });
+
+  describe("from accounts filed without a profit and loss account", () => {
+    function withFilleted() {
+      const filed = RECORD.previous_accounts as PreviousAccounts;
+      withRecord({ ...RECORD, previous_accounts: { ...filed, profit_and_loss: null } });
+    }
+
+    it("fill in the dates, and ask for last period's figures, saying why", async () => {
+      stubCompaniesHouse();
+      withFilleted();
+      const user = renderApp("/file/profit-and-loss");
+
+      expect(
+        screen.getByText(
+          /the accounts filed on 2 November 2025 for the period ending 31 March 2025\. Those accounts don’t include a profit and loss account/,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Important" })).toBeInTheDocument();
+      const start = line("When did the previous period of account start?");
+      expect(within(start).getByLabelText("Year")).toHaveValue("2024");
+      const turnover = within(line("Turnover")).getByLabelText("Previous period");
+      expect(turnover).toHaveValue("");
+      expect(screen.getByLabelText("Tax on profit in the previous period")).toHaveValue("");
+
+      await user.type(turnover, "118,000");
+      await user.type(screen.getByLabelText("Tax on profit in the previous period"), "−2,000");
+      await save(user);
+
+      expect(openDraft().comparatives).toMatchObject({
+        profit_and_loss: { turnover: "118,000" },
+        tax_on_profit: "−2,000",
+      });
+    });
+
+    it("still fill in the balance sheet", () => {
+      stubCompaniesHouse();
+      withFilleted();
+      renderApp("/file/balance-sheet");
+
+      expect(screen.getByText(/^From the accounts filed on 2 November 2025/)).toBeInTheDocument();
+      expect(within(line("Fixed assets")).getByLabelText("Previous period")).toHaveValue("10000");
+    });
+  });
+
   it("must end the day before this period starts, and last no more than 18 months", async () => {
     stubCompaniesHouse();
     withRecord(RECORD, {
@@ -417,55 +514,61 @@ describe("the previous period's figures (comparatives)", () => {
     expect(screen.queryByText(/From the accounts filed on/)).toBeNull();
   });
 
-  it("are sent with the accounts and shown in check your answers", async () => {
-    const fetchMock = stubCompaniesHouse((path) =>
-      path === "/returns/compute" ? { status: 422, body: { detail: [] } } : undefined,
-    );
-    seedDraft({
-      companies_house: RECORD,
-      company: COMPANY,
-      period: {
-        start: { day: "1", month: "4", year: "2025" },
-        end: { day: "31", month: "3", year: "2026" },
-      },
-      profit_and_loss: { turnover: "150000" },
-      tax_adjustments: {},
-      balance_sheet: { fixed_assets: "9000" },
-      accounts: ACCOUNTS,
-      comparatives: {
+  it.each([
+    ["a tax charge", "9,000", "Tax on profit", "£9,000", 9_000],
+    ["a tax credit", "-1,500", "Tax credit", "£1,500", -1_500],
+  ])(
+    "are sent with the accounts and shown in check your answers, with %s",
+    async (_case, typed, label, shown, sent) => {
+      const fetchMock = stubCompaniesHouse((path) =>
+        path === "/returns/compute" ? { status: 422, body: { detail: [] } } : undefined,
+      );
+      seedDraft({
+        companies_house: RECORD,
+        company: COMPANY,
         period: {
-          start: { day: "1", month: "4", year: "2024" },
-          end: { day: "31", month: "3", year: "2025" },
+          start: { day: "1", month: "4", year: "2025" },
+          end: { day: "31", month: "3", year: "2026" },
         },
-        profit_and_loss: { turnover: "120,000" },
-        balance_sheet: { fixed_assets: "10000" },
-        tax_on_profit: "9,000",
-        average_employees: "2",
-      },
-      chosen_pages: [],
-      research_and_development: { claiming: "no" },
-    });
-    renderApp("/file/check-your-answers");
-
-    const card = (await screen.findByRole("heading", { name: "Previous period" })).closest(
-      ".govuk-summary-card",
-    ) as HTMLElement;
-    expect(card).toHaveTextContent("1 April 2024 to 31 March 2025");
-    expect(within(card).getByText("£120,000")).toBeInTheDocument();
-    expect(within(card).getByText("Tax on profit").closest("div")).toHaveTextContent("£9,000");
-    expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
-      accounts: {
-        legal_form: "private-limited-company",
+        profit_and_loss: { turnover: "150000" },
+        tax_adjustments: {},
+        balance_sheet: { fixed_assets: "9000" },
+        accounts: ACCOUNTS,
         comparatives: {
-          period: { start: "2024-04-01", end: "2025-03-31" },
-          profit_and_loss: { turnover: 120_000, staff_costs: 0 },
-          balance_sheet: { fixed_assets: 10_000, current_assets: 0 },
-          tax_on_profit: 9_000,
-          average_employees: 2,
+          period: {
+            start: { day: "1", month: "4", year: "2024" },
+            end: { day: "31", month: "3", year: "2025" },
+          },
+          profit_and_loss: { turnover: "120,000" },
+          balance_sheet: { fixed_assets: "10000" },
+          tax_on_profit: typed,
+          average_employees: "2",
         },
-      },
-    });
-  });
+        chosen_pages: [],
+        research_and_development: { claiming: "no" },
+      });
+      renderApp("/file/check-your-answers");
+
+      const card = (await screen.findByRole("heading", { name: "Previous period" })).closest(
+        ".govuk-summary-card",
+      ) as HTMLElement;
+      expect(card).toHaveTextContent("1 April 2024 to 31 March 2025");
+      expect(within(card).getByText("£120,000")).toBeInTheDocument();
+      expect(within(card).getByText(label).closest("div")).toHaveTextContent(shown);
+      expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
+        accounts: {
+          legal_form: "private-limited-company",
+          comparatives: {
+            period: { start: "2024-04-01", end: "2025-03-31" },
+            profit_and_loss: { turnover: 120_000, staff_costs: 0 },
+            balance_sheet: { fixed_assets: 10_000, current_assets: 0 },
+            tax_on_profit: sent,
+            average_employees: 2,
+          },
+        },
+      });
+    },
+  );
 
   it("reopen the profit and loss account once the company says it is not its first period", () => {
     stubCompaniesHouse();

@@ -239,7 +239,7 @@ export function AmountSectionPage<K extends AmountSectionKey>({
     >
       {askingPrevious ? (
         <PreviousNotice
-          prefilled={prefill ? filingDescription(record) : null}
+          prefilled={prefill ? filingDescription(record, key as ComparativeSection) : null}
           unavailable={record?.previous_accounts_unavailable ?? null}
           firstUnknown={firstPeriod(draft) === ""}
         />
@@ -274,13 +274,17 @@ export function AmountSectionPage<K extends AmountSectionKey>({
         );
       })}
       {askingPrevious && key === "profit_and_loss" ? (
-        <MoneyInput
+        // A text keyboard, not a numeric one: some numeric keyboards have no minus sign.
+        <TextInput
           id={previousFigureId(TAX_ON_PROFIT)}
           label="Tax on profit in the previous period"
-          hint="The tax charge in last period’s profit and loss account. We work out this period’s."
+          hint="The tax charge in last period’s profit and loss account. If it was a tax credit, put a minus sign in front, like -1200. We work out this period’s."
           value={previous.tax_on_profit ?? ""}
           onChange={(value) => setPrevious((current) => ({ ...current, tax_on_profit: value }))}
           error={errors[previousFigureId(TAX_ON_PROFIT)]}
+          prefix="£"
+          width="10"
+          spellCheck={false}
         />
       ) : null}
     </SectionFrame>

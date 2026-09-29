@@ -16,6 +16,7 @@ import {
   type Parsed,
   parseCount,
   parseDateParts,
+  parseSignedWholePounds,
   parseWholePounds,
 } from "@/format";
 
@@ -155,8 +156,9 @@ export function comparativesProblems(
   };
 }
 
+/** The previous period's tax charge; a tax credit is negative. */
 function validateTaxOnProfit(answers: ComparativesAnswers | undefined) {
-  return parseWholePounds(answers?.tax_on_profit ?? "", "previous period’s tax on profit");
+  return parseSignedWholePounds(answers?.tax_on_profit ?? "", "previous period’s tax on profit");
 }
 
 /**
@@ -191,7 +193,10 @@ function filedFigures(filed: Record<string, number>, fields: Field[]): Record<st
   );
 }
 
-/** Comparatives from the accounts last filed at Companies House, for a section's fields. */
+/**
+ * Comparatives from the accounts last filed at Companies House, for a section's fields. Accounts
+ * filed without a profit and loss account still give the previous period's dates.
+ */
 export function filedComparatives(
   record: CompanyRecord | null,
   section: ComparativeSection,
@@ -199,17 +204,33 @@ export function filedComparatives(
 ): ComparativesAnswers | null {
   const filed = record?.previous_accounts;
   if (!filed) return null;
-  const tax = filed.profit_and_loss.tax;
+  const figures = filed[section];
+  const tax = section === "profit_and_loss" ? filed.profit_and_loss?.tax : undefined;
   return {
     period: { start: isoToDateParts(filed.period.start), end: isoToDateParts(filed.period.end) },
-    [section]: filedFigures(filed[section], fields),
-    ...(section === "profit_and_loss" && tax !== undefined ? { tax_on_profit: String(tax) } : {}),
+    [section]: figures ? filedFigures(figures, fields) : {},
+    ...(tax === undefined ? {} : { tax_on_profit: String(tax) }),
   };
 }
 
-/** Where prefilled comparatives came from: "From the accounts filed on … for the period …". */
-export function filingDescription(record: CompanyRecord | null): string | null {
+/**
+ * Where a section's prefilled comparatives came from, or, for accounts filed without a profit
+ * and loss account, that its figures must be typed in.
+ */
+export function filingDescription(
+  record: CompanyRecord | null,
+  section: ComparativeSection,
+): string | null {
   const filed = record?.previous_accounts;
   if (!filed) return null;
-  return `From the accounts filed on ${formatDate(filed.filed_on)} for the period ending ${formatDate(filed.period.end)}.`;
+  const filing = `the accounts filed on ${formatDate(filed.filed_on)} for the period ending ${formatDate(filed.period.end)}`;
+  if (section === "profit_and_loss" && filed.profit_and_loss === null) {
+    return (
+      `We’ve filled in the previous period’s dates from ${filing}. Those accounts don’t include ` +
+      "a profit and loss account: small companies can leave it out of the accounts they file at " +
+      "Companies House. Enter last period’s figures from the company’s full accounts, as sent " +
+      "to HMRC with its last Company Tax Return."
+    );
+  }
+  return `From ${filing}.`;
 }

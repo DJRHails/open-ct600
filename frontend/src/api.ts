@@ -212,8 +212,8 @@ export type Comparatives = {
 export type CompanySearchResult = {
   number: string;
   name: string;
-  status: string;
-  address: string;
+  status: string | null;
+  address: string | null;
   incorporated_on: string | null;
 };
 
@@ -223,8 +223,11 @@ export type PreviousAccounts = {
   filed_on: string;
   standard: "micro" | "small" | null;
   dormant: boolean | null;
-  /** ``ProfitAndLoss`` fields, plus ``tax`` and ``profit_after_tax`` for reference. */
-  profit_and_loss: Record<string, number>;
+  /**
+   * ``ProfitAndLoss`` fields, plus ``tax`` (negative for a tax credit) and ``profit_after_tax``.
+   * ``null`` when the accounts were filed without one, as most small companies' are.
+   */
+  profit_and_loss: Record<string, number> | null;
   /** ``BalanceSheet`` fields, plus ``net_assets`` for reference. */
   balance_sheet: Record<string, number>;
   average_employees: number | null;
@@ -236,12 +239,14 @@ export type PreviousAccounts = {
 export type CompanyRecord = {
   number: string;
   name: string;
-  status: string;
+  status: string | null;
   incorporated_on: string | null;
-  /** Companies House's legal form, which may be one this service does not support. */
-  legal_form: string | null;
-  registered_office: { lines: string[]; postcode: string | null };
-  sic_codes: { code: string; description: string }[];
+  /** ``null`` for a company these accounts cannot be prepared for, like a PLC or an LLP. */
+  legal_form: LegalForm | null;
+  registered_office: { lines: string[]; postcode: string | null } | null;
+  /** ``description`` is ``null`` for a code missing from Companies House's list. */
+  sic_codes: { code: string; description: string | null }[];
+  /** The first SIC code's description, if it has one. */
   principal_activity: string | null;
   /** Current directors, in Companies House's display order. */
   directors: { name: string; appointed_on: string | null }[];

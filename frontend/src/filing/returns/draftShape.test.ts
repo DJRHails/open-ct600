@@ -22,8 +22,11 @@ describe("the shape of the Companies House record and comparatives", () => {
   it("accepts a record with nothing filed and comparatives not yet answered", () => {
     const record = {
       ...RECORD,
+      status: null,
       incorporated_on: null,
       legal_form: null,
+      registered_office: null,
+      sic_codes: [{ code: "74990", description: null }],
       principal_activity: null,
       accounts: { reference_date: null, last_made_up_to: null, next_period: null },
       suggested_period: null,
@@ -32,6 +35,14 @@ describe("the shape of the Companies House record and comparatives", () => {
     };
 
     expect(draftShapeProblem({ companies_house: record, comparatives: {} })).toBeNull();
+  });
+
+  it("accepts accounts filed without a profit and loss account", () => {
+    const filleted = { ...RECORD.previous_accounts, profit_and_loss: null };
+
+    expect(draftShapeProblem({ companies_house: { ...RECORD, previous_accounts: filleted } })).toBe(
+      null,
+    );
   });
 
   it.each([
@@ -51,6 +62,7 @@ describe("the shape of the Companies House record and comparatives", () => {
   it.each([
     ["a field is missing", { ...RECORD, directors: undefined }, "directors"],
     ["a field is unknown", { ...RECORD, officers: [] }, "officers"],
+    ["the legal form is not one the model has", { ...RECORD, legal_form: "ltd" }, "legal_form"],
     [
       "a director is not a person",
       { ...RECORD, directors: [{ name: 1, appointed_on: null }] },
