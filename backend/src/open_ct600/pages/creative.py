@@ -81,7 +81,9 @@ def _check_relief_row(page: PageTree, row: str) -> None:
 def _column_totals(page: PageTree, rows: tuple[str, ...], total: str, columns: str) -> None:
     present = [row for row in rows if page.has(row)]
     for column in columns:
-        answered = [row for row in present if page.has(f"{row}{column}")]
+        answered = [
+            row for row in present if page.defines(f"{row}{column}") and page.has(f"{row}{column}")
+        ]
         value = sum((page.amount(f"{row}{column}") for row in answered), ZERO)
         optional = column == "E" and total == "P30"
         page.set(f"{total}{column}", None if optional and not answered else value)

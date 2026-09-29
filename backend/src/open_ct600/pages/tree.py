@@ -213,6 +213,10 @@ class PageTree(Elements):
         self.problems: list[Problem] = []
         super().__init__(self, self.tree, None, ("supplementary_pages", code))
 
+    def defines(self, box: str) -> bool:
+        """Whether the page has a box with this id (P5E exists, P15E does not)."""
+        return box in box_paths(self.code)
+
     def path(self, box: str) -> BoxPath:
         """Where ``box`` is on this page.
 
