@@ -1,17 +1,19 @@
 # Open CT600
 
-A free, open-source website for preparing a UK Company Tax Return (CT600). It takes the place of HMRC's
-old online filing service for small companies, which closed on 31 March 2026, and replicates
+A free, open-source website for preparing and filing a UK Company Tax Return (CT600). It takes the place
+of HMRC's old online filing service for small companies, which closed on 31 March 2026, and replicates
 [taxpipe.co.uk](https://taxpipe.co.uk/) as open source.
 
 - **Frontend:** React 19 + TypeScript (Vite), built on the [GOV.UK Design System](https://design-system.service.gov.uk/)
   (`govuk-frontend` 6).
-- **Backend:** Python 3.13 + FastAPI. It computes Corporation Tax and the CT600 boxes.
+- **Backend:** Python 3.13 + FastAPI. It computes Corporation Tax, reliefs and every CT600 box. It also
+  produces the iXBRL accounts and computations and the CT600 XML, validates them against HMRC's own
+  rules, and can submit them to HMRC.
 
-> **This is a demonstration.** It does not submit returns to HMRC and is not HMRC-recognised software.
-> Use it to prepare and check your figures, then file with
-> [HMRC-recognised software](https://www.gov.uk/government/publications/corporation-tax-commercial-software-suppliers/corporation-tax-commercial-software-suppliers)
-> or an accountant. It is not tax advice.
+> **Open CT600 is not HMRC-recognised software, and it is not tax advice.** A deployment submits
+> returns to HMRC only when its operator holds an HMRC vendor ID and switches submission on (see
+> [Submitting to HMRC](#submitting-to-hmrc)). Otherwise it prepares and checks your return, gives you
+> the files, and issues a demonstration receipt.
 
 ![Home page](docs/screenshots/home.png)
 
@@ -19,7 +21,12 @@ old online filing service for small companies, which closed on 31 March 2026, an
 
 | Area | What you get |
 | --- | --- |
-| Filing service (`/file`) | Uses the GOV.UK start page, task list and one-topic-per-page patterns: company details (including the type of company and its principal activity), accounting period, profit and loss account, tax adjustments, micro-entity balance sheet and accounts details (accounting standard, directors, approval date, employees, trading status). Check your answers shows every CT600 box, the tax computation and the accounts. After a declaration, it issues a demo receipt with a submission reference and a fingerprint of the return. |
+| Filing service (`/file`) | GOV.UK start page, task list and question pages: company details, accounting period, profit and loss, tax adjustments, balance sheet, accounts details (standard, directors, approval, dormancy), reliefs, and supplementary pages. |
+| Supplementary pages | CT600A–CT600P (CT600G is dormant). The user picks the pages that apply. Each page is a form generated from HMRC's schema, with box numbers as hints and add-another lists; the service works out the calculated boxes. |
+| Reliefs | Group relief (CT600C). R&D: SME and large-company RDEC before 1 April 2024; merged RDEC or ERIS after. Loans to participators (s455, CT600A). The calculations for each page and how they feed the main return. |
+| Check your answers | Every CT600 box, the tax computation, the reliefs and the accounts. HMRC's offline validation is shown too: its XSD and all 1,072 business rules, with HMRC's error codes, linked to the question to fix. |
+| Files | iXBRL statutory accounts (micro-entity FRS 105 or small FRS 102 1A, FRC 2026 taxonomy); iXBRL Corporation Tax computations (HMRC ct-comp 2024); CT600 XML (schema v1.994) with both attached. |
+| Submission | Test in Live or live submission through HMRC's Transaction Engine, using the company's Government Gateway user ID and password. The password is passed straight to HMRC and never stored or logged. The confirmation shows HMRC's receipt: IRmark, correlation ID and accepted time. |
 | Tax calculator (`/calculator`) | Corporation Tax for any period from 1 April 2017 to 31 March 2027, with marginal relief, associated companies, short periods and periods that span 1 April. |
 | Content | Home, pricing (free), HMRC free-filing closure explainer, guides, help/FAQ, privacy, cookies (none are used), accessibility statement and terms. |
 
@@ -29,26 +36,57 @@ Drafts are kept only in the user's browser (`localStorage`). The API stores noth
 | --- | --- | --- |
 | ![Task list](docs/screenshots/task-list.png) | ![Check your answers](docs/screenshots/check-answers.png) | ![Confirmation](docs/screenshots/confirmation.png) |
 
-### Tax rules implemented
+## How it is verified
 
-The rules are in `backend/src/open_ct600/tax.py`, following CTA 2010 as amended by Finance Act 2021:
+| What | How |
+| --- | --- |
+| Tax, reliefs and pages | Unit tests using worked examples from HMRC guidance and manuals for each relief and page, checked by hand. Mutation checks on the core formulas. |
+| CT600 XML | Every return shape in the tests passes HMRC's v1.994 XSD and HMRC's schematron offline with zero problems. |
+| IRmark | Reproduces HMRC's published worked example byte for byte. |
+| iXBRL | Every generated document passes [Arelle](https://arelle.org/) offline, with the UK plugin and the HMRC disclosure system, against the FRC and HMRC taxonomy packages pinned by SHA-256 in `specs/ixbrl/taxonomies.tsv`. Any warning fails the test. |
+| End to end with HMRC | `pytest -m hmrc_tpvs` sends synthetic returns with real iXBRL to HMRC's third-party validation service (TPVS) and expects a signed receipt whose digest equals our IRmark. The returns are micro-entity, small company, net liabilities, group relief, s455 loans, SME R&D, merged RDEC, ERIS and a tax avoidance scheme disclosure. All pass. |
+| Transaction Engine | Submit → poll → delete and every HMRC error class are tested against a stub Transaction Engine that replays HMRC's messages. |
 
-- FY2017 to FY2022: a flat 19%.
-- FY2023 onwards:
-  - The small profits rate of 19% applies where augmented profits are £50,000 or less.
-  - The main rate of 25% applies at £250,000 or more.
-  - In between, marginal relief is 3/200 × (U − A) × N/A.
-- Limits are divided by the number of associated companies plus one. For periods shorter than 12
-  months they are cut in proportion to days / 365. A 12-month period that includes 29 February
-  keeps the full limits.
-- Periods that span 1 April are split by days, and each slice is taxed at its own year's rates.
-- Payment is due 9 months and 1 day after the period ends. The return is due 12 months after.
-- The CT600 boxes produced are 145–315 (profits), 326/329 (associated companies and relief
-  entitlement), 330–345 and 380–395 (the rows for each financial year), and 430–525 (tax
-  payable).
+## Submitting to HMRC
 
-Not implemented: iXBRL accounts and computations, real HMRC submission (Government Gateway /
-Transaction Engine), group relief, R&D relief, and the supplementary pages (CT600A onwards).
+HMRC accepts CT600 returns only from software that sends its vendor ID. HMRC's Software Developers
+Support Team (SDSTeam@hmrc.gov.uk) issues the ID and runs the recognition process. To enable
+submission on your deployment:
+
+```sh
+HMRC_VENDOR_ID=1234            # your 4-digit HMRC vendor ID
+HMRC_SUBMISSION_ENABLED=true   # off by default, so a public demo never handles Gateway passwords
+```
+
+- **Test in Live** (class `HMRC-CT-CT600-TIL`) has HMRC check the whole return with real credentials,
+  without filing it.
+- **Protect a submitting deployment.** With submission on, the service passes whatever Government
+  Gateway credentials it receives to HMRC under your vendor ID. Put it behind your own authentication
+  and rate limiting, so it can't be used to test credentials against HMRC. With submission off, the
+  page never asks for credentials.
+- **Not yet exercised against HMRC:** live and Test in Live submission need a vendor ID and real
+  credentials, so the submit → poll → delete flow is tested only against the stub Transaction Engine.
+  The message itself (schema, business rules, IRmark and iXBRL) is proven on TPVS.
+
+## Known limitations
+
+- **Computations for periods ending after 31 March 2026.** HMRC accepts its 2024 computations
+  taxonomy only for these earlier periods, and has not yet published the 2025 one. For later periods the
+  service explains this and does not submit; the accounts and CT600 XML are still produced.
+- **s455 at 35.75%.** Loans made from 6 April 2026 are filed at 33.75%, because HMRC's online service
+  accepts the new rate only from April 2027. The difference is shown as tax due on amendment.
+- **Not calculated:**
+  - The restriction on using carried-forward losses above the £5 million deductions allowance.
+  - Income tax deducted from income (box 515).
+- **Refused, with a clear message rather than a wrong return:**
+  - Insurance companies (company type 5) and REIT tax-exempt businesses (type 10).
+  - Periods of account longer than 12 months.
+  - Ring fence trades in periods starting before 1 April 2023, because the older ring fence limits aren't modelled.
+- **CT600A later-repayment relief** assumes the company's later accounting periods are 12 months long,
+  because the page has no field for them.
+- **Accounts are single-period.** There are no prior-year comparatives, and the legal form is always
+  private limited company. HMRC's ct-comp 2024 taxonomy has no elements for marginal relief or the
+  merged RDEC and ERIS steps, so those appear in the computation text untagged.
 
 ## Running it
 
@@ -76,17 +114,22 @@ docker run --rm -p 8000:8000 open-ct600
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Liveness |
-| `POST` | `/api/calculator` | Corporation Tax for `period_start`, `period_end`, `taxable_profits`, `associated_companies` |
-| `POST` | `/api/returns/compute` | CT600 boxes, tax computation and micro-entity accounts for a full return |
-| `POST` | `/api/returns/submit` | Takes a return plus a declaration and issues a demo receipt. Nothing is sent to HMRC. |
+| `GET` | `/api/schema/pages` | Supplementary pages A–P: their schema trees and the boxes the service calculates |
+| `POST` | `/api/calculator` | Corporation Tax for a period and taxable profits |
+| `POST` | `/api/returns/compute` | CT600 boxes, tax computation, reliefs, completed pages and accounts |
+| `POST` | `/api/returns/validate` | HMRC's XSD and business rules run offline, with problems mapped to boxes and questions |
+| `POST` | `/api/returns/accounts.xhtml` | iXBRL statutory accounts |
+| `POST` | `/api/returns/computations.xhtml` | iXBRL Corporation Tax computations |
+| `POST` | `/api/returns/ct600.xml` | CT600 XML with the iXBRL attached |
+| `POST` | `/api/returns/submit-to-hmrc` | Test in Live or live submission; needs `HMRC_SUBMISSION_ENABLED` and `HMRC_VENDOR_ID` |
+| `POST` | `/api/returns/submit` | Demonstration receipt. Nothing is sent to HMRC. |
 
-Interactive docs are at `/docs` while the API is running. Validation errors are FastAPI's standard
-`422` responses, with messages written in GOV.UK style.
+The return endpoints take `{"ct600": …, "declaration": …}`. Interactive docs are at `/docs`.
 
 ## Development
 
 ```sh
-# backend
+# backend (add -m hmrc_tpvs to run the opt-in TPVS tests; synthetic data only)
 cd backend && uv run ruff format --check . && uv run ruff check . && uv run ty check && uv run pytest
 
 # frontend
@@ -94,7 +137,9 @@ cd frontend && pnpm lint && pnpm format:check && pnpm test && pnpm build
 ```
 
 The same checks run in CI (`.github/workflows/ci.yml`) and as [prek](https://github.com/j178/prek)
-hooks (`prek install`).
+hooks (`prek install`). The design is in [`docs/design/filing-with-hmrc.md`](docs/design/filing-with-hmrc.md).
+The official material it is built against is in [`specs/`](specs/README.md): HMRC schemas and
+business rules, the box map, samples, taxonomy pins and research notes.
 
 ### Design system notes
 
@@ -107,4 +152,5 @@ Design System's rules for services outside GOV.UK:
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](LICENSE). HMRC schemas and documents in `specs/` are Crown copyright under the Open Government
+Licence v3.0.
