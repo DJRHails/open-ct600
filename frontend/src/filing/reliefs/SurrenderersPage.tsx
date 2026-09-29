@@ -67,7 +67,10 @@ function Surrenderers({ pages }: { pages: SchemaPage[] }) {
           id: surrendererId(index, key),
           value: figures[key],
           onChange: (value: string) =>
-            setValues({ ...values, [reference]: { ...figures, [key]: value } }),
+            setValues((current) => ({
+              ...current,
+              [reference]: { ...BLANK, ...current[reference], [key]: value },
+            })),
           error: errors[surrendererId(index, key)],
         });
         return (

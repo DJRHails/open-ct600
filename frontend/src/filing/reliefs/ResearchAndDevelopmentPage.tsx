@@ -162,7 +162,8 @@ export function ResearchAndDevelopmentPage() {
     ...draft.research_and_development,
   });
   const [errors, setErrors] = useState<FieldErrors>({});
-  const set = (change: Partial<ResearchAnswers>) => setValues({ ...values, ...change });
+  const set = (change: Partial<ResearchAnswers>) =>
+    setValues((current) => ({ ...current, ...change }));
 
   function save() {
     const result = validateResearch(values, start);
