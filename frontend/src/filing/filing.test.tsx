@@ -25,6 +25,7 @@ const TAX = {
       rate: "0.25",
       tax: "25000.00",
       marginal_relief: "2250.00",
+      ring_fence: null,
     },
   ],
   tax_before_relief: "25000.00",
@@ -42,6 +43,7 @@ const COMPUTATION: ReturnComputation = {
   accounts: {
     turnover: 100_000,
     interest_income: 0,
+    other_income: 0,
     total_expenses: 0,
     profit_before_tax: 100_000,
     corporation_tax: "22750.00",

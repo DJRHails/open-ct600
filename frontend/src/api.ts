@@ -1,6 +1,15 @@
 /** Typed client for the Open CT600 API. Decimal amounts arrive as strings. */
 
-export type TaxBand = "flat" | "small" | "marginal" | "main";
+/** ``fund`` is the authorised investment fund rate (company type 1). */
+export type TaxBand = "flat" | "small" | "marginal" | "main" | "fund";
+
+/** A slice's ring fence profits (CT600I), taxed at the ring fence rates. */
+export type RingFenceSlice = {
+  profits: number;
+  rate: string;
+  tax: string;
+  marginal_relief: string;
+};
 
 export type FinancialYearSlice = {
   financial_year: number;
@@ -14,7 +23,9 @@ export type FinancialYearSlice = {
   band: TaxBand;
   rate: string;
   tax: string;
+  /** Includes the ring fence marginal relief, if any. */
   marginal_relief: string;
+  ring_fence: RingFenceSlice | null;
 };
 
 export type TaxComputation = {
@@ -41,6 +52,8 @@ export type CT600Box = { box: string; label: string; value: string; kind: BoxKin
 export type AccountsSummary = {
   turnover: number;
   interest_income: number;
+  /** The RDEC and AVEC/VGEC credits the service adds as income; in profit before tax. */
+  other_income: number;
   total_expenses: number;
   profit_before_tax: number;
   corporation_tax: string;

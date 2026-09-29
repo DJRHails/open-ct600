@@ -83,6 +83,14 @@ export function AccountsTables({ accounts }: { accounts: AccountsSummary }) {
         lines={[
           { label: "Turnover", value: formatPounds(accounts.turnover) },
           { label: "Interest received", value: formatPounds(accounts.interest_income) },
+          ...(accounts.other_income
+            ? [
+                {
+                  label: "Other income (R&D and creative expenditure credits)",
+                  value: formatPounds(accounts.other_income),
+                },
+              ]
+            : []),
           { label: "Expenses", value: formatPounds(-accounts.total_expenses) },
           {
             label: "Profit before tax",
