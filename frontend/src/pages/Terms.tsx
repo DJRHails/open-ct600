@@ -5,23 +5,33 @@ import { ExternalLink, RECOGNISED_SOFTWARE_URL } from "@/content/guides";
 function WhatThisServiceIs() {
   return (
     <>
-      <h2 className="govuk-heading-l">A demonstration only</h2>
+      <h2 className="govuk-heading-l">What Open CT600 does</h2>
       <p className="govuk-body">
-        Open CT600 prepares CT600 figures and works out Corporation Tax. It does not submit returns
-        to HMRC. The submit step gives you a demo receipt only. It does not mean your return has
-        been filed.
+        Open CT600 prepares a Company Tax Return (CT600) with its supplementary pages, iXBRL
+        accounts and tax computations, works out Corporation Tax, and checks the return against
+        HMRC’s published schema and business rules.
       </p>
       <p className="govuk-body">
-        Open CT600 is not on HMRC’s list of recognised Corporation Tax software. To file your
-        return, use{" "}
+        It can send a return to HMRC only where whoever runs it has an HMRC vendor ID and has
+        switched submission on. You can then send a test to HMRC’s Test in Live service, which does
+        not file the return, or file it for real. Where submission is off, the last step gives you a
+        demonstration receipt only: it does not mean your return has been filed.
+      </p>
+      <p className="govuk-body">
+        HMRC has not yet published the computations taxonomy for periods ending after 31 March 2026,
+        so returns for those periods cannot be sent until it does.
+      </p>
+      <p className="govuk-body">
+        Open CT600 is not on HMRC’s list of recognised Corporation Tax software, and HMRC has not
+        approved it. HMRC decides whether to accept each return. You can also file with{" "}
         <ExternalLink href={RECOGNISED_SOFTWARE_URL}>HMRC-recognised software</ExternalLink> or an
         accountant.
       </p>
       <h2 className="govuk-heading-l">Not tax advice</h2>
       <p className="govuk-body">
         Nothing on this site is tax, legal or financial advice. You are responsible for your
-        company’s tax return and for checking that its figures are correct. If you are unsure, ask
-        an accountant.
+        company’s tax return, for checking that its figures are correct, and for any return you send
+        to HMRC. If you are unsure, ask an accountant.
       </p>
     </>
   );
@@ -51,7 +61,10 @@ export function TermsPage() {
       <ul className="govuk-list govuk-list--bullet">
         <li>Do not try to disrupt the service or access it in ways it is not designed for.</li>
         <li>Do not enter information you are not allowed to share.</li>
-        <li>We may change or stop this demonstration at any time.</li>
+        <li>
+          Only enter Government Gateway sign in details you are authorised to use for the company.
+        </li>
+        <li>We may change or stop this service at any time.</li>
       </ul>
       <h2 className="govuk-heading-l">Changes to these terms</h2>
       <p className="govuk-body">

@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router";
 
 import {
@@ -9,7 +9,7 @@ import {
   type SchemaPage,
   type ValidationResult,
 } from "@/api";
-import { BackLink, SummaryList, usePageTitle } from "@/components/content";
+import { BackLink, Card, SummaryList, usePageTitle } from "@/components/content";
 import { type ErrorItem, ErrorSummary } from "@/components/forms";
 import { TaxBreakdownTable, TaxSummary } from "@/components/TaxBreakdown";
 import { Downloads } from "@/filing/Downloads";
@@ -23,6 +23,7 @@ import {
 } from "@/filing/model";
 import { CHOOSE_PAGES, DECLARATION, pagePath, TASK_LIST } from "@/filing/paths";
 import { Pending } from "@/filing/Pending";
+import { ReliefCards, reliefTaskLink } from "@/filing/reliefs/ReliefCards";
 import { ReliefsSummary } from "@/filing/ReliefsSummary";
 import { AccountsTables, CT600BoxesTable } from "@/filing/ReturnViews";
 import { pageName } from "@/filing/supplementary/content";
@@ -46,7 +47,7 @@ function toErrorItems(error: unknown, pages: SchemaPage[]): ErrorItem[] {
       const section = SECTION_ORDER.find((key) => key === problem.path[0]);
       const href = section
         ? changeLink(section)
-        : (rejectedAnswerLink(pages, problem.path) ?? TASK_LIST);
+        : (reliefTaskLink(problem.path) ?? rejectedAnswerLink(pages, problem.path) ?? TASK_LIST);
       return { href, text: problem.message };
     });
   }
@@ -82,24 +83,6 @@ function SectionCard({ ct600, section }: { ct600: CT600Return; section: SectionK
         rows={answerRows(ct600, section).map((row) => ({ key: row.label, value: row.value }))}
       />
     </Card>
-  );
-}
-
-function Card(props: { title: string; change: string; children: ReactNode }) {
-  return (
-    <div className="govuk-summary-card">
-      <div className="govuk-summary-card__title-wrapper">
-        <h2 className="govuk-summary-card__title">{props.title}</h2>
-        <ul className="govuk-summary-card__actions">
-          <li className="govuk-summary-card__action">
-            <Link className="govuk-link" to={props.change}>
-              Change<span className="govuk-visually-hidden"> {props.title.toLowerCase()}</span>
-            </Link>
-          </li>
-        </ul>
-      </div>
-      <div className="govuk-summary-card__content">{props.children}</div>
-    </div>
   );
 }
 
@@ -211,6 +194,7 @@ function Checked({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
           {SECTION_ORDER.map((section) => (
             <SectionCard key={section} ct600={ct600} section={section} />
           ))}
+          <ReliefCards ct600={ct600} pages={pages} />
           <SupplementaryCards ct600={ct600} pages={pages} computation={computation} />
           {computed.state === "loading" ? (
             <p className="govuk-body">Working out your tax…</p>

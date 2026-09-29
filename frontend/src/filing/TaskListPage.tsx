@@ -13,6 +13,7 @@ import {
   SECTION_SLUGS,
   SECTION_TITLES,
 } from "@/filing/model";
+import { type ReliefTask, RELIEF_TASKS, reliefComplete, reliefTasks } from "@/filing/payload";
 import { pageName } from "@/filing/supplementary/content";
 import { useSchemaPages } from "@/filing/supplementary/schema";
 
@@ -70,12 +71,22 @@ function CheckTask({ canStart }: { canStart: boolean }) {
   );
 }
 
-/** The supplementary pages tasks: choosing the pages, then one task per page chosen. */
+/**
+ * The reliefs and supplementary pages tasks: the R&D claim, choosing the pages, then each page
+ * chosen, followed by any relief answers it needs that it has no box for.
+ */
 function useSupplementaryTasks(): Task[] {
   const { draft } = useDraft();
   const schema = useSchemaPages(needsSchema(draft));
-  const pages = schema.status === "ready" ? schema.pages : [];
+  const pages = schema.status === "ready" ? schema.pages : undefined;
   const chosen = draft.chosen_pages ?? [];
+  const reliefs = reliefTasks(draft, pages);
+  const reliefTask = (task: ReliefTask): Task => ({
+    id: task,
+    title: RELIEF_TASKS[task].title,
+    to: `/file/${RELIEF_TASKS[task].slug}`,
+    completed: reliefComplete(draft, task, pages),
+  });
   const choose: Task = {
     id: "supplementary-pages",
     title: "Choose supplementary pages",
@@ -83,15 +94,18 @@ function useSupplementaryTasks(): Task[] {
     completed: draft.chosen_pages !== undefined,
   };
   return [
+    reliefTask("research_and_development"),
     choose,
-    ...chosen.map((code) => {
-      const page = pages.find((candidate) => candidate.code === code);
-      return {
+    ...chosen.flatMap((code) => {
+      const page = pages?.find((candidate) => candidate.code === code);
+      const pageTask = {
         id: `page-${code}`,
         title: page ? `${pageName(code)}: ${page.title}` : pageName(code),
         to: pagePath(code),
         completed: page !== undefined && pageComplete(draft, page),
       };
+      const extras = reliefs.filter((task) => RELIEF_TASKS[task].page === code);
+      return [pageTask, ...extras.map(reliefTask)];
     }),
   ];
 }
@@ -125,7 +139,7 @@ export function TaskListPage() {
         ))}
       </ul>
 
-      <h2 className="govuk-heading-m">Supplementary pages</h2>
+      <h2 className="govuk-heading-m">Reliefs and supplementary pages</h2>
       <ul className="govuk-task-list">
         {supplementary.map((task) => (
           <TaskItem key={task.id} task={task} />

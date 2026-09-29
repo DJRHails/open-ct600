@@ -29,9 +29,10 @@ export function StartPage() {
       </p>
 
       <WarningText>
-        This service only sends returns to HMRC where whoever runs it has switched submission on.
-        Otherwise you can check your return and get a demonstration receipt, and file for real with
-        HMRC-recognised software or an accountant.
+        This service only sends returns to HMRC where whoever runs it has an HMRC vendor ID and has
+        switched submission on. Otherwise you can check your return and get a demonstration receipt,
+        and file for real with HMRC-recognised software or an accountant. Returns for periods ending
+        after 31 March 2026 cannot be sent until HMRC publishes the computations taxonomy for them.
       </WarningText>
 
       <StartButton to={TASK_LIST} />

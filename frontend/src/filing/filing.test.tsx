@@ -132,6 +132,10 @@ async function completeEverySection(user: UserEvent) {
   await user.click(screen.getByRole("link", { name: "Accounts details" }));
   await completeAccountsDetails(user);
 
+  await user.click(screen.getByRole("link", { name: "Research and development relief" }));
+  await user.click(screen.getByRole("radio", { name: "No" }));
+  await save(user);
+
   await user.click(screen.getByRole("link", { name: "Choose supplementary pages" }));
   await user.click(await screen.findByLabelText("None of these"));
   await save(user);
@@ -143,6 +147,10 @@ async function completeAccountsDetails(user: UserEvent) {
   await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
   await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
   await user.type(screen.getByLabelText("Average number of employees during the period"), "1");
+  const dormant = screen.getByRole("group", {
+    name: "Was the company dormant during this period?",
+  });
+  await user.click(within(dormant).getByLabelText("No"));
   await user.click(screen.getByLabelText("It traded during the period"));
   await save(user);
 }
@@ -154,7 +162,7 @@ describe("filing a return", () => {
 
     expect(screen.getByText("Cannot start yet")).toBeInTheDocument();
     await completeEverySection(user);
-    expect(screen.getByText("You have completed 7 of 7 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 8 of 8 sections.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Check your answers and submit" }));
     expect(await screen.findByText("£22,750.00", { selector: "strong" })).toBeInTheDocument();
@@ -172,8 +180,10 @@ describe("filing a return", () => {
         approval_date: "2025-06-30",
         average_employees: 1,
         trading_status: "trading",
+        dormant: false,
       },
       supplementary_pages: {},
+      research_and_development: null,
     });
     expect(bodySentTo(fetchMock, "/returns/validate")).toMatchObject({
       ct600: { company: COMPANY },
@@ -194,7 +204,7 @@ describe("filing a return", () => {
     expect(window.localStorage.getItem("open-ct600:draft:v1")).toBeNull();
 
     await user.click(screen.getByRole("link", { name: "Start another return" }));
-    expect(screen.getByText("You have completed 0 of 7 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 0 of 8 sections.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete your answers" }));
     expect(window.sessionStorage.getItem("open-ct600:receipt:v2")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete your answers" })).toBeNull();
@@ -260,8 +270,10 @@ describe("filing a return", () => {
           approval_date: { day: "1", month: "6", year: "2028" },
           average_employees: "1",
           trading_status: "trading",
+          dormant: "no",
         },
         chosen_pages: [],
+        research_and_development: { claiming: "no" },
       }),
     );
     renderApp("/file/check-your-answers");
@@ -281,6 +293,7 @@ describe("filing a return", () => {
       "Select the director who signed the accounts",
       "Enter the date the accounts were approved",
       "Enter the average number of employees",
+      "Select yes if the company was dormant during this period",
       "Select whether the company traded",
     ]) {
       expect(within(summary).getByRole("link", { name: message })).toBeInTheDocument();
@@ -305,6 +318,16 @@ describe("filing a return", () => {
     await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
     await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
     await user.type(screen.getByLabelText("Average number of employees during the period"), "0");
+    const dormant = screen.getByRole("group", {
+      name: "Was the company dormant during this period?",
+    });
+    await user.click(within(dormant).getByLabelText("Yes"));
+    await user.click(screen.getByLabelText("It traded during the period"));
+    await save(user);
+    expect(
+      screen.getByRole("link", { name: /^A dormant company cannot be trading/ }),
+    ).toHaveAttribute("href", "#trading_status");
+
     await user.click(screen.getByLabelText("It has never traded"));
     await save(user);
 
@@ -315,6 +338,7 @@ describe("filing a return", () => {
       signing_director: "Ada Lovelace",
       standard: "small",
       trading_status: "never_traded",
+      dormant: "yes",
     });
   });
 

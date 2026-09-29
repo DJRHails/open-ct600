@@ -30,8 +30,10 @@ const DRAFT = {
     approval_date: { day: "30", month: "6", year: "2025" },
     average_employees: "1",
     trading_status: "trading",
+    dormant: "no",
   },
   chosen_pages: ["A"],
+  research_and_development: { claiming: "no" },
   supplementary_pages: {
     A: {
       LoansByCloseCompanies: {
@@ -300,7 +302,7 @@ describe("downloading the return's documents", () => {
       "1234567890",
     );
     expect(bodySentTo(fetchMock, "/returns/accounts.xhtml")).toHaveProperty(
-      "company.utr",
+      "ct600.company.utr",
       "1234567890",
     );
     expect(
@@ -340,7 +342,9 @@ describe("submitting to HMRC", () => {
       gateway_user_id: "123456789012",
       gateway_password: PASSWORD,
       declaration: { name: "Ada Lovelace", capacity: "director", confirmed: true },
-      ct600: { supplementary_pages: { A: { TaxPayable: "1687.50" } } },
+      ct600: {
+        supplementary_pages: { A: { LoansInformation: { Loan: [{ Name: "Ada Lovelace" }] } } },
+      },
     });
     expect(stored()).not.toContain(PASSWORD);
     expect(stored()).toContain(ACCEPTED.irmark_base32);

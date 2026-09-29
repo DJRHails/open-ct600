@@ -9,6 +9,11 @@ import { ConfirmationPage } from "@/filing/ConfirmationPage";
 import { DeclarationPage } from "@/filing/DeclarationPage";
 import { DraftProvider } from "@/filing/draft";
 import { BALANCE_SHEET, PROFIT_AND_LOSS, TAX_ADJUSTMENTS } from "@/filing/model";
+import { RELIEF_TASKS } from "@/filing/payload";
+import { CreativeFormPage } from "@/filing/reliefs/CreativeFormPage";
+import { LoanDatesPage } from "@/filing/reliefs/LoanDatesPage";
+import { ResearchAndDevelopmentPage } from "@/filing/reliefs/ResearchAndDevelopmentPage";
+import { SurrenderersPage } from "@/filing/reliefs/SurrenderersPage";
 import { StartPage } from "@/filing/StartPage";
 import { ChoosePagesPage } from "@/filing/supplementary/ChoosePagesPage";
 import { PageAnswersPage } from "@/filing/supplementary/PageAnswersPage";
@@ -47,6 +52,13 @@ function FilingPages() {
         element={<AmountSectionPage key="balance" section={BALANCE_SHEET} />}
       />
       <Route path="accounts-details" element={<AccountsDetailsPage />} />
+      <Route
+        path={RELIEF_TASKS.research_and_development.slug}
+        element={<ResearchAndDevelopmentPage />}
+      />
+      <Route path={RELIEF_TASKS.participator_loan_dates.slug} element={<LoanDatesPage />} />
+      <Route path={RELIEF_TASKS.group_relief_surrenderers.slug} element={<SurrenderersPage />} />
+      <Route path={RELIEF_TASKS.creative_industries.slug} element={<CreativeFormPage />} />
       <Route path="supplementary-pages" element={<ChoosePagesPage />} />
       <Route path="supplementary-pages/:code" element={<PageAnswersPage />} />
       <Route path="supplementary-pages/:code/:screen" element={<PageScreenPage />} />

@@ -2,12 +2,13 @@ import {
   completedCount,
   EMPTY_ACCOUNTS,
   sectionComplete,
-  toReturn,
   validateAccounts,
   validateCompany,
   validatePeriod,
   type Draft,
 } from "@/filing/model";
+import { toReturn } from "@/filing/payload";
+import { EMPTY_RESEARCH } from "@/filing/reliefs";
 
 const COMPANY = {
   name: " Acme Widgets Ltd ",
@@ -24,6 +25,7 @@ const ACCOUNTS = {
   approval_date: { day: "30", month: "6", year: "2025" },
   average_employees: "2",
   trading_status: "trading" as const,
+  dormant: "no" as const,
 };
 
 const COMPLETE = {
@@ -37,6 +39,7 @@ const COMPLETE = {
   balance_sheet: { prepayments_and_accrued_income: "1,000", provisions: "500" },
   accounts: ACCOUNTS,
   chosen_pages: [],
+  research_and_development: { ...EMPTY_RESEARCH, claiming: "no" },
 } satisfies Draft;
 
 describe("validateCompany", () => {
@@ -110,6 +113,7 @@ describe("validateAccounts", () => {
         signing_director: "Ada Lovelace",
         average_employees: 2,
         trading_status: "trading",
+        dormant: false,
       },
     });
   });
@@ -125,9 +129,24 @@ describe("validateAccounts", () => {
         signing_director: "Select the director who signed the accounts",
         approval_date: "Enter the date the accounts were approved",
         average_employees: "Enter the average number of employees",
+        dormant: "Select yes if the company was dormant during this period",
         trading_status: "Select whether the company traded",
       },
     });
+  });
+
+  it("does not let a dormant company be trading", () => {
+    const dormantTrading = validateAccounts({ ...ACCOUNTS, dormant: "yes" });
+    const dormantStopped = validateAccounts({
+      ...ACCOUNTS,
+      dormant: "yes",
+      trading_status: "no_longer_trading",
+    });
+
+    expect(!dormantTrading.ok && dormantTrading.errors.trading_status).toMatch(
+      /^A dormant company cannot be trading/,
+    );
+    expect(dormantStopped.ok && dormantStopped.value.dormant).toBe(true);
   });
 
   it("rejects a director listed twice", () => {
@@ -165,6 +184,12 @@ describe("toReturn", () => {
 
   it("is null until the user says which supplementary pages apply", () => {
     const { chosen_pages: _, ...unanswered } = COMPLETE;
+
+    expect(toReturn(unanswered)).toBeNull();
+  });
+
+  it("is null until the user says whether the company claims R&D relief", () => {
+    const { research_and_development: _, ...unanswered } = COMPLETE;
 
     expect(toReturn(unanswered)).toBeNull();
   });
@@ -214,8 +239,13 @@ describe("toReturn", () => {
         signing_director: "Ada Lovelace",
         average_employees: 2,
         trading_status: "trading",
+        dormant: false,
       },
       supplementary_pages: {},
+      research_and_development: null,
+      participator_loan_dates: null,
+      group_relief_surrenderers: [],
+      creative_industries: null,
     });
   });
 

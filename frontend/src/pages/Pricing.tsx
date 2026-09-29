@@ -14,7 +14,9 @@ export function PriceCard() {
           <li>CT600 box figures for your accounting period</li>
           <li>Corporation Tax calculation, including marginal relief</li>
           <li>Periods that cross 1 April split between financial years</li>
-          <li>Micro-entity accounts figures you can check</li>
+          <li>Micro-entity or small company accounts and tax computations in iXBRL</li>
+          <li>Supplementary pages CT600A to CT600P, including R&D and group relief</li>
+          <li>Offline checks against HMRC’s own CT600 schema and business rules</li>
           <li>Drafts saved in your own browser, with no account needed</li>
         </ul>
       </div>
@@ -27,8 +29,10 @@ export function PriceCard() {
           <li>your profit and loss account and balance sheet figures</li>
         </ul>
         <div className="govuk-inset-text">
-          This is a demonstration. It does not submit returns to HMRC. The final step gives you a
-          demo receipt only.
+          Open CT600 is not on HMRC’s list of recognised software. It sends returns to HMRC only
+          where whoever runs it has an HMRC vendor ID and has switched submission on; otherwise the
+          final step gives you a demonstration receipt. HMRC has not yet published the computations
+          taxonomy for periods ending after 31 March 2026, so those returns cannot be sent yet.
         </div>
         <StartButton to="/file" />
       </div>
@@ -59,14 +63,19 @@ const COMPARISON: ComparisonRow[] = [
   },
   {
     feature: "Micro-entity accounts",
-    openCt600: "Figures only",
+    openCt600: "Yes",
     accountant: "Yes",
     software: "Yes",
   },
-  { feature: "iXBRL tagged accounts", openCt600: "No", accountant: "Yes", software: "Usually" },
+  {
+    feature: "iXBRL tagged accounts and computations",
+    openCt600: "Yes, for periods ending by 31 March 2026",
+    accountant: "Yes",
+    software: "Usually",
+  },
   {
     feature: "Submits your return to HMRC",
-    openCt600: "No, demo receipt only",
+    openCt600: "Only where the operator has an HMRC vendor ID and switches it on",
     accountant: "Yes",
     software: "Yes, if HMRC-recognised",
   },

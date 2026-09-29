@@ -111,8 +111,7 @@ describe("a supplementary page form", () => {
     const second = screen.getByRole("group", { name: "Loan 2" });
     expect(within(second).getByText("Loan 2")).toHaveFocus();
     await user.type(within(second).getByLabelText("Name of participator or associate"), "C£");
-    await user.type(screen.getByLabelText(/^Total Loans within S419/), "5000");
-    await user.type(screen.getByLabelText(/^Tax due before any relief/), "1687.50");
+    expect(screen.queryByLabelText(/^Total Loans within S419/)).toBeNull();
     await save(user);
 
     const summary = screen.getByRole("alert");
@@ -132,15 +131,14 @@ describe("a supplementary page form", () => {
     await save(user);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/\(continued\)/);
-    await user.type(screen.getByLabelText("Tax payable s419"), "1687.50");
+    expect(screen.queryByLabelText("Tax payable s419")).toBeNull();
     await save(user);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
       "Check your answers for CT600A",
     );
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getAllByText("£5,000")).toHaveLength(2);
-    expect(screen.getAllByText("£1,687.50")).toHaveLength(2);
+    expect(screen.getByText("£5,000")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(screen.getByRole("link", { name: /^CT600A/ })).toHaveAccessibleDescription("Completed");
@@ -227,7 +225,7 @@ describe("a supplementary page form", () => {
       DRAFT_KEY,
       JSON.stringify({
         chosen_pages: ["A"],
-        supplementary_pages: { A: { LoansByCloseCompanies: { TaxPayable: "12.345" } } },
+        supplementary_pages: { A: { LoansByCloseCompanies: { TotalLoansOutstanding: "12.345" } } },
       }),
     );
     renderApp("/file/supplementary-pages/A/TotalLoansOutstanding?change=1&check=1");
@@ -235,7 +233,9 @@ describe("a supplementary page form", () => {
     const summary = await screen.findByRole("alert");
     expect(summary).toHaveFocus();
     expect(
-      within(summary).getByRole("link", { name: /Tax payable s419 must be an amount/ }),
+      within(summary).getByRole("link", {
+        name: /Total loans outstanding must be a whole number of pounds/,
+      }),
     ).toBeInTheDocument();
   });
 });

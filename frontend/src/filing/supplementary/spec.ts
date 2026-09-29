@@ -30,7 +30,7 @@ export function repeats(node: SpecNode): boolean {
  * or a group whose every element is calculated (as the service decides, below the page root).
  */
 export function withComputed(page: SchemaPage): SchemaPage {
-  const boxes = new Set(page.computed ?? []);
+  const boxes = new Set(page.computed);
   const mark = (node: SpecNode): SpecNode => {
     const children = node.children.map(mark);
     const listed = node.box !== null && boxes.has(node.box);
