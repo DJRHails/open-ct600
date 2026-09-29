@@ -1,4 +1,5 @@
 import base64
+import threading
 from pathlib import Path
 
 import httpx2
@@ -8,7 +9,7 @@ from lxml import etree
 
 from open_ct600.config import Settings
 from open_ct600.hmrc.irmark import compute_irmark
-from open_ct600.hmrc.routes import http_client
+from open_ct600.hmrc.routes import http_client, ixbrl_renderer, render_ixbrl
 from open_ct600.hmrc.xmldoc import CT_NS, parse_xml
 from open_ct600.main import create_app
 
@@ -322,3 +323,60 @@ def test_only_test_in_live_and_live_are_offered():
 
     assert response.status_code == 422
     assert PASSWORD not in response.text
+
+
+@pytest.mark.parametrize(
+    ("settings", "enabled"),
+    [
+        (ENABLED, True),
+        (Settings(), False),
+        (Settings(hmrc_submission_enabled=True), False),
+        (Settings(hmrc_vendor_id="0000"), False),
+    ],
+)
+def test_submission_status_says_whether_to_ask_for_credentials(settings, enabled):
+    with client_for(settings) as client:
+        response = client.get("/api/submission")
+
+    assert response.status_code == 200
+    assert response.json() == {"enabled": enabled, "environments": ["test-in-live", "live"]}
+
+
+def test_overlong_password_is_a_validation_error_not_a_crash():
+    engine = StubTransactionEngine()
+    long_password = "p" * 257
+
+    with client_for(engine=engine) as client:
+        response = client.post(
+            "/api/returns/submit-to-hmrc", json={**SUBMIT, "gateway_password": long_password}
+        )
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "gateway_password"]
+    assert long_password not in response.text
+    assert engine.messages == []
+
+
+def test_submission_work_runs_off_the_event_loop():
+    threads = {}
+
+    def render(ct600, computation):
+        threads["render"] = threading.get_ident()
+        return render_ixbrl(ct600, computation)
+
+    class RecordingEngine(StubTransactionEngine):
+        def __call__(self, request):
+            threads.setdefault("event loop", threading.get_ident())
+            return super().__call__(request)
+
+    engine = RecordingEngine(
+        te_reply("acknowledgement"),
+        from_hmrc("tpvs-success-response.xml"),
+        te_reply("response", "delete"),
+    )
+    with client_for(engine=engine) as client:
+        client.app.dependency_overrides[ixbrl_renderer] = lambda: render
+        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+
+    assert response.status_code == 200
+    assert threads["render"] != threads["event loop"]

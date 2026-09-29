@@ -19,7 +19,7 @@ from pathlib import Path
 
 from lxml import etree, isoschematron
 
-from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS
+from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS, parse_xml
 from open_ct600.schema.spec import load_spec
 
 ARTEFACTS = Path(__file__).parent / "artefacts"
@@ -30,6 +30,18 @@ _XMLDSIG_SCHEMA_URL = "http://www.w3.org/TR/2001/PR-xmldsig-core-20010820/xmldsi
 _POSITION = re.compile(
     r"""(?x)
     \[ [0-9]+ \]     # a positional predicate such as [2]
+    """
+)
+_XSL = "{http://www.w3.org/1999/XSL/Transform}"
+_PATTERN_MODE = re.compile(
+    r"""(?x)
+    M [0-9]+          # the XSLT mode the ISO skeleton gives each schematron pattern
+    """
+)
+_ABSOLUTE_CHILD_PATH = re.compile(
+    r"""(?x)
+    (?: / [A-Za-z]+ : [A-Za-z0-9_]+ )+   # /prefix:Element steps from the root, child axis only
+    (?: / @ [A-Za-z0-9_]+ )?             # optionally ending on an attribute
     """
 )
 _CLARK_NAMESPACE = re.compile(
@@ -147,7 +159,8 @@ def _as_message(document: etree._Element) -> etree._Element:
 
 
 def _detached(element: etree._Element) -> etree._Element:
-    return etree.fromstring(etree.tostring(element))
+    """Copy ``element`` into a document of its own, allowing iXBRL attachments over 10 MB."""
+    return parse_xml(etree.tostring(element))
 
 
 def _schema_problems(schema: etree.XMLSchema, tree: etree._ElementTree) -> list[Problem]:
@@ -277,5 +290,54 @@ def _rules() -> _Rules:
         check.attrib.pop("diagnostics", None)
     for block in root.findall(f"{{{_SCH_NS}}}diagnostics"):
         root.remove(block)
-    compiled = etree.XSLT(isoschematron.iso_svrl_for_xslt1(schematron))
-    return _Rules(stylesheet=compiled, diagnostics=diagnostics)
+    stylesheet = isoschematron.iso_svrl_for_xslt1(schematron)
+    _visit_rule_contexts_only(stylesheet)
+    return _Rules(stylesheet=etree.XSLT(stylesheet), diagnostics=diagnostics)
+
+
+def _visit_rule_contexts_only(stylesheet: etree._ElementTree) -> None:
+    """Make each pattern visit only its rule's context nodes, not the whole document.
+
+    The ISO skeleton runs every pattern (620 here) as a walk over the whole document, twice
+    (once more for an ``svrl:active-pattern`` report we do not read), so a return's cost grows
+    with patterns x nodes: about 18 ms per extra CT600A loan. Every pattern in HMRC's
+    schematron has one rule whose context is an absolute child path (no ``//``, no
+    predicates, checked here), so selecting that path directly fires exactly the same rules:
+    no descendant of a context node can match the same absolute path, which also makes the
+    walk below a fired rule pointless.
+    """
+    templates = stylesheet.getroot().findall(f"{_XSL}template")
+    rules = [template for template in templates if _is_rule(template)]
+    contexts: dict[str, str] = {}
+    for rule in rules:
+        mode, match = rule.get("mode", ""), rule.get("match", "")
+        if mode in contexts or not _ABSOLUTE_CHILD_PATH.fullmatch(match):
+            raise RuntimeError(f"Unexpected schematron rule {match!r} in pattern {mode}.")
+        contexts[mode] = match
+        walk = rule[-1]
+        if walk.tag != f"{_XSL}apply-templates":
+            raise RuntimeError(f"Unexpected end {walk.tag} of schematron rule {match!r}.")
+        rule.remove(walk)
+    for template in templates:
+        if template.get("match") == "@*|node()" and _PATTERN_MODE.fullmatch(
+            template.get("mode", "")
+        ):
+            template[:] = []
+        elif template.get("match") == "/" and template.get("mode") is None:
+            _select_contexts(template, contexts)
+
+
+def _is_rule(template: etree._Element) -> bool:
+    mode, match = template.get("mode", ""), template.get("match", "")
+    return bool(_PATTERN_MODE.fullmatch(mode)) and match not in {"text()", "@*|node()"}
+
+
+def _select_contexts(root_template: etree._Element, contexts: dict[str, str]) -> None:
+    for element in list(root_template.iter(f"{{{_SVRL_NS}}}active-pattern")):
+        parent = element.getparent()
+        if parent is not None:
+            parent.remove(element)
+    for apply in root_template.iter(f"{_XSL}apply-templates"):
+        mode = apply.get("mode", "")
+        if apply.get("select") == "/" and mode in contexts:
+            apply.set("select", contexts[mode])

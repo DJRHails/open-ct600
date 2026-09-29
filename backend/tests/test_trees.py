@@ -227,3 +227,22 @@ def test_the_page_itself_must_be_an_object():
     (problem,) = validate_tree(LOANS_PAGE, ["not", "a", "page"])
 
     assert problem.path == ()
+
+
+def test_lists_hmrc_leaves_unbounded_are_capped():
+    loans = [{"Name": f"Participator {n:03d}", "AmountOfLoan": "100"} for n in range(201)]
+    information = {"Loan": loans, "TotalLoans": "20100", "TaxChargeable": "6783.75"}
+    page = loans_page(LoansInformation=information)
+
+    problems = validate_tree(LOANS_PAGE, page)
+
+    assert messages(problems) == ["Add no more than 200: Loan"]
+    assert problems[0].path == ("LoansInformation", "Loan")
+
+
+def test_hmrc_limits_below_the_cap_still_apply():
+    schemes = [{"ReferenceNumber": "12345678", "AccountingPeriod": "2025-03-31"}] * 11
+
+    problems = validate_tree(SPEC.page("J").node, {"AvoidanceSchemes": schemes})
+
+    assert [problem.message.split(":")[0] for problem in problems] == ["Add no more than 10"]

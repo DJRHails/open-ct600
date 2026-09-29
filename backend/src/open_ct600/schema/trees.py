@@ -26,6 +26,11 @@ from open_ct600.schema.spec import ChoiceGroup, SpecNode
 
 TreePath = tuple[str | int, ...]
 
+MAX_REPEATS = 200
+"""Most rows accepted for an element HMRC's schema lets repeat without limit (CT600A loans,
+CT600C companies, ...). It bounds the work one request can cause; HMRC's own lower limits
+(CT600J's 10 schemes) still apply."""
+
 
 @dataclass(frozen=True)
 class TreeProblem:
@@ -174,8 +179,9 @@ def _occurrences(
     problems = []
     if len(value) < node.min:
         problems.append(TreeProblem(path, node.box, f"Add at least {node.min}: {node.label}"))
-    if node.max is not None and len(value) > node.max:
-        problems.append(TreeProblem(path, node.box, f"Add no more than {node.max}: {node.label}"))
+    most = MAX_REPEATS if node.max is None else node.max
+    if len(value) > most:
+        return [TreeProblem(path, node.box, f"Add no more than {most}: {node.label}")]
     for index, item in enumerate(value):
         problems += _value(node, item, (*path, index), computed)
     return problems
