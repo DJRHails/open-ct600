@@ -229,7 +229,7 @@ class ReturnComputation:
     reliefs: ReliefsSummary
 
 
-_LABELS: dict[int, str] = {
+BOX_LABELS: dict[int, str] = {
     65: "Notice of disclosable avoidance schemes",
     95: "Loans and arrangements to participators by close companies - form CT600A",
     96: "Creative industries - form CT600P",
@@ -400,7 +400,7 @@ class _Evaluation:
 
     def box(self, number: int, value: int | Decimal, kind: BoxKind = "pounds") -> None:
         """Fill a main-return box."""
-        self.boxes[number] = CT600Box(str(number), _LABELS[number], Decimal(value), kind)
+        self.boxes[number] = CT600Box(str(number), BOX_LABELS[number], Decimal(value), kind)
 
     def money(self, number: int, value: Decimal | None) -> None:
         """Fill a pounds-and-pence box, unless ``value`` is ``None``."""
