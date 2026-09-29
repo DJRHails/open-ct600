@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 from typing import Annotated, Self
 
 from fastapi import APIRouter, FastAPI, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -19,6 +20,7 @@ from open_ct600.hmrc.routes import hmrc_router
 from open_ct600.ixbrl import routes as ixbrl_routes
 from open_ct600.pages.definitions import COMPUTED_BOXES
 from open_ct600.schema.spec import PageCode, load_spec
+from open_ct600.security import BodySizeLimit, SecurityHeaders, validation_error_response
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
 
 
@@ -150,6 +152,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """
     resolved = settings or Settings()
     app = FastAPI(title="Open CT600", version="0.1.0")
+    app.add_exception_handler(RequestValidationError, validation_error_response)
+    app.add_middleware(BodySizeLimit)
+    app.add_middleware(SecurityHeaders)
     app.include_router(api)
     app.include_router(hmrc_router(resolved))
     app.include_router(ixbrl_routes.router)
