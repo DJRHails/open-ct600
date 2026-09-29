@@ -113,7 +113,7 @@ def _shows_profit_and_loss(ct600: CT600Return) -> bool:
     """Dormant accounts omit a nil profit and loss account with nothing to compare."""
     comparatives = ct600.accounts.comparatives
     has_previous_figures = comparatives is not None and (
-        any(comparatives.profit_and_loss.model_dump().values()) or comparatives.tax_on_profit > 0
+        any(comparatives.profit_and_loss.model_dump().values()) or comparatives.tax_on_profit != 0
     )
     return not is_dormant(ct600) or has_previous_figures
 

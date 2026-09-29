@@ -40,6 +40,13 @@ def test_previous_average_employees_may_be_unknown():
     assert comparatives.average_employees is None
 
 
+def test_a_previous_tax_credit_is_a_negative_tax_line():
+    comparatives = make_return(**with_comparatives(tax_on_profit=-2_500)).accounts.comparatives
+
+    assert comparatives is not None
+    assert comparatives.tax_on_profit == -2_500
+
+
 def test_a_previous_period_of_up_to_18_months_is_allowed():
     ct600 = make_return(**with_comparatives(period={"start": "2022-10-01", "end": "2024-03-31"}))
 
@@ -78,7 +85,6 @@ def test_a_reversed_previous_period_is_refused():
     [
         {"profit_and_loss": {"turnover": -1}},
         {"balance_sheet": {"current_assets": -1}},
-        {"tax_on_profit": -1},
         {"average_employees": -1},
     ],
 )

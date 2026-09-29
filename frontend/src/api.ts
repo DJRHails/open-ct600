@@ -199,7 +199,10 @@ export type Comparatives = {
   period: { start: string; end: string };
   profit_and_loss: CT600Return["profit_and_loss"];
   balance_sheet: CT600Return["balance_sheet"];
-  /** The previous period's tax charge in its profit and loss account, in whole pounds. */
+  /**
+   * The previous period's tax line in its profit and loss account, in whole pounds: a charge,
+   * or a credit (e.g. from R&D tax credits) as a negative amount.
+   */
   tax_on_profit: number;
   /** The previous period's average number of employees; null only when it is not known. */
   average_employees: number | null;
