@@ -1,0 +1,50 @@
+{
+  "etag": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+  "filing_history_status": "filing-history-available",
+  "items_per_page": 25,
+  "kind": "filing-history",
+  "start_index": 0,
+  "total_count": 3,
+  "items": [
+    {
+      "category": "accounts",
+      "date": "2025-11-10",
+      "description": "change-account-reference-date-company-current-extended",
+      "type": "AA01",
+      "transaction_id": "MzQ1Njc4OTAxMmFkaXF6a2N4",
+      "barcode": "XE1AB2CD",
+      "pages": 1,
+      "links": {
+        "self": "/company/01234567/filing-history/MzQ1Njc4OTAxMmFkaXF6a2N4",
+        "document_metadata": "https://frontend-doc-api.company-information.service.gov.uk/document/ZmFrZWFhMDFkb2N1bWVudA"
+      }
+    },
+    {
+      "category": "accounts",
+      "date": "2025-11-02",
+      "description": "accounts-with-accounts-type-small",
+      "type": "AA",
+      "transaction_id": "MzQ1Njc4OTAxMWFkaXF6a2N4",
+      "barcode": "XE0ZY9XW",
+      "pages": 8,
+      "paper_filed": false,
+      "links": {
+        "self": "/company/01234567/filing-history/MzQ1Njc4OTAxMWFkaXF6a2N4",
+        "document_metadata": "https://frontend-doc-api.company-information.service.gov.uk/document/c2FtcGxlYWNjb3VudHMyMDI1"
+      }
+    },
+    {
+      "category": "accounts",
+      "date": "2024-10-20",
+      "description": "accounts-with-accounts-type-small",
+      "type": "AA",
+      "transaction_id": "MzQxMjM0NTY3OGFkaXF6a2N4",
+      "barcode": "XD9ABCDE",
+      "pages": 8,
+      "links": {
+        "self": "/company/01234567/filing-history/MzQxMjM0NTY3OGFkaXF6a2N4",
+        "document_metadata": "https://frontend-doc-api.company-information.service.gov.uk/document/c2FtcGxlYWNjb3VudHMyMDI0"
+      }
+    }
+  ]
+}

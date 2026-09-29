@@ -52,8 +52,9 @@ ban-relative-imports = "all"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers -m 'not hmrc_tpvs'"
+addopts = "-q --strict-markers -m 'not hmrc_tpvs and not companies_house_live'"
 markers = [
     "hmrc_tpvs: sends synthetic returns to HMRC's TPVS over the network (run with -m hmrc_tpvs)",
+    "companies_house_live: reads the real Companies House API (needs COMPANIES_HOUSE_API_KEY)",
 ]
 filterwarnings = ["error"]

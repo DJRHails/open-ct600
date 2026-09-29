@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:ix="http://www.xbrl.org/2013/inlineXBRL"
+    xmlns:ixt="http://www.xbrl.org/inlineXBRL/transformation/2011-07-31"
+    xmlns:link="http://www.xbrl.org/2003/linkbase"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xbrli="http://www.xbrl.org/2003/instance"
+    xmlns:xbrldi="http://xbrl.org/2006/xbrldi"
+    xmlns:iso4217="http://www.xbrl.org/2003/iso4217"
+    xmlns:core="http://xbrl.frc.org.uk/fr/2024-01-01/core"
+    xmlns:bus="http://xbrl.frc.org.uk/cd/2024-01-01/business"
+    xmlns:direp="http://xbrl.frc.org.uk/reports/2024-01-01/direp">
+<head>
+  <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8"/>
+  <title>GOGO BUILD LTD — Micro-entity accounts</title>
+  <style type="text/css">
+    body { font-family: Arial, sans-serif; margin: 2rem; color: #1a2332; }
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    .meta { margin: 1rem 0; }
+    .accounts-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    .accounts-table th, .accounts-table td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; }
+    .accounts-table .num { text-align: right; }
+    .note { font-size: 0.9rem; color: #5c6370; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div style="display:none">
+    <ix:header>
+      <ix:hidden>
+        <ix:nonNumeric name="bus:AccountingStandardsApplied" contextRef="ctx_micro"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:EntityCurrentLegalOrRegisteredName" contextRef="ctx_entity">GOGO BUILD LTD</ix:nonNumeric>
+      <ix:nonNumeric name="bus:UKCompaniesHouseRegisteredNumber" contextRef="ctx_entity">11579512</ix:nonNumeric>
+      <ix:nonNumeric name="bus:StartDateForPeriodCoveredByReport" contextRef="ctx_end_current">2025-09-20</ix:nonNumeric>
+      <ix:nonNumeric name="bus:EndDateForPeriodCoveredByReport" contextRef="ctx_end_current">2026-09-19</ix:nonNumeric>
+      <ix:nonNumeric name="bus:BalanceSheetDate" contextRef="ctx_end_current">2026-09-19</ix:nonNumeric>
+      <ix:nonNumeric name="bus:AccountsStatusAuditedOrUnaudited" contextRef="ctx_accounts_status"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:AccountsType" contextRef="ctx_accounts_type"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:LegalFormEntity" contextRef="ctx_legal_form"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:EntityTradingStatus" contextRef="ctx_trading_status"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:EntityDormantTruefalse" contextRef="ctx_current" format="ixt:booleanfalse">false</ix:nonNumeric>
+      <ix:nonNumeric name="bus:DescriptionPrincipalActivities" contextRef="ctx_current">General commercial trading.</ix:nonNumeric>
+      <ix:nonFraction name="core:AverageNumberEmployeesDuringPeriod" contextRef="ctx_current" unitRef="unit_pure" decimals="0" scale="0" format="ixt:numdotdecimal">2</ix:nonFraction>
+      <ix:nonNumeric name="core:DateAuthorisationFinancialStatementsForIssue" contextRef="ctx_end_current">2026-09-25</ix:nonNumeric>
+      <ix:nonNumeric name="core:DirectorSigningFinancialStatements" contextRef="ctx_director"></ix:nonNumeric>
+      <ix:nonNumeric name="bus:NameEntityOfficer" contextRef="ctx_director">CHUKOVSKI, Georgi</ix:nonNumeric>
+      </ix:hidden>
+      <ix:references>
+        <link:schemaRef xlink:href="https://xbrl.frc.org.uk/FRS-102/2024-01-01/FRS-102-2024-01-01.xsd" xlink:type="simple"/>
+      </ix:references>
+      <ix:resources>
+        <xbrli:context id="ctx_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_end_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2026-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_entity">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_micro">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="bus:AccountingStandardsDimension">bus:Micro-entities</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_accounts_status">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="bus:AccountsStatusDimension">bus:AuditExempt-NoAccountantsReport</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_accounts_type">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="bus:AccountsTypeDimension">bus:FullAccounts</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_legal_form">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="bus:LegalFormEntityDimension">bus:PrivateLimitedCompanyLtd</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_trading_status">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_cred_within_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:WithinOneYear</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2026-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_cred_after_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:AfterOneYear</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2026-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_eq_sharecap_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:EquityClassesDimension">core:ShareCapital</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2026-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_eq_reserves_current">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:EquityClassesDimension">core:RetainedEarningsAccumulatedLosses</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2026-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_director">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="bus:EntityOfficersDimension">bus:Director1</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2025-09-20</xbrli:startDate>
+    <xbrli:endDate>2026-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:startDate>2024-09-20</xbrli:startDate>
+    <xbrli:endDate>2025-09-19</xbrli:endDate>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_end_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2025-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_cred_within_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:WithinOneYear</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2025-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_cred_after_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:MaturitiesOrExpirationPeriodsDimension">core:AfterOneYear</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2025-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_eq_sharecap_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:EquityClassesDimension">core:ShareCapital</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2025-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:context id="ctx_eq_reserves_prior">
+  <xbrli:entity>
+    <xbrli:identifier scheme="http://www.companieshouse.gov.uk/">11579512</xbrli:identifier>
+    <xbrli:segment>
+      <xbrldi:explicitMember dimension="core:EquityClassesDimension">core:RetainedEarningsAccumulatedLosses</xbrldi:explicitMember>
+    </xbrli:segment>
+  </xbrli:entity>
+  <xbrli:period>
+    <xbrli:instant>2025-09-19</xbrli:instant>
+  </xbrli:period>
+</xbrli:context>
+        <xbrli:unit id="unit_gbp">
+  <xbrli:measure>iso4217:GBP</xbrli:measure>
+</xbrli:unit>
+        <xbrli:unit id="unit_pure">
+  <xbrli:measure>xbrli:pure</xbrli:measure>
+</xbrli:unit>
+      </ix:resources>
+    </ix:header>
+  </div>
+  <div id="report-header">
+    <h1>GOGO BUILD LTD</h1>
+    <p class="meta">Company number: 11579512</p>
+    <p class="meta">Registered office: —</p>
+    <p class="meta">Accounting period: 2025-09-20 to 2026-09-19</p>
+    <p class="meta">Report: Micro-entity accounts</p>
+    <p class="meta">Company status: Active</p>
+  </div>
+  <div id="balance-sheet">
+  <h2>Balance sheet</h2>
+  <p class="note">Amounts shown at period end.</p>
+  <table class="accounts-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Current year</th>
+        <th>Prior year</th>
+      </tr>
+    </thead>
+    <tbody>
+<tr>
+  <td>Fixed assets</td>
+  <td class="num"><ix:nonFraction name="core:FixedAssets" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">0.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:FixedAssets" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">0.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Current assets</td>
+  <td class="num"><ix:nonFraction name="core:CurrentAssets" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:CurrentAssets" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">17603.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Creditors due within one year</td>
+  <td class="num"><ix:nonFraction name="core:Creditors" contextRef="ctx_cred_within_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">0.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:Creditors" contextRef="ctx_cred_within_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">842.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Net current assets</td>
+  <td class="num"><ix:nonFraction name="core:NetCurrentAssetsLiabilities" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:NetCurrentAssetsLiabilities" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">16761.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Total assets less current liabilities</td>
+  <td class="num"><ix:nonFraction name="core:TotalAssetsLessCurrentLiabilities" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:TotalAssetsLessCurrentLiabilities" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">16761.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Creditors due after one year</td>
+  <td class="num"><ix:nonFraction name="core:Creditors" contextRef="ctx_cred_after_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">0.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:Creditors" contextRef="ctx_cred_after_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">1200.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Net assets</td>
+  <td class="num"><ix:nonFraction name="core:NetAssetsLiabilities" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:NetAssetsLiabilities" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">15561.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Share capital</td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_eq_sharecap_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">1.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_eq_sharecap_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">1.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Profit and loss reserves</td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_eq_reserves_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">45.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_eq_reserves_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">15560.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Shareholders&apos; funds</td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_end_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:Equity" contextRef="ctx_end_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">15561.00</ix:nonFraction></td>
+</tr>
+    </tbody>
+  </table>
+</div>
+  <div id="profit-and-loss">
+  <h2>Profit and loss account</h2>
+  <table class="accounts-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Current year</th>
+        <th>Prior year</th>
+      </tr>
+    </thead>
+    <tbody>
+<tr>
+  <td>Turnover</td>
+  <td class="num"><ix:nonFraction name="core:TurnoverRevenue" contextRef="ctx_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">33461.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:TurnoverRevenue" contextRef="ctx_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">58171.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Cost of sales</td>
+  <td class="num"><ix:nonFraction name="core:CostSales" contextRef="ctx_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">2815.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:CostSales" contextRef="ctx_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">5110.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Gross profit</td>
+  <td class="num"><ix:nonFraction name="core:GrossProfitLoss" contextRef="ctx_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">30646.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:GrossProfitLoss" contextRef="ctx_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">53061.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Administrative expenses</td>
+  <td class="num"><ix:nonFraction name="core:AdministrativeExpenses" contextRef="ctx_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">46162.00</ix:nonFraction></td>
+  <td class="num"><ix:nonFraction name="core:AdministrativeExpenses" contextRef="ctx_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">50251.00</ix:nonFraction></td>
+</tr>
+<tr>
+  <td>Other income</td>
+  <td class="num">—</td>
+  <td class="num">—</td>
+</tr>
+<tr>
+  <td>Profit before tax</td>
+  <td class="num">(<ix:nonFraction name="core:ProfitLossOnOrdinaryActivitiesBeforeTax" contextRef="ctx_current" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal" sign="-">15516.00</ix:nonFraction>)</td>
+  <td class="num"><ix:nonFraction name="core:ProfitLossOnOrdinaryActivitiesBeforeTax" contextRef="ctx_prior" unitRef="unit_gbp" decimals="0" scale="0" format="ixt:numdotdecimal">2810.00</ix:nonFraction></td>
+</tr>
+    </tbody>
+  </table>
+</div>
+  <div id="balance-sheet-statements">
+  <h2>Statements</h2>
+  <p><ix:nonNumeric name="direp:StatementThatCompanyEntitledToExemptionFromAuditUnderSection477CompaniesAct2006RelatingToSmallCompanies" contextRef="ctx_current">For the year ending 19 September 2026 the company was entitled to exemption from audit under section 477 of the Companies Act 2006 relating to small companies.</ix:nonNumeric></p>
+  <p><ix:nonNumeric name="direp:StatementThatMembersHaveNotRequiredCompanyToObtainAnAudit" contextRef="ctx_current">The members have not required the company to obtain an audit of its accounts for the year in question in accordance with section 476 of the Companies Act 2006.</ix:nonNumeric></p>
+  <p><ix:nonNumeric name="direp:StatementThatDirectorsAcknowledgeTheirResponsibilitiesUnderCompaniesAct" contextRef="ctx_current">The directors acknowledge their responsibilities for complying with the requirements of the Companies Act 2006 with respect to accounting records and the preparation of accounts.</ix:nonNumeric></p>
+  <p><ix:nonNumeric name="direp:StatementThatAccountsHaveBeenPreparedInAccordanceWithProvisionsSmallCompaniesRegime" contextRef="ctx_current">These accounts have been prepared in accordance with the micro-entity provisions.</ix:nonNumeric></p>
+  
+</div>
+  
+  <div id="report-footer">
+    <p class="note">Generated by CT Submit.</p>
+  </div>
+</body>
+</html>

@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import Scope
 
+from open_ct600.companies_house.routes import companies_house_router
 from open_ct600.config import Settings
 from open_ct600.ct600 import CT600Return, Pounds, ReturnComputation, Submission, compute_return
 from open_ct600.filing import SubmissionReceipt, submit_return
@@ -158,6 +159,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api)
     app.include_router(hmrc_router(resolved))
     app.include_router(ixbrl_routes.router)
+    app.include_router(companies_house_router(resolved))
     if resolved.static_dir is not None:
         if not (resolved.static_dir / "index.html").is_file():
             raise RuntimeError(

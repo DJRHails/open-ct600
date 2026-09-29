@@ -1,0 +1,52 @@
+{
+  "active_count": 3,
+  "resigned_count": 1,
+  "etag": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+  "items_per_page": 100,
+  "kind": "officer-list",
+  "links": {"self": "/company/01234567/officers"},
+  "start_index": 0,
+  "total_results": 5,
+  "items": [
+    {
+      "name": "LOVELACE, Ada Augusta",
+      "officer_role": "director",
+      "appointed_on": "2019-05-01",
+      "country_of_residence": "England",
+      "nationality": "British",
+      "occupation": "Mathematician",
+      "date_of_birth": {"month": 12, "year": 1985},
+      "address": {"premises": "1", "address_line_1": "High Street", "locality": "Leeds", "postal_code": "LS1 1AA"},
+      "links": {"self": "/company/01234567/appointments/aaa", "officer": {"appointments": "/officers/aaa/appointments"}}
+    },
+    {
+      "name": "BABBAGE, Charles",
+      "officer_role": "director",
+      "appointed_on": "2019-05-01",
+      "resigned_on": "2024-01-31",
+      "address": {"address_line_1": "High Street", "locality": "Leeds"},
+      "links": {"self": "/company/01234567/appointments/bbb", "officer": {"appointments": "/officers/bbb/appointments"}}
+    },
+    {
+      "name": "O'BRIEN, Siobhan Mary",
+      "officer_role": "director",
+      "appointed_on": "2024-02-01",
+      "address": {"address_line_1": "High Street", "locality": "Leeds"},
+      "links": {"self": "/company/01234567/appointments/ccc", "officer": {"appointments": "/officers/ccc/appointments"}}
+    },
+    {
+      "name": "SOMERVILLE, Mary",
+      "officer_role": "secretary",
+      "appointed_on": "2019-05-01",
+      "address": {"address_line_1": "High Street", "locality": "Leeds"},
+      "links": {"self": "/company/01234567/appointments/ddd", "officer": {"appointments": "/officers/ddd/appointments"}}
+    },
+    {
+      "name": "ACME HOLDINGS LIMITED",
+      "officer_role": "corporate-director",
+      "appointed_on": "2020-01-01",
+      "address": {"address_line_1": "High Street", "locality": "Leeds"},
+      "links": {"self": "/company/01234567/appointments/eee", "officer": {"appointments": "/officers/eee/appointments"}}
+    }
+  ]
+}

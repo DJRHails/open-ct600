@@ -13,4 +13,6 @@ published under the Open Government Licence v3.0.
 | `hmrc/SuccessResponse-v1-1.xsd` | Transaction Engine success response schema | as above |
 | `ixbrl/taxonomies.tsv` | FRC and HMRC computational taxonomy packages, fetched by URL and checked by SHA-256 (not redistributed) | FRC, HMRC |
 | `ixbrl/examples/` | Minimal iXBRL accounts and computations that pass Arelle offline validation | written for this project |
+| `companies-house/SIC07_CH_condensed_list_en.csv` | Companies House's condensed list of SIC 2007 codes and descriptions (nature of business) | [SIC list](https://www.gov.uk/government/publications/standard-industrial-classification-of-economic-activities-sic), file `https://assets.publishing.service.gov.uk/media/5a7f8639e5274a2e87db65e1/SIC07_CH_condensed_list_en.csv`, fetched 2026-09-29 |
+| `companies-house/api/` | Swagger 2.0 specs of the public data API (company profile, officers, filing history, search) and the Document API, used to check the test fixtures' shapes | [Companies House developer specs](https://developer-specs.company-information.service.gov.uk), fetched 2026-09-29 |
 | `research/` | Research notes: submission protocol, iXBRL tagging, CT600 main return and supplementary pages A–P, group relief, R&D and s455 rules | compiled 2026-09-28 from gov.uk and HMRC manuals |
