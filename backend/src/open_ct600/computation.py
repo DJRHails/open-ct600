@@ -403,6 +403,11 @@ class _Profits:
     group_relief_carried_forward: int
 
     @property
+    def ring_fenced(self) -> int:
+        """Profits no donation or group relief can be set against: tonnage tax (box 200)."""
+        return self.tonnage_tax
+
+    @property
     def chargeable(self) -> int:
         """Box 315."""
         deductions = self.donations + self.group_relief + self.group_relief_carried_forward
@@ -410,8 +415,14 @@ class _Profits:
 
     @property
     def available_for_group_relief(self) -> int:
-        """Box 300 less box 305 and the ring-fenced tonnage tax profits."""
-        return max(self.before_deductions - self.tonnage_tax - self.donations, 0)
+        """Box 300 less box 305, ring-fenced profits, and the company's own trading loss.
+
+        CTA 2010 s137(4)-(5) (CTM80145): the claimant's total profits available for group
+        relief are reduced by its own current-period trading loss (s37(3)(a)) whether or not
+        it claims that relief, so a loss is never relieved twice (review finding H2).
+        """
+        reduced = self.before_deductions - self.ring_fenced - self.donations - self.loss_arising
+        return max(reduced, 0)
 
 
 @dataclass

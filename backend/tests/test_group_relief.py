@@ -294,3 +294,25 @@ def test_surrender_details_must_add_up_to_the_total():
     ((location, message),) = found.items()
     assert location[-1] == "AmountSurrenderedTotal"
     assert "add up to box C80" in message
+
+
+def test_group_relief_is_limited_by_the_claimants_own_trading_loss():
+    # Review H2. CTA 2010 s137(4)-(5): the claimant's own current-period trading loss is
+    # deducted from its available total profits whether or not it is claimed. Interest of
+    # 60,000 less the 50,000 trading loss leaves 10,000 for group relief.
+    overrides = {
+        **CALENDAR_2025,
+        "profit_and_loss": {
+            "turnover": 10_000,
+            "other_expenses": 60_000,
+            "interest_income": 60_000,
+        },
+    }
+
+    found = problems(**overrides, supplementary_pages={"C": claims(claim(60_000))})
+    assert any("£10,000 or less" in message for message in found.values())
+
+    computation = compute(**overrides, supplementary_pages={"C": claims(claim(10_000))})
+    result = boxes(computation)
+    # 315 = 60,000 - 10,000 = 50,000 at 19% = 9,500
+    assert (result["310"], result["315"], result["440"]) == (10_000, 50_000, 9_500)
