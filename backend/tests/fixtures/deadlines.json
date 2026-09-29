@@ -1,0 +1,80 @@
+[
+  {
+    "case": "a period ending 31 March",
+    "period_end": "2025-03-31",
+    "payment_due": "2026-01-01",
+    "filing_due": "2026-03-31"
+  },
+  {
+    "case": "a period ending 30 June",
+    "period_end": "2025-06-30",
+    "payment_due": "2026-04-01",
+    "filing_due": "2026-06-30"
+  },
+  {
+    "case": "a period ending 31 May, due on 1 March",
+    "period_end": "2024-05-31",
+    "payment_due": "2025-03-01",
+    "filing_due": "2025-05-31"
+  },
+  {
+    "case": "a period ending 30 May, due on 1 March, not 28 February",
+    "period_end": "2022-05-30",
+    "payment_due": "2023-03-01",
+    "filing_due": "2023-05-30"
+  },
+  {
+    "case": "a period ending 29 May before a common year, due on 1 March",
+    "period_end": "2024-05-29",
+    "payment_due": "2025-03-01",
+    "filing_due": "2025-05-29"
+  },
+  {
+    "case": "a period ending 29 May before a leap year, due on 1 March, not 29 February",
+    "period_end": "2023-05-29",
+    "payment_due": "2024-03-01",
+    "filing_due": "2024-05-29"
+  },
+  {
+    "case": "a period ending 28 May before a leap year, due on 29 February",
+    "period_end": "2023-05-28",
+    "payment_due": "2024-02-29",
+    "filing_due": "2024-05-28"
+  },
+  {
+    "case": "a period ending on 29 February",
+    "period_end": "2024-02-29",
+    "payment_due": "2024-12-01",
+    "filing_due": "2025-02-28"
+  },
+  {
+    "case": "a period ending 28 February in a leap year",
+    "period_end": "2024-02-28",
+    "payment_due": "2024-11-29",
+    "filing_due": "2025-02-28"
+  },
+  {
+    "case": "a period ending 28 February before a leap year",
+    "period_end": "2023-02-28",
+    "payment_due": "2023-12-01",
+    "filing_due": "2024-02-28"
+  },
+  {
+    "case": "a period ending 30 April",
+    "period_end": "2025-04-30",
+    "payment_due": "2026-02-01",
+    "filing_due": "2026-04-30"
+  },
+  {
+    "case": "a calendar year",
+    "period_end": "2024-12-31",
+    "payment_due": "2025-10-01",
+    "filing_due": "2025-12-31"
+  },
+  {
+    "case": "a period ending 31 August",
+    "period_end": "2025-08-31",
+    "payment_due": "2026-06-01",
+    "filing_due": "2026-08-31"
+  }
+]

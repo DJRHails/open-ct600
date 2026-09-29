@@ -22,6 +22,23 @@ export default defineConfig({
   resolve: {
     alias: { "@": new URL("./src", import.meta.url).pathname },
   },
+  build: {
+    // The libraries every page needs change less often than the service, so they are cached
+    // separately, and neither chunk goes over the 500 kB warning limit. Only those: a library
+    // loaded lazily, like the company search's autocomplete, stays in its own chunk.
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "vendor",
+              test: /[\\/]node_modules[\\/](react|react-dom|react-router|scheduler|govuk-frontend)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
+  },
   css: {
     lightningcss: { errorRecovery: true },
     preprocessorOptions: {
@@ -30,13 +47,15 @@ export default defineConfig({
   },
   server: {
     proxy: { "/api": "http://127.0.0.1:8000" },
-    // Tests read HMRC's page definitions from the backend's committed schema spec, and the
-    // boxes the service calculates from its page definitions.
+    // Tests read HMRC's page definitions from the backend's committed schema spec, the
+    // boxes the service calculates from its page definitions, and HMRC's saved guides.
     fs: {
       allow: [
         ".",
         "../backend/src/open_ct600/schema",
         "../backend/src/open_ct600/pages",
+        "../specs/hmrc/guidance",
+        "../backend/tests/fixtures/deadlines.json",
       ],
     },
   },

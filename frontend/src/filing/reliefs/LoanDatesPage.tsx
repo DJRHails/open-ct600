@@ -3,6 +3,8 @@ import { Navigate, useNavigate } from "react-router";
 
 import type { SchemaPage } from "@/api";
 import { type DateParts, DateInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { LOAN_DATE_HELP } from "@/content/help/reliefs";
 import { useDraft } from "@/filing/draft";
 import { type FieldErrors, savedPeriod } from "@/filing/model";
 import { TASK_LIST, useNextPage } from "@/filing/paths";
@@ -74,6 +76,12 @@ function LoanDates({ pages }: { pages: SchemaPage[] }) {
               value={made}
               onChange={(parts) => setDate(table, index, parts)}
               error={errors[loanDateId(table, index)]}
+              help={
+                // The question is the same for every loan, so its help is under the first.
+                order[0] === loanDateId(table, index) ? (
+                  <QuestionHelp id="loan-date-help" help={LOAN_DATE_HELP} />
+                ) : undefined
+              }
             />
           ))}
         </div>

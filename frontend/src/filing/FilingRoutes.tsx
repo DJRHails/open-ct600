@@ -1,5 +1,8 @@
 import { Route, Routes } from "react-router";
 
+import { BALANCE_SHEET_HELP } from "@/content/help/balanceSheet";
+import { PROFIT_AND_LOSS_HELP } from "@/content/help/profitAndLoss";
+import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
 import { AccountingPeriodPage } from "@/filing/AccountingPeriodPage";
 import { AccountsDetailsPage } from "@/filing/AccountsDetailsPage";
 import { AmountSectionPage } from "@/filing/AmountSectionPage";
@@ -47,15 +50,25 @@ function FilingPages() {
       <Route path="accounting-period" element={<AccountingPeriodPage />} />
       <Route
         path={PROFIT_AND_LOSS.slug}
-        element={<AmountSectionPage key="pnl" section={PROFIT_AND_LOSS} />}
+        element={
+          <AmountSectionPage key="pnl" section={PROFIT_AND_LOSS} help={PROFIT_AND_LOSS_HELP} />
+        }
       />
       <Route
         path={TAX_ADJUSTMENTS.slug}
-        element={<AmountSectionPage key="adjustments" section={TAX_ADJUSTMENTS} />}
+        element={
+          <AmountSectionPage
+            key="adjustments"
+            section={TAX_ADJUSTMENTS}
+            help={TAX_ADJUSTMENTS_HELP}
+          />
+        }
       />
       <Route
         path={BALANCE_SHEET.slug}
-        element={<AmountSectionPage key="balance" section={BALANCE_SHEET} />}
+        element={
+          <AmountSectionPage key="balance" section={BALANCE_SHEET} help={BALANCE_SHEET_HELP} />
+        }
       />
       <Route path="accounts-details" element={<AccountsDetailsPage />} />
       <Route

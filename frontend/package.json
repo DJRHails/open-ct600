@@ -8,10 +8,11 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings src",
-    "format": "oxfmt src",
-    "format:check": "oxfmt --check src",
-    "test": "vitest run"
+    "lint": "oxlint --deny-warnings src scripts",
+    "format": "oxfmt src scripts",
+    "format:check": "oxfmt --check src scripts",
+    "test": "vitest run",
+    "guidance:extract": "node scripts/extract-hmrc-guidance.ts && oxfmt src/content/help/hmrc/guidance.json"
   },
   "dependencies": {
     "accessible-autocomplete": "3.0.2",

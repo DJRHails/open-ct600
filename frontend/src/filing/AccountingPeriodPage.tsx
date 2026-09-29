@@ -3,11 +3,15 @@ import { useNavigate } from "react-router";
 
 import { PrefilledBanner } from "@/components/content";
 import { DateInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { PERIOD_HELP } from "@/content/help/period";
 import { draftRecord, prefilledPeriod } from "@/filing/companiesHouse";
+import { Deadlines } from "@/filing/Deadlines";
 import { useDraft } from "@/filing/draft";
 import { type FieldErrors, SECTION_TITLES, validatePeriod } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
+import { parseDateParts } from "@/format";
 
 const EMPTY_DATE = { day: "", month: "", year: "" };
 
@@ -21,6 +25,7 @@ export function AccountingPeriodPage() {
     draft.period ?? prefill ?? { start: EMPTY_DATE, end: EMPTY_DATE },
   );
   const [errors, setErrors] = useState<FieldErrors>({});
+  const typedEnd = parseDateParts(values.end, "end date");
 
   function save() {
     const result = validatePeriod(values);
@@ -50,6 +55,7 @@ export function AccountingPeriodPage() {
         value={values.start}
         onChange={(start) => setValues({ ...values, start })}
         error={errors.start}
+        help={<QuestionHelp id="start-help" help={PERIOD_HELP.start} />}
       />
       <DateInput
         id="end"
@@ -58,7 +64,10 @@ export function AccountingPeriodPage() {
         value={values.end}
         onChange={(end) => setValues({ ...values, end })}
         error={errors.end}
+        help={<QuestionHelp id="end-help" help={PERIOD_HELP.end} />}
       />
+      {/* The deadlines follow from the end date, so they show as soon as it is a real date. */}
+      <div aria-live="polite">{typedEnd.ok ? <Deadlines periodEnd={typedEnd.value} /> : null}</div>
     </SectionFrame>
   );
 }

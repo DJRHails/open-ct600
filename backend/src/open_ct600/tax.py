@@ -227,8 +227,8 @@ class TaxComputation:
         marginal_relief: Total marginal relief.
         tax_chargeable: Corporation Tax chargeable after marginal relief.
         effective_rate: ``tax_chargeable`` divided by ``taxable_profits``.
-        payment_due: Normal due date for payment: 9 months after the day after the period
-            ends, so a period ending 30 June is due on 1 April.
+        payment_due: Normal due date for payment (``payment_due_date``): 9 months and 1 day
+            after the period ends, so a period ending 30 June is due on 1 April.
         filing_due: Deadline for filing the CT600 (12 months after the period).
         may_pay_by_instalments: Whether augmented profits exceed the large company threshold,
             in which case tax is usually paid in quarterly instalments instead of on
@@ -262,6 +262,29 @@ def add_months(day: date, months: int) -> date:
     next_month_start = date(year + month // 12, month % 12 + 1, 1)
     last_day = (next_month_start - timedelta(days=1)).day
     return date(year, month, min(day.day, last_day))
+
+
+def payment_due_date(period_end: date) -> date:
+    """Return the normal date Corporation Tax is due: 9 months and 1 day after the period ends.
+
+    TMA 1970 s59D: "the day following the expiry of nine months from the end of that period".
+    That is 9 months from the day after the period, so a period ending 30 June is due on
+    1 April (https://www.gov.uk/pay-corporation-tax). When that month has no such day, the nine
+    months end with the month and tax is due on the 1st of the next: a period ending 30 May is
+    due on 1 March, never 28 February. The frontend's ``filing/deadlines.ts`` works this out
+    the same way; both are tested against ``tests/fixtures/deadlines.json``.
+    """
+    start = period_end + timedelta(days=1)
+    due = add_months(start, 9)
+    return due + timedelta(days=1) if due.day != start.day else due
+
+
+def filing_due_date(period_end: date) -> date:
+    """Return the deadline for filing the return: 12 months after the period ends.
+
+    https://www.gov.uk/company-tax-returns. A period ending 29 February is due on 28 February.
+    """
+    return add_months(period_end, 12)
 
 
 def twelve_month_period_end(start: date) -> date:
@@ -509,8 +532,8 @@ def compute_corporation_tax(  # noqa: PLR0913 - the two options past five are ke
         marginal_relief=marginal_relief,
         tax_chargeable=tax_chargeable,
         effective_rate=effective_rate,
-        payment_due=add_months(period_end + timedelta(days=1), 9),
-        filing_due=add_months(period_end, 12),
+        payment_due=payment_due_date(period_end),
+        filing_due=filing_due_date(period_end),
         may_pay_by_instalments=(
             augmented_total > LARGE_COMPANY_THRESHOLD * year_fraction / (associated_companies + 1)
         ),

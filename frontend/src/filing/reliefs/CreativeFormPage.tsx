@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 
 import { Radios } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { CREATIVE_HELP } from "@/content/help/reliefs";
 import { useDraft } from "@/filing/draft";
 import { type FieldErrors, YES_NO } from "@/filing/model";
 import { TASK_LIST, useNextPage } from "@/filing/paths";
@@ -45,6 +47,12 @@ export function CreativeFormPage() {
         value={values.additional_information_submitted}
         onChange={(answer) => setValues({ additional_information_submitted: answer })}
         error={errors.additional_information_submitted}
+        help={
+          <QuestionHelp
+            id="additional_information_submitted-help"
+            help={CREATIVE_HELP.additional_information_submitted}
+          />
+        }
         inline
       />
     </SectionFrame>

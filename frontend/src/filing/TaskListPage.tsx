@@ -3,12 +3,14 @@ import { Link } from "react-router";
 
 import { TwoThirds, usePageTitle } from "@/components/content";
 import { Button } from "@/components/forms";
+import { Deadlines } from "@/filing/Deadlines";
 import { useDraft } from "@/filing/draft";
 import { CHECK_ANSWERS, CHOOSE_PAGES, pagePath, RETURNS } from "@/filing/paths";
 import {
   completedCount,
   needsSchema,
   pageComplete,
+  savedPeriod,
   sectionComplete,
   SECTION_ORDER,
   SECTION_SLUGS,
@@ -124,6 +126,7 @@ export function TaskListPage() {
   const total = sections.length + supplementary.length;
   const completed = completedCount(draft) + supplementary.filter((task) => task.completed).length;
   const started = completed > 0 || Object.keys(draft).length > 0;
+  const periodEnd = savedPeriod(draft)?.end;
 
   return (
     <TwoThirds>
@@ -132,6 +135,7 @@ export function TaskListPage() {
       <p className="govuk-body">
         You have completed {completed} of {total} sections.
       </p>
+      {periodEnd ? <Deadlines periodEnd={periodEnd} /> : null}
 
       <h2 className="govuk-heading-m">Your company and its accounts</h2>
       <ul className="govuk-task-list">

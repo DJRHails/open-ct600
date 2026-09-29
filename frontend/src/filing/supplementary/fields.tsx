@@ -35,6 +35,8 @@ import {
   type TreePath,
 } from "@/filing/supplementary/spec";
 import { TreeSummary } from "@/filing/supplementary/summary";
+import { BoxHelp, boxHelpKey } from "@/components/help";
+import { useGuidance } from "@/content/help/hmrc/useGuidance";
 
 /** Errors are keyed by the tree path of the answer they are about. */
 export function pathKey(path: TreePath): string {
@@ -61,6 +63,33 @@ function usePageForm(): PageForm {
   return form;
 }
 
+/**
+ * The help already shown above a question on the screen, by ``boxHelpKey``: the columns of a
+ * table, like A10A and A10B, share box A10's help, which is shown once, under the first.
+ */
+const HelpShown = createContext<ReadonlySet<string>>(new Set());
+
+function useHelpKey(box: string | null): string | null {
+  const guidance = useGuidance();
+  return box ? boxHelpKey(box, guidance.status === "ready" ? guidance.index : null) : null;
+}
+
+/** Help for a box, unless a question above it on the screen has the same help. */
+function HelpOnce({ id, box }: { id: string; box: string | null }) {
+  const shown = useContext(HelpShown);
+  const key = useHelpKey(box);
+  if (!box || !key || shown.has(key)) return null;
+  return <BoxHelp id={`${id}-help`} box={box} />;
+}
+
+/** Mark a box's help as shown for the questions inside it. */
+function WithHelpShown({ box, children }: { box: string | null; children: ReactNode }) {
+  const shown = useContext(HelpShown);
+  const key = useHelpKey(box);
+  const value = key && !shown.has(key) ? new Set([...shown, key]) : shown;
+  return <HelpShown.Provider value={value}>{children}</HelpShown.Provider>;
+}
+
 /** The questions for ``items`` in the group at ``path``. */
 export function Items({
   items,
@@ -71,18 +100,27 @@ export function Items({
   path: TreePath;
   depth: number;
 }) {
+  const guidance = useGuidance();
+  const index = guidance.status === "ready" ? guidance.index : null;
+  // The help shown above each item: what was shown above this group, and by earlier items.
+  const above: ReadonlySet<string>[] = [];
+  let shown = useContext(HelpShown);
+  for (const item of items) {
+    above.push(shown);
+    const key = item.type === "node" && item.node.box ? boxHelpKey(item.node.box, index) : null;
+    if (key) shown = new Set([...shown, key]);
+  }
   return (
     <>
-      {items.map((item) =>
+      {items.map((item, position) =>
         item.type === "node" ? (
-          <Occurrence
-            key={item.node.name}
-            node={item.node}
-            path={[...path, item.node.name]}
-            depth={depth}
-          />
+          <HelpShown.Provider key={item.node.name} value={above[position] ?? shown}>
+            <Occurrence node={item.node} path={[...path, item.node.name]} depth={depth} />
+          </HelpShown.Provider>
         ) : (
-          <Choice key={item.id} item={item} path={path} depth={depth} />
+          <HelpShown.Provider key={item.id} value={above[position] ?? shown}>
+            <Choice item={item} path={path} depth={depth} />
+          </HelpShown.Provider>
         ),
       )}
     </>
@@ -115,13 +153,17 @@ function Legend({ depth, children }: { depth: number; children: ReactNode }) {
 }
 
 function Group({ node, path, depth }: NodeProps) {
+  const { code } = usePageForm();
   const hint = boxHint(node);
   return (
     <div className="govuk-form-group">
       <fieldset className="govuk-fieldset">
         <Legend depth={depth}>{optional(node, node.label)}</Legend>
         {hint ? <div className="govuk-hint">{hint}</div> : null}
-        <Items items={formItems(node)} path={path} depth={depth + 1} />
+        <HelpOnce id={fieldId(code, path)} box={node.box} />
+        <WithHelpShown box={node.box}>
+          <Items items={formItems(node)} path={path} depth={depth + 1} />
+        </WithHelpShown>
       </fieldset>
     </div>
   );
@@ -160,6 +202,7 @@ function Choice(props: {
       conditional: undefined,
     });
   const value = selected?.name ?? (recorded === NO_BRANCH ? NO_BRANCH : "");
+  const ticked = item.branches.filter(answeredByChoosing).map((branch) => branch.members[0]);
   return (
     <Radios
       name={fieldId(code, keyPath)}
@@ -168,7 +211,27 @@ function Choice(props: {
       value={value}
       onChange={(branch) => setAnswer(keyPath, branch)}
       error={errors[pathKey(keyPath)]}
+      help={<ChoiceHelp id={fieldId(code, keyPath)} boxes={ticked.map((node) => node?.box)} />}
     />
+  );
+}
+
+/** Help for the boxes a choice's radios tick, each once. */
+function ChoiceHelp({ id, boxes }: { id: string; boxes: (string | null | undefined)[] }) {
+  const guidance = useGuidance();
+  const shown = useContext(HelpShown);
+  const index = guidance.status === "ready" ? guidance.index : null;
+  const byKey = new Map<string, string>();
+  for (const box of boxes) {
+    const key = box ? boxHelpKey(box, index) : null;
+    if (box && key && !shown.has(key) && !byKey.has(key)) byKey.set(key, box);
+  }
+  return (
+    <>
+      {[...byKey.values()].map((box) => (
+        <BoxHelp key={box} id={`${id}-${box}-help`} box={box} />
+      ))}
+    </>
   );
 }
 
@@ -189,11 +252,13 @@ function Field({ node, path, label }: { node: SpecNode; path: TreePath; label?: 
   const { code, answers, setAnswer, errors } = usePageForm();
   const raw = getAt(answers, path);
   const text = typeof raw === "string" ? raw : "";
+  const id = fieldId(code, path);
   const common = {
-    id: fieldId(code, path),
+    id,
     label: optional(node, label ?? node.label),
     hint: boxHint(node),
     error: errors[pathKey(path)],
+    help: <HelpOnce id={id} box={node.box} />,
   };
   const setText = (value: string) => setAnswer(path, value);
   switch (node.kind) {
@@ -242,6 +307,7 @@ function Field({ node, path, label }: { node: SpecNode; path: TreePath; label?: 
           legend={common.label}
           hint={common.hint}
           error={common.error}
+          help={common.help}
           value={isDateParts(raw) ? raw : EMPTY_DATE}
           onChange={(parts) => setAnswer(path, parts)}
         />
@@ -251,12 +317,18 @@ function Field({ node, path, label }: { node: SpecNode; path: TreePath; label?: 
   }
 }
 
-type Common = { id: string; label: string; hint: string | undefined; error: string | undefined };
+type Common = {
+  id: string;
+  label: string;
+  hint: string | undefined;
+  error: string | undefined;
+  help: ReactNode;
+};
 
 function ChoiceField(props: { node: SpecNode; path: TreePath; common: Common; text: string }) {
   const { node, path, common, text } = props;
   const { setAnswer } = usePageForm();
-  const { id, label, hint, error } = common;
+  const { id, label, hint, error, help } = common;
   const set = (value: string) => setAnswer(path, value);
   switch (node.kind) {
     case "yes":
@@ -268,6 +340,7 @@ function ChoiceField(props: { node: SpecNode; path: TreePath; common: Common; te
           checked={text === "yes"}
           onChange={(checked) => set(checked ? "yes" : "")}
           error={error}
+          help={help}
         />
       );
     case "yesno": {
@@ -284,6 +357,7 @@ function ChoiceField(props: { node: SpecNode; path: TreePath; common: Common; te
           value={text}
           onChange={set}
           error={error}
+          help={help}
           inline
         />
       );
@@ -299,6 +373,7 @@ function ChoiceField(props: { node: SpecNode; path: TreePath; common: Common; te
           value={text}
           onChange={set}
           error={error}
+          help={help}
         />
       ) : (
         <Radios
@@ -309,6 +384,7 @@ function ChoiceField(props: { node: SpecNode; path: TreePath; common: Common; te
           value={text}
           onChange={set}
           error={error}
+          help={help}
         />
       );
     }
@@ -400,32 +476,35 @@ function RepeatingGroup({ node, path, depth }: NodeProps) {
         <h2 className="govuk-heading-m">{optional(node, sentence(node.label))}</h2>
       ) : null}
       {boxHint(node) ? <div className="govuk-hint">{boxHint(node)}</div> : null}
-      {Array.from({ length: count }, (_, index) => {
-        const item = list[index];
-        const itemPath = [...path, index];
-        const editing = open.includes(index) || hasErrorsUnder(errors, itemPath);
-        const title = `${sentence(node.label)} ${index + 1}`;
-        const removable = count > 1 || !isBlank(item);
-        return editing ? (
-          <EditItem key={index} node={node} path={itemPath} depth={depth} title={title}>
-            {removable ? (
-              <Button type="button" variant="secondary" onClick={() => remove(index)}>
-                {"Remove "}
-                <span className="govuk-visually-hidden">{phrase(title)}</span>
-              </Button>
-            ) : null}
-          </EditItem>
-        ) : (
-          <SummaryItem
-            key={index}
-            node={node}
-            item={item}
-            title={title}
-            onChange={() => setOpen([...open, index])}
-            onRemove={() => remove(index)}
-          />
-        );
-      })}
+      <HelpOnce id={fieldId(code, path)} box={node.box} />
+      <WithHelpShown box={node.box}>
+        {Array.from({ length: count }, (_, index) => {
+          const item = list[index];
+          const itemPath = [...path, index];
+          const editing = open.includes(index) || hasErrorsUnder(errors, itemPath);
+          const title = `${sentence(node.label)} ${index + 1}`;
+          const removable = count > 1 || !isBlank(item);
+          return editing ? (
+            <EditItem key={index} node={node} path={itemPath} depth={depth} title={title}>
+              {removable ? (
+                <Button type="button" variant="secondary" onClick={() => remove(index)}>
+                  {"Remove "}
+                  <span className="govuk-visually-hidden">{phrase(title)}</span>
+                </Button>
+              ) : null}
+            </EditItem>
+          ) : (
+            <SummaryItem
+              key={index}
+              node={node}
+              item={item}
+              title={title}
+              onChange={() => setOpen([...open, index])}
+              onRemove={() => remove(index)}
+            />
+          );
+        })}
+      </WithHelpShown>
       {canAdd ? (
         <Button type="button" variant="secondary" id={addId} onClick={add}>
           Add another {name}

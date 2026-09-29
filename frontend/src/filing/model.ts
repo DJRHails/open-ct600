@@ -97,6 +97,18 @@ export type AmountField<K extends AmountSectionKey> = {
   summaryLabel?: string;
   /** Asked only when this holds for the answers; otherwise the amount is nil. */
   askedWhen?: (values: Record<string, string>, draft: Draft) => boolean;
+  /**
+   * A yes or no question in everyday words asked first, like "Did the company buy equipment,
+   * tools or vehicles for the business?". The amount is asked on yes, and is nil on no.
+   */
+  gate?: AmountGate;
+};
+
+export type AmountGate = {
+  question: string;
+  hint?: string;
+  /** The error when it is not answered: "Select yes if ...". */
+  error: string;
 };
 
 export type AmountSection<K extends AmountSectionKey> = {
@@ -204,26 +216,46 @@ export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
   slug: "tax-adjustments",
   title: "Tax adjustments",
   intro:
-    "Some expenses in your accounts cannot be deducted for tax, and some allowances and " +
-    "reliefs are only given for tax. Leave a box blank if it does not apply.",
+    "Tax is worked out from the profit in your accounts, with some changes. Answer each " +
+    "question, and open its help if you are not sure.",
   fields: [
     {
       key: "disallowable_expenses",
-      label: "Disallowable expenses",
-      errorLabel: "disallowable expenses",
-      hint: "Expenses in your accounts that cannot be deducted for tax, such as client entertaining and fines.",
+      label: "Amount of disallowable expenses",
+      summaryLabel: "Disallowable expenses",
+      errorLabel: "the amount of disallowable expenses",
+      hint: "Do not include depreciation. We add it back for you.",
+      gate: {
+        question:
+          "Do the company's expenses include costs that cannot be taken off profits for tax?",
+        hint: "For example, entertaining clients, fines, or personal bills paid by the company.",
+        error:
+          "Select yes if the company's expenses include costs that cannot be taken off profits for tax",
+      },
     },
     {
       key: "capital_allowances",
-      label: "Capital allowances",
-      errorLabel: "capital allowances",
-      hint: "Tax relief on equipment and vehicles you bought, for example the Annual Investment Allowance.",
+      label: "Capital allowances the company is claiming",
+      summaryLabel: "Capital allowances",
+      errorLabel: "the capital allowances",
+      hint: "For most equipment, tools and vans this is the full cost, under the Annual Investment Allowance.",
+      gate: {
+        question: "Did the company buy equipment, tools or vehicles for the business?",
+        hint: "Including computers, machinery and vans. Do not include things the company leases.",
+        error: "Select yes if the company bought equipment, tools or vehicles for the business",
+      },
     },
     {
       key: "losses_brought_forward",
       label: "Trading losses brought forward",
-      errorLabel: "trading losses brought forward",
-      hint: "Unused trading losses from earlier periods. We use as much as your trading profits allow.",
+      errorLabel: "the trading losses brought forward",
+      hint: "The losses carried forward on the company's last Company Tax Return. We use as much as its trading profits allow.",
+      gate: {
+        question:
+          "Does the company have trading losses from earlier periods that it has not used yet?",
+        error:
+          "Select yes if the company has trading losses from earlier periods that it has not used yet",
+      },
     },
     {
       key: PRE_2017_LOSSES,
@@ -240,26 +272,50 @@ export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
     {
       key: "chargeable_gains",
       label: "Chargeable gains",
-      errorLabel: "chargeable gains",
-      hint: "Taxable gains from selling assets such as property or shares.",
+      errorLabel: "the chargeable gains",
+      hint: "The profit on each sale after costs, less any capital losses the company can use.",
+      gate: {
+        question: "Did the company sell property, shares or other major assets?",
+        hint: "Or give them away. Do not include equipment or vehicles it claimed capital allowances on.",
+        error: "Select yes if the company sold property, shares or other major assets",
+      },
     },
     {
       key: "qualifying_donations",
       label: "Qualifying charitable donations",
-      errorLabel: "qualifying charitable donations",
+      errorLabel: "the qualifying charitable donations",
+      gate: {
+        question: "Did the company give money, shares or property to a charity?",
+        hint: "Including community amateur sports clubs. Sponsorship does not count.",
+        error: "Select yes if the company gave money, shares or property to a charity",
+      },
     },
     {
       key: "exempt_distributions",
       label: "Dividends received from companies outside your group",
-      errorLabel: "dividends received",
+      summaryLabel: "Dividends received from companies outside your group",
+      errorLabel: "the dividends received",
       hint: "These are not taxed, but they count towards the limits for the small profits rate.",
+      gate: {
+        question: "Did the company receive dividends from shares it owns in other companies?",
+        hint: "Do not include dividends from companies in its own group.",
+        error:
+          "Select yes if the company received dividends from shares it owns in other companies",
+      },
     },
     {
       key: "associated_companies",
       label: "Number of associated companies",
-      errorLabel: "number of associated companies",
-      hint: "Other companies under the same control as yours. Enter 0 if there are none.",
+      errorLabel: "the number of associated companies",
+      hint: "Do not count your own company, or companies that did not do any business.",
       kind: "count",
+      gate: {
+        question:
+          "Does the company control other companies, or is it controlled by someone who also controls other companies?",
+        hint: "Control usually means owning more than half of the shares or votes.",
+        error:
+          "Select yes if the company controls other companies, or is controlled by someone who also controls other companies",
+      },
     },
   ],
   check: checkPre2017Losses,

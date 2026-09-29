@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { Navigate } from "react-router";
 
 import {
@@ -24,6 +24,7 @@ import { CHECK_ANSWERS, CONFIRMATION, TASK_LIST } from "@/filing/paths";
 import { Pending } from "@/filing/Pending";
 import { type Failure, failure, rejected } from "@/filing/submission";
 import { useReturn } from "@/filing/useReturn";
+import { useSubmissionEnvironments } from "@/filing/useSubmissionEnvironments";
 
 const CAPACITIES: { value: SignatoryCapacity; label: string }[] = [
   { value: "director", label: "Director" },
@@ -341,22 +342,6 @@ function Declare({ ct600, pages, environments }: DeclareProps) {
       </TwoThirds>
     </>
   );
-}
-
-/** The HMRC services this deployment can send to; none if it cannot say. ``null`` until known. */
-function useSubmissionEnvironments(): HmrcEnvironment[] | null {
-  const [environments, setEnvironments] = useState<HmrcEnvironment[] | null>(null);
-  useEffect(() => {
-    let current = true;
-    api.submissionStatus().then(
-      (status) => current && setEnvironments(status.enabled ? status.environments : []),
-      () => current && setEnvironments([]),
-    );
-    return () => {
-      current = false;
-    };
-  }, []);
-  return environments;
 }
 
 export function DeclarationPage() {
