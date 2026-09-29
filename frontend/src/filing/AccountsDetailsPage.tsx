@@ -4,6 +4,8 @@ import { useNavigate } from "react-router";
 import type { CompanyRecord } from "@/api";
 import { PrefilledBanner } from "@/components/content";
 import { Button, Checkboxes, DateInput, Radios, TextInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { ACCOUNTS_HELP, COMPARATIVES_HELP } from "@/content/help/accounts";
 import {
   currentDirectors,
   draftRecord,
@@ -29,6 +31,10 @@ import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
 
 const MAX_DIRECTORS = 50;
+
+function helpFor(key: keyof AccountsAnswers) {
+  return <QuestionHelp id={`${key}-help`} help={ACCOUNTS_HELP[key]} />;
+}
 
 type DirectorsProps = {
   directors: string[];
@@ -71,6 +77,7 @@ function Directors({ directors, errors, onChange }: DirectorsProps) {
           Add another director
         </Button>
       ) : null}
+      {helpFor("directors")}
     </div>
   );
 }
@@ -125,6 +132,7 @@ function Officers({ officers, directors, errors, onChange }: OfficersProps) {
           Add another person
         </Button>
       ) : null}
+      {helpFor("directors")}
     </div>
   );
 }
@@ -215,6 +223,7 @@ export function AccountsDetailsPage() {
         value={values.standard}
         onChange={(standard) => setValues({ ...values, standard })}
         error={errors.standard}
+        help={helpFor("standard")}
       />
       <Radios
         name="legal_form"
@@ -224,6 +233,7 @@ export function AccountsDetailsPage() {
         value={values.legal_form}
         onChange={(legalForm) => setValues({ ...values, legal_form: legalForm })}
         error={errors.legal_form}
+        help={helpFor("legal_form")}
       />
       <Radios
         name="first_period"
@@ -233,6 +243,7 @@ export function AccountsDetailsPage() {
         value={values.first_period}
         onChange={(firstPeriod) => setValues({ ...values, first_period: firstPeriod })}
         error={errors.first_period}
+        help={helpFor("first_period")}
         inline
       />
       {officers.length > 0 ? (
@@ -253,6 +264,7 @@ export function AccountsDetailsPage() {
         value={values.signing_director}
         onChange={(director) => setValues({ ...values, signing_director: director })}
         error={errors.signing_director}
+        help={helpFor("signing_director")}
       />
       <DateInput
         id="approval_date"
@@ -261,6 +273,7 @@ export function AccountsDetailsPage() {
         value={values.approval_date}
         onChange={(approvalDate) => setValues({ ...values, approval_date: approvalDate })}
         error={errors.approval_date}
+        help={helpFor("approval_date")}
       />
       <TextInput
         id="average_employees"
@@ -269,6 +282,7 @@ export function AccountsDetailsPage() {
         value={values.average_employees}
         onChange={(employees) => setValues({ ...values, average_employees: employees })}
         error={errors.average_employees}
+        help={helpFor("average_employees")}
         width="5"
         inputMode="numeric"
       />
@@ -280,6 +294,12 @@ export function AccountsDetailsPage() {
           value={previousEmployees}
           onChange={setPreviousEmployees}
           error={errors[PREVIOUS_EMPLOYEES]}
+          help={
+            <QuestionHelp
+              id="previous-employees-help"
+              help={COMPARATIVES_HELP.previous_employees}
+            />
+          }
           width="5"
           inputMode="numeric"
         />
@@ -292,6 +312,7 @@ export function AccountsDetailsPage() {
         value={values.dormant}
         onChange={(dormant) => setValues({ ...values, dormant })}
         error={errors.dormant}
+        help={helpFor("dormant")}
         inline
       />
       <Radios
@@ -301,6 +322,7 @@ export function AccountsDetailsPage() {
         value={values.trading_status}
         onChange={(status) => setValues({ ...values, trading_status: status })}
         error={errors.trading_status}
+        help={helpFor("trading_status")}
       />
     </SectionFrame>
   );

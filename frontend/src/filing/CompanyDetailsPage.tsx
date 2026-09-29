@@ -4,6 +4,8 @@ import { useNavigate } from "react-router";
 import { api, ApiError, type CompanyRecord, type CompanySearchResult } from "@/api";
 import { PrefilledBanner } from "@/components/content";
 import { Radios, TextInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { COMPANY_HELP } from "@/content/help/company";
 import { companyRecord, useCompaniesHouseLookup } from "@/filing/companiesHouse";
 import { useDraft } from "@/filing/draft";
 import {
@@ -18,6 +20,10 @@ import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
 
 const SEARCH_ID = "company-search";
+
+function helpFor(key: keyof CompanyAnswers) {
+  return <QuestionHelp id={`${key}-help`} help={COMPANY_HELP[key]} />;
+}
 
 // The search (with its autocomplete and bundled Preact) loads only when lookup is switched on.
 const CompanySearch = lazy(async () => ({
@@ -53,6 +59,7 @@ function CompanyFields({ values, setValues, errors, activityNote }: CompanyField
         value={values.name}
         onChange={(name) => setValues({ ...values, name })}
         error={errors.name}
+        help={helpFor("name")}
         autoComplete="organization"
       />
       <TextInput
@@ -64,6 +71,7 @@ function CompanyFields({ values, setValues, errors, activityNote }: CompanyField
           setValues({ ...values, registration_number: registrationNumber })
         }
         error={errors.registration_number}
+        help={helpFor("registration_number")}
         width="10"
         spellCheck={false}
       />
@@ -74,6 +82,7 @@ function CompanyFields({ values, setValues, errors, activityNote }: CompanyField
         value={values.utr}
         onChange={(utr) => setValues({ ...values, utr })}
         error={errors.utr}
+        help={helpFor("utr")}
         width="10"
         inputMode="numeric"
         spellCheck={false}
@@ -90,15 +99,17 @@ function CompanyFields({ values, setValues, errors, activityNote }: CompanyField
           setValues({ ...values, principal_activity: principalActivity })
         }
         error={errors.principal_activity}
+        help={helpFor("principal_activity")}
       />
       <Radios
         name="company_type"
-        legend="Type of company"
-        hint="Box 4 on the CT600."
+        legend="Is the company one of these types?"
+        hint="Most companies are none of these. This is the type of company in box 4 on the CT600."
         options={COMPANY_TYPES}
         value={values.company_type}
         onChange={(companyType) => setValues({ ...values, company_type: companyType })}
         error={errors.company_type}
+        help={helpFor("company_type")}
       />
     </>
   );

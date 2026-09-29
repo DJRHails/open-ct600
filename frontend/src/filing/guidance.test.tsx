@@ -66,3 +66,65 @@ describe("deadlines", () => {
     expect(screen.queryByTestId("deadlines")).not.toBeInTheDocument();
   });
 });
+
+describe("deadlines on the accounting period page", () => {
+  it("show as soon as a real end date is typed, following TMA 1970 s59D", async () => {
+    stubSubmission(false);
+    const user = renderApp("/file/accounting-period");
+    const end = screen.getByRole("group", { name: "End date" });
+
+    await user.type(within(end).getByLabelText("Day"), "30");
+    await user.type(within(end).getByLabelText("Month"), "5");
+    await user.type(within(end).getByLabelText("Year"), "202");
+    expect(screen.queryByTestId("deadlines")).not.toBeInTheDocument();
+
+    await user.type(within(end).getByLabelText("Year"), "5");
+    const deadlines = screen.getByTestId("deadlines");
+    expect(deadlines).toHaveTextContent("File your return by 30 May 2026");
+    expect(deadlines).toHaveTextContent("Pay Corporation Tax by 1 March 2026");
+  });
+
+  it("are not shown for a date that does not exist", async () => {
+    stubSubmission(false);
+    const user = renderApp("/file/accounting-period");
+    const end = screen.getByRole("group", { name: "End date" });
+
+    await user.type(within(end).getByLabelText("Day"), "31");
+    await user.type(within(end).getByLabelText("Month"), "6");
+    await user.type(within(end).getByLabelText("Year"), "2025");
+    expect(screen.queryByTestId("deadlines")).not.toBeInTheDocument();
+  });
+});
+
+describe("help on every question", () => {
+  const helpSummaries = () =>
+    screen.getAllByText(/^Help with /).map((summary) => summary.textContent ?? "");
+
+  it.each([
+    [
+      "/file/company-details",
+      ["the company name", "the Corporation Tax Unique Taxpayer Reference (UTR)"],
+    ],
+    ["/file/accounting-period", []],
+    ["/file/accounts-details", ["the company's legal form", "the first period of account"]],
+    ["/file/balance-sheet", ["fixed assets", "called up share capital"]],
+  ])("is under the questions on %s", async (path, topics) => {
+    stubSubmission(false);
+    renderApp(path);
+
+    await screen.findByRole("button", { name: "Save and continue" });
+    expect(helpSummaries().length).toBeGreaterThan(1);
+    for (const topic of topics) expect(helpSummaries()).toContain(`Help with ${topic}`);
+  });
+
+  it("is under each line of the profit and loss account, with both periods' columns", async () => {
+    stubSubmission(false);
+    renderApp("/file/profit-and-loss");
+
+    expect(screen.getAllByLabelText("Previous period").length).toBeGreaterThan(0);
+    for (const topic of ["turnover", "staff costs", "the previous period of account"]) {
+      expect(helpSummaries()).toContain(`Help with ${topic}`);
+    }
+    expect(helpSummaries()).toContain("Help with last period's tax on profit");
+  });
+});
