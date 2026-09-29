@@ -4,8 +4,10 @@
  * https://www.gov.uk/find-utr-number,
  * https://www.tax.service.gov.uk/ask-for-copy-of-your-corporation-tax-utr,
  * https://www.gov.uk/pay-corporation-tax (the payment reference),
- * https://www.gov.uk/corporation-tax-rates (the main rate) and the Company Taxation Manual
- * (CTM60710 for close investment-holding companies).
+ * https://www.gov.uk/corporation-tax-rates (the main rate),
+ * https://www.gov.uk/guidance/corporation-tax-trading-and-non-trading (what a company does) and
+ * the Company Taxation Manual (CTM60710 for close investment-holding companies, CTM60780 and
+ * CTA 2010 s34(5) for close companies in liquidation).
  */
 import type { QuestionHelp } from "@/content/help/types";
 import type { CompanyAnswers } from "@/filing/model";
@@ -102,7 +104,7 @@ export const COMPANY_HELP: Record<keyof CompanyAnswers, QuestionHelp> = {
         "Insurance companies and REIT C tax-exempt companies. This service cannot prepare their returns.",
       ],
       effect: [
-        "We enter the type's code in box 4. Close investment-holding companies, companies in their second or later year of liquidation, REIT C residual companies and non-resident companies pay the main rate of 25% on all their profits. They cannot use the 19% small profits rate or marginal relief.",
+        "We enter the type's code in box 4. Close investment-holding companies, REIT C residual companies and non-resident companies pay the main rate of 25% on all their profits, and cannot use the 19% small profits rate or marginal relief. After its first year of liquidation, a close company can become a close investment-holding company, which is why HMRC's type for companies in their second or later year of liquidation pays the main rate. A company in liquidation that is not a close company keeps the small profits rate and marginal relief.",
       ],
     },
     hmrc: [{ box: "4" }],
@@ -126,6 +128,22 @@ export const COMPANY_HELP: Record<keyof CompanyAnswers, QuestionHelp> = {
         "We use it in the directors' report in the company's accounts, and to describe the company's trade in the tax computations. It does not change the tax the company pays.",
       ],
     },
-    hmrc: [{ box: "80" }],
+    hmrc: [
+      {
+        quote: {
+          guide: "corporation-tax-trading-and-non-trading",
+          heading: "What is active for Corporation Tax purposes",
+          paragraphs: [
+            "Generally your company or organisation is considered to be active for Corporation Tax purposes when it is, for example:",
+            "carrying on a business activity such as a trade or professional activity",
+            "buying and selling goods with a view to making a profit or surplus",
+            "providing services",
+            "earning interest",
+            "managing investments",
+            "receiving any other income",
+          ],
+        },
+      },
+    ],
   },
 };

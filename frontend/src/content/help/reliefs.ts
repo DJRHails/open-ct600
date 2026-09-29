@@ -6,7 +6,9 @@
  * https://www.gov.uk/guidance/check-what-research-and-development-rd-costs-you-can-claim,
  * https://www.gov.uk/guidance/work-out-your-research-and-development-tax-relief,
  * https://www.gov.uk/guidance/research-and-development-rd-tax-relief-the-merged-scheme-and-enhanced-rd-intensive-support,
- * https://www.gov.uk/guidance/corporation-tax-research-and-development-tax-relief-for-small-and-medium-sized-enterprises,
+ * https://www.gov.uk/guidance/corporation-tax-research-and-development-tax-relief-for-small-and-medium-sized-enterprises
+ * (for SME scheme costs before 1 April 2023 the rates were a 130% extra deduction and a 14.5%
+ * credit, as the backend's ``reliefs/research_and_development.py`` applies),
  * https://www.gov.uk/guidance/tell-hmrc-that-youre-planning-to-claim-research-and-development-rd-tax-relief,
  * https://www.gov.uk/guidance/submit-detailed-information-before-you-claim-research-and-development-rd-tax-relief,
  * https://www.gov.uk/guidance/make-a-claim-for-rd-tax-relief-on-your-company-tax-return and
@@ -180,7 +182,7 @@ export const RESEARCH_HELP: Record<keyof ResearchAnswers, QuestionHelp> = {
         "For periods starting on or after 1 April 2024, most payments to contractors for R&D done outside the UK.",
       ],
       effect: [
-        "For the SME scheme and ERIS, we show it in box 659 and take an extra 86% of it off the company's trading profits. The total of 186% is shown in box 660.",
+        "For the SME scheme and ERIS, we show it in box 659 and take an extra 86% of it off the company's trading profits. The total of 186% is shown in box 660. For SME scheme costs before 1 April 2023, the extra deduction is 130%, so the total is 230%.",
         "For RDEC, we show it in box L10 of CT600L and work out the credit on it.",
       ],
     },
@@ -260,7 +262,7 @@ export const RESEARCH_HELP: Record<keyof ResearchAnswers, QuestionHelp> = {
     plain: {
       meaning: [
         "Under ERIS or the SME scheme, a company with a trading loss can give up some or all of the loss in return for a payment from HMRC, called a payable tax credit.",
-        "It can give up the lower of its trading loss after the extra R&D deduction and its enhanced expenditure (186% of its qualifying costs). The credit is 14.5% of the loss given up under ERIS. Under the SME scheme it is 10%, or 14.5% for R&D intensive companies.",
+        "It can give up the lower of its trading loss after the extra R&D deduction and its enhanced expenditure (186% of its qualifying costs, or 230% for SME scheme costs before 1 April 2023). The credit is 14.5% of the loss given up under ERIS. Under the SME scheme it is 10% for costs from 1 April 2023, or 14.5% for R&D intensive companies, and 14.5% for costs before 1 April 2023.",
         "The credit is capped at £20,000 plus 3 times the company's PAYE and National Insurance for the period, unless an exception applies.",
       ],
       example: [
