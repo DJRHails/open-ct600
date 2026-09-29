@@ -100,10 +100,10 @@ export function checkRelief(
         ? validateResearch(draft.research_and_development, savedPeriod(draft)?.start)
         : null;
     case "participator_loan_dates": {
-      const ct600a = pageTree(draft, pages, "A");
+      // Each date is kept in its CT600A row (``LOAN_MADE_KEY``), so it follows the row.
       const period = savedPeriod(draft);
-      if (!draft.participator_loan_dates || !ct600a || !period) return null;
-      return validateLoanDates(draft.participator_loan_dates, loanRows(ct600a), period);
+      if (!pageTree(draft, pages, "A") || !period) return null;
+      return validateLoanDates(draft.supplementary_pages?.A, period);
     }
     case "group_relief_surrenderers": {
       const ct600c = pageTree(draft, pages, "C");

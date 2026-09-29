@@ -37,7 +37,8 @@ export function SummaryList({ rows, noBorder }: { rows: SummaryRow[]; noBorder?:
           {row.change ? (
             <dd className="govuk-summary-list__actions">
               <Link className="govuk-link" to={row.change.to}>
-                Change<span className="govuk-visually-hidden"> {row.change.label}</span>
+                {"Change "}
+                <span className="govuk-visually-hidden">{row.change.label}</span>
               </Link>
             </dd>
           ) : null}
