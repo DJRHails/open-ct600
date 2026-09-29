@@ -68,6 +68,15 @@ HMRC_SUBMISSION_ENABLED=true   # off by default, so a public demo never handles 
   credentials, so the submit → poll → delete flow is tested only against the stub Transaction Engine.
   The message itself (schema, business rules, IRmark and iXBRL) is proven on TPVS.
 
+## Looking companies up at Companies House
+
+Set `COMPANIES_HOUSE_API_KEY` to a Companies House public data API key to let users fill in the
+company's details, directors and last year's figures from its public record. The service keeps
+under the key's limit of 600 requests per 5 minutes and gives each client address its own small
+share. Behind a reverse proxy, set `TRUSTED_PROXIES` to the number of proxies that append to
+`X-Forwarded-For`, or every user shares the proxy's share. On a public deployment, put lookups
+behind your own rate limiting too.
+
 ## Known limitations
 
 - **Computations for periods ending after 31 March 2026.** HMRC accepts its 2024 computations

@@ -31,7 +31,11 @@ def run(stub, call, cache=None, limiter=None):
     async def go():
         async with httpx2.AsyncClient(transport=httpx2.MockTransport(stub)) as http:
             client = CompaniesHouseClient(
-                SecretStr(API_KEY), http, cache or ResponseCache(), limiter or RequestLimiter()
+                SecretStr(API_KEY),
+                http,
+                cache or ResponseCache(),
+                limiter or RequestLimiter(),
+                "203.0.113.1",
             )
             return await call(client)
 
@@ -41,10 +45,10 @@ def run(stub, call, cache=None, limiter=None):
 def test_cache_keeps_responses_for_ten_minutes():
     clock = Clock()
     cache = ResponseCache(clock)
-    cache.put(("url", "json"), b"body")
+    cache.put(("url", "json"), 200, b"body")
 
     clock.now += CACHE_SECONDS
-    assert cache.get(("url", "json")) == b"body"
+    assert cache.get(("url", "json")) == (200, b"body")
     clock.now += 1
     assert cache.get(("url", "json")) is None
 
@@ -53,22 +57,26 @@ def test_cache_is_bounded(monkeypatch):
     monkeypatch.setattr(client_module, "CACHE_ENTRIES", 2)
     cache = ResponseCache()
     for name in ("a", "b", "c"):
-        cache.put((name, "json"), name.encode())
+        cache.put((name, "json"), 200, name.encode())
 
-    assert [cache.get((name, "json")) for name in ("a", "b", "c")] == [None, b"b", b"c"]
+    assert [cache.get((name, "json")) for name in ("a", "b", "c")] == [
+        None,
+        (200, b"b"),
+        (200, b"c"),
+    ]
 
 
 def test_limiter_allows_the_limit_per_window_then_refuses():
     clock = Clock()
     limiter = RequestLimiter(clock)
-    for _ in range(RATE_LIMIT_REQUESTS):
-        limiter.acquire()
+    for n in range(RATE_LIMIT_REQUESTS):
+        limiter.acquire(f"client-{n}")
 
     with pytest.raises(CompaniesHouseUnavailableError, match="Try again in a few minutes"):
-        limiter.acquire()
+        limiter.acquire("newcomer")
 
     clock.now += RATE_LIMIT_SECONDS
-    limiter.acquire()
+    limiter.acquire("newcomer")
 
 
 def test_limit_stays_under_companies_houses_600_per_5_minutes():
