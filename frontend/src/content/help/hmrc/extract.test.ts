@@ -287,6 +287,15 @@ describe("looking up a box", () => {
     expect(found).toEqual(["E95 to E125 Type of expenditure", "E50 to E190"]);
   });
 
+  it("gives a pair of boxes the guidance for each of them", () => {
+    const headings = (box: string) => guidance.forBox(box).map(({ entry }) => entry.heading);
+    expect(headings("N15/N20")).toEqual(["N15 From", "N20 To"]);
+    expect(headings("780/785")).toEqual([
+      "780 Losses of trades carried on wholly or partly in the UK (amount)",
+      "785 Losses of trades carried on wholly or partly in the UK (maximum available for surrender as group relief)",
+    ]);
+  });
+
   it("finds nothing for a box HMRC's guide has no heading for", () => {
     expect(guidance.forBox("C25")).toEqual([]);
   });
