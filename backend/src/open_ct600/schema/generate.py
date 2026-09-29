@@ -235,11 +235,28 @@ class BoxRow:
     description: str
 
 
+# Typos in HMRC's box descriptions, corrected before they become question labels.
+LABEL_CORRECTIONS = {
+    "during the returning period": "during the return period",
+    "eariler": "earlier",
+}
+
+
+def correct_label(description: str) -> str:
+    """Return ``description`` with HMRC's known typos corrected."""
+    for typo, correction in LABEL_CORRECTIONS.items():
+        description = description.replace(typo, correction)
+    return description
+
+
 def load_box_map(path: Path) -> list[BoxRow]:
     """Read the box map's rows, in schema order."""
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t", quoting=csv.QUOTE_NONE)
-        return [BoxRow(row["path"], row["box_id"], row["description"].strip()) for row in reader]
+        return [
+            BoxRow(row["path"], row["box_id"], correct_label(row["description"].strip()))
+            for row in reader
+        ]
 
 
 class BoxMap:

@@ -11,6 +11,7 @@ from open_ct600.schema.generate import (
     BoxRow,
     SchemaError,
     box_id,
+    correct_label,
     generate,
     humanise,
     render,
@@ -19,6 +20,14 @@ from open_ct600.schema.spec import PAGE_CODES, RETURN_PATH, SPEC_PATH, load_spec
 
 SPEC = load_spec()
 LOANS = f"{RETURN_PATH}/LoansByCloseCompanies"
+
+
+def test_hmrc_typos_are_corrected_in_labels():
+    assert correct_label("repaid during the returning period but eariler than 9 months") == (
+        "repaid during the return period but earlier than 9 months"
+    )
+    labels = [node.label for node in SPEC.root.walk()]
+    assert not [label for label in labels if "eariler" in label or "returning period" in label]
 
 
 def test_committed_spec_is_up_to_date():
