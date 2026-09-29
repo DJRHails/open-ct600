@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import { api, type CompanyRecord, type LegalForm } from "@/api";
 import type { DateParts } from "@/components/forms";
+import type { Draft } from "@/filing/model";
 import { isoToDateParts } from "@/format";
 
 /** The draft's company number, normalised as ``validateCompany`` does. */
@@ -26,6 +27,11 @@ export function companyRecord(
   if (!record) return null;
   if (registrationNumber === undefined) return record;
   return normalisedNumber(registrationNumber) === normalisedNumber(record.number) ? record : null;
+}
+
+/** The record for the draft's company, if one was chosen from Companies House. */
+export function draftRecord(draft: Draft): CompanyRecord | null {
+  return companyRecord(draft.companies_house, draft.company?.registration_number);
 }
 
 export type LookupStatus = "checking" | "enabled" | "disabled";

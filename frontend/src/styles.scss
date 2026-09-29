@@ -67,3 +67,21 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+// This period's figure beside the previous period's (comparatives), stacking on narrow screens.
+.app-comparative-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 govuk.govuk-spacing(6);
+
+  .govuk-form-group {
+    margin-bottom: 0;
+  }
+}
+
+// A company search suggestion's registered office, under its name.
+.app-suggestion-detail {
+  display: block;
+  color: govuk.govuk-functional-colour(secondary-text);
+  @include govuk.govuk-font($size: 16);
+}

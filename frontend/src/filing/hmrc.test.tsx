@@ -38,6 +38,8 @@ const DRAFT = {
     average_employees: "1",
     trading_status: "trading",
     dormant: "no",
+    legal_form: "private-limited-company",
+    first_period: "yes",
   },
   chosen_pages: ["A"],
   research_and_development: { claiming: "no" },

@@ -122,15 +122,15 @@ async function completeEverySection(user: UserEvent) {
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Profit and loss account" }));
-  await user.type(screen.getByLabelText("Turnover"), "100,000");
+  await user.type(thisPeriod("Turnover"), "100,000");
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Tax adjustments" }));
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Balance sheet" }));
-  await user.type(screen.getByLabelText("Prepayments and accrued income"), "1,000");
-  await user.type(screen.getByLabelText("Provisions for liabilities"), "500");
+  await user.type(thisPeriod("Prepayments and accrued income"), "1,000");
+  await user.type(thisPeriod("Provisions for liabilities"), "500");
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Accounts details" }));
@@ -145,8 +145,22 @@ async function completeEverySection(user: UserEvent) {
   await save(user);
 }
 
+/** This period's figure for a line of the accounts, beside the previous period's. */
+function thisPeriod(line: string) {
+  return within(screen.getByRole("group", { name: line })).getByLabelText("This period");
+}
+
+async function answerCompanyForm(user: UserEvent) {
+  await user.click(screen.getByLabelText("Private company limited by shares"));
+  const first = screen.getByRole("group", {
+    name: "Is this the company’s first period of account?",
+  });
+  await user.click(within(first).getByLabelText("Yes"));
+}
+
 async function completeAccountsDetails(user: UserEvent) {
   await user.click(screen.getByLabelText(/Micro-entity accounts/));
+  await answerCompanyForm(user);
   await user.type(screen.getByLabelText("Director 1 full name"), "Ada Lovelace");
   await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
   await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
@@ -278,6 +292,8 @@ describe("filing a return", () => {
         average_employees: "1",
         trading_status: "trading",
         dormant: "no",
+        legal_form: "private-limited-company",
+        first_period: "yes",
       },
       chosen_pages: [],
       research_and_development: { claiming: "no" },
@@ -301,6 +317,8 @@ describe("filing a return", () => {
       "Enter the average number of employees",
       "Select yes if the company was dormant during this period",
       "Select whether the company traded",
+      "Select the company’s legal form",
+      "Select yes if this is the company’s first period of account",
     ]) {
       expect(within(summary).getByRole("link", { name: message })).toBeInTheDocument();
     }
@@ -321,6 +339,7 @@ describe("filing a return", () => {
     expect(screen.getByRole("radio", { name: "Ada Lovelace" })).not.toBeChecked();
 
     await user.click(screen.getByLabelText(/Small company accounts/));
+    await answerCompanyForm(user);
     await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
     await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
     await user.type(screen.getByLabelText("Average number of employees during the period"), "0");
@@ -394,6 +413,8 @@ describe("filing a return", () => {
         average_employees: "1",
         trading_status: "trading",
         dormant: "no",
+        legal_form: "private-limited-company",
+        first_period: "yes",
       },
       chosen_pages: [],
       research_and_development: { claiming: "no" },

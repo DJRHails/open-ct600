@@ -29,6 +29,8 @@ const ACCOUNTS = {
   average_employees: "2",
   trading_status: "trading" as const,
   dormant: "no" as const,
+  legal_form: "private-limited-company" as const,
+  first_period: "yes" as const,
 };
 
 const COMPLETE = {
@@ -134,6 +136,7 @@ describe("validateAccounts", () => {
         average_employees: 2,
         trading_status: "trading",
         dormant: false,
+        legal_form: "private-limited-company",
       },
     });
   });
@@ -150,6 +153,8 @@ describe("validateAccounts", () => {
         approval_date: "Enter the date the accounts were approved",
         average_employees: "Enter the average number of employees",
         dormant: "Select yes if the company was dormant during this period",
+        legal_form: "Select the company’s legal form",
+        first_period: "Select yes if this is the company’s first period of account",
         trading_status: "Select whether the company traded",
       },
     });
@@ -319,6 +324,8 @@ describe("toReturn", () => {
         average_employees: 2,
         trading_status: "trading",
         dormant: false,
+        legal_form: "private-limited-company",
+        comparatives: null,
       },
       supplementary_pages: {},
       research_and_development: null,

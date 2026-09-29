@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { Button, DateInput, Radios, TextInput } from "@/components/forms";
+import type { CompanyRecord } from "@/api";
+import { PrefilledBanner } from "@/components/content";
+import { Button, Checkboxes, DateInput, Radios, TextInput } from "@/components/forms";
+import {
+  currentDirectors,
+  draftRecord,
+  firstPeriodFromRecord,
+  LEGAL_FORMS,
+  supportedLegalForm,
+} from "@/filing/companiesHouse";
 import { useDraft } from "@/filing/draft";
 import {
   type AccountsAnswers,
@@ -65,11 +74,83 @@ function Directors({ directors, errors, onChange }: DirectorsProps) {
   );
 }
 
+type OfficersProps = DirectorsProps & { officers: string[] };
+
+/**
+ * The company's current directors from Companies House as tick boxes, and anyone else who was a
+ * director during the period typed in with "Add another person".
+ */
+function Officers({ officers, directors, errors, onChange }: OfficersProps) {
+  const ticked = officers.filter((officer) => directors.includes(officer));
+  const others = directors.filter((director) => !officers.includes(director));
+  const setOthers = (names: string[]) => onChange([...ticked, ...names]);
+  const otherIndex = (index: number) => ticked.length + index;
+  return (
+    <div className="govuk-form-group">
+      <Checkboxes
+        name="directors"
+        legend="Who were the company’s directors during the period?"
+        legendSize="s"
+        hint="Companies House lists these as its current directors. Add anyone else who was a director during the period."
+        options={officers.map((officer) => ({ value: officer, label: officer }))}
+        value={ticked}
+        onChange={(chosen) =>
+          onChange([...officers.filter((officer) => chosen.includes(officer)), ...others])
+        }
+        error={errors.directors}
+      />
+      {others.map((name, index) => (
+        <div key={index}>
+          <TextInput
+            id={directorId(otherIndex(index))}
+            label={`Other person ${index + 1} full name`}
+            value={name}
+            onChange={(typed) => setOthers(others.map((other, i) => (i === index ? typed : other)))}
+            error={errors[directorId(otherIndex(index))]}
+            autoComplete="off"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setOthers(others.filter((_, i) => i !== index))}
+          >
+            {"Remove "}
+            <span className="govuk-visually-hidden">other person {index + 1}</span>
+          </Button>
+        </div>
+      ))}
+      {directors.length < MAX_DIRECTORS ? (
+        <Button type="button" variant="secondary" onClick={() => setOthers([...others, ""])}>
+          Add another person
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Accounts details as Companies House shows them, until the user saves their own. */
+function prefilledAccounts(record: CompanyRecord | null): AccountsAnswers | null {
+  if (!record) return null;
+  const officers = currentDirectors(record);
+  return {
+    ...EMPTY_ACCOUNTS,
+    directors: officers.length > 0 ? officers : EMPTY_ACCOUNTS.directors,
+    legal_form: supportedLegalForm(record),
+    first_period: firstPeriodFromRecord(record),
+  };
+}
+
 export function AccountsDetailsPage() {
   const { draft, saveSection } = useDraft();
   const { next } = useNextPage();
   const navigate = useNavigate();
-  const [values, setValues] = useState<AccountsAnswers>({ ...EMPTY_ACCOUNTS, ...draft.accounts });
+  const record = draftRecord(draft);
+  const officers = currentDirectors(record);
+  const [prefill] = useState(() => (draft.accounts ? null : prefilledAccounts(record)));
+  const [values, setValues] = useState<AccountsAnswers>({
+    ...EMPTY_ACCOUNTS,
+    ...(draft.accounts ?? prefill),
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const named = [...new Set(values.directors.map((d) => d.trim()).filter(Boolean))];
 
@@ -98,6 +179,9 @@ export function AccountsDetailsPage() {
       errors={errors}
       fieldOrder={[
         "standard",
+        "legal_form",
+        "first_period",
+        "directors",
         ...values.directors.map((_, index) => directorId(index)),
         "signing_director",
         "approval_date",
@@ -108,6 +192,7 @@ export function AccountsDetailsPage() {
       inputId={(field) => (field === "approval_date" ? "approval_date-day" : field)}
       onSubmit={save}
       intro="These details appear in the statutory accounts filed with your return."
+      banner={prefill ? <PrefilledBanner /> : null}
     >
       <Radios
         name="standard"
@@ -117,7 +202,35 @@ export function AccountsDetailsPage() {
         onChange={(standard) => setValues({ ...values, standard })}
         error={errors.standard}
       />
-      <Directors directors={values.directors} errors={errors} onChange={setDirectors} />
+      <Radios
+        name="legal_form"
+        legend="What is the company’s legal form?"
+        hint="It’s on the company’s certificate of incorporation."
+        options={LEGAL_FORMS}
+        value={values.legal_form}
+        onChange={(legalForm) => setValues({ ...values, legal_form: legalForm })}
+        error={errors.legal_form}
+      />
+      <Radios
+        name="first_period"
+        legend="Is this the company’s first period of account?"
+        hint="Its first accounts since it was set up. After that, the accounts show last period’s figures beside this period’s, which you enter with the profit and loss account and balance sheet."
+        options={YES_NO}
+        value={values.first_period}
+        onChange={(firstPeriod) => setValues({ ...values, first_period: firstPeriod })}
+        error={errors.first_period}
+        inline
+      />
+      {officers.length > 0 ? (
+        <Officers
+          officers={officers}
+          directors={values.directors}
+          errors={errors}
+          onChange={setDirectors}
+        />
+      ) : (
+        <Directors directors={values.directors} errors={errors} onChange={setDirectors} />
+      )}
       <Radios
         name="signing_director"
         legend="Which director signed the accounts?"

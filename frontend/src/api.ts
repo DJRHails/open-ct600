@@ -208,19 +208,6 @@ export type Comparatives = {
   average_employees: number | null;
 };
 
-/** The company's legal form, as the FRC taxonomy's ``LegalFormEntityDimension`` names it. */
-export type LegalForm =
-  | "private-limited-company"
-  | "private-company-limited-by-guarantee"
-  | "public-limited-company";
-
-/** The previous period of account and its figures, as in the accounts filed for it. */
-export type Comparatives = {
-  period: { start: string; end: string };
-  profit_and_loss: CT600Return["profit_and_loss"];
-  balance_sheet: CT600Return["balance_sheet"];
-};
-
 /** One company found by ``GET /api/companies-house/search``, named as Companies House does. */
 export type CompanySearchResult = {
   number: string;

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { PrefilledBanner } from "@/components/content";
 import { DateInput } from "@/components/forms";
+import { draftRecord, prefilledPeriod } from "@/filing/companiesHouse";
 import { useDraft } from "@/filing/draft";
 import { type FieldErrors, SECTION_TITLES, validatePeriod } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
@@ -13,7 +15,11 @@ export function AccountingPeriodPage() {
   const { draft, saveSection } = useDraft();
   const { next } = useNextPage();
   const navigate = useNavigate();
-  const [values, setValues] = useState(draft.period ?? { start: EMPTY_DATE, end: EMPTY_DATE });
+  // Until the period is saved, Companies House's next period of account is the starting point.
+  const [prefill] = useState(() => (draft.period ? null : prefilledPeriod(draftRecord(draft))));
+  const [values, setValues] = useState(
+    draft.period ?? prefill ?? { start: EMPTY_DATE, end: EMPTY_DATE },
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
 
   function save() {
@@ -22,7 +28,7 @@ export function AccountingPeriodPage() {
       setErrors(result.errors);
       return;
     }
-    saveSection("period", values);
+    saveSection("period", { start: values.start, end: values.end });
     navigate(next);
   }
 
@@ -34,7 +40,9 @@ export function AccountingPeriodPage() {
       inputId={(field) => `${field}-day`}
       onSubmit={save}
       intro="The accounting period for Corporation Tax can be up to 12 months. It usually matches your company's financial year."
+      banner={prefill ? <PrefilledBanner /> : null}
     >
+      {prefill?.note ? <div className="govuk-inset-text">{prefill.note}</div> : null}
       <DateInput
         id="start"
         legend="Start date"

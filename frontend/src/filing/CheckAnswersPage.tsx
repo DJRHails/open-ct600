@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router";
 import {
   api,
   ApiError,
+  type Comparatives,
   type CT600Return,
   type ReturnComputation,
   type SchemaPage,
@@ -16,6 +17,8 @@ import { Downloads } from "@/filing/Downloads";
 import { hmrcErrorItems } from "@/filing/hmrcProblems";
 import {
   answerRows,
+  BALANCE_SHEET,
+  PROFIT_AND_LOSS,
   SECTION_ORDER,
   SECTION_SLUGS,
   SECTION_TITLES,
@@ -30,7 +33,7 @@ import { pageName } from "@/filing/supplementary/content";
 import { rejectedAnswerLink } from "@/filing/supplementary/links";
 import { TreeSummary } from "@/filing/supplementary/summary";
 import { useReturn } from "@/filing/useReturn";
-import { formatPounds } from "@/format";
+import { formatDate, formatPounds } from "@/format";
 
 type Result<T> =
   | { state: "loading" }
@@ -127,6 +130,27 @@ function SupplementaryCards({ ct600, pages, computation }: PagesProps) {
   );
 }
 
+/** Last period's figures, which the accounts show beside this period's. */
+function ComparativesCard({ comparatives }: { comparatives: Comparatives }) {
+  const { period } = comparatives;
+  const rows = [
+    { key: "Previous period", value: `${formatDate(period.start)} to ${formatDate(period.end)}` },
+    ...PROFIT_AND_LOSS.fields.map((field) => ({
+      key: field.label,
+      value: formatPounds(comparatives.profit_and_loss[field.key]),
+    })),
+    ...BALANCE_SHEET.fields.map((field) => ({
+      key: field.label,
+      value: formatPounds(comparatives.balance_sheet[field.key]),
+    })),
+  ];
+  return (
+    <Card title="Previous period" change={changeLink("profit_and_loss")}>
+      <SummaryList rows={rows} />
+    </Card>
+  );
+}
+
 function ComputationSection({ computation }: { computation: ReturnComputation }) {
   return (
     <>
@@ -194,6 +218,9 @@ function Checked({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
           {SECTION_ORDER.map((section) => (
             <SectionCard key={section} ct600={ct600} section={section} />
           ))}
+          {ct600.accounts.comparatives ? (
+            <ComparativesCard comparatives={ct600.accounts.comparatives} />
+          ) : null}
           <ReliefCards ct600={ct600} pages={pages} />
           <SupplementaryCards ct600={ct600} pages={pages} computation={computation} />
           {computed.state === "loading" ? (
