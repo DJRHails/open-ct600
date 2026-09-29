@@ -1,19 +1,21 @@
 """FastAPI application: the Open CT600 API and, optionally, the built frontend."""
 
 from datetime import date
+from functools import cache
 from pathlib import PurePosixPath
 from typing import Annotated, Self
 
 from fastapi import APIRouter, FastAPI, status
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import Scope
 
 from open_ct600.config import Settings
 from open_ct600.ct600 import CT600Return, Pounds, ReturnComputation, Submission, compute_return
 from open_ct600.filing import SubmissionReceipt, submit_return
+from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
 
 
@@ -43,7 +45,42 @@ class Health(BaseModel):
     status: str
 
 
+class SchemaPage(BaseModel):
+    """A supplementary page and its part of the CT600 schema spec.
+
+    ``node`` is the page root in the spec's JSON form (see ``open_ct600.schema.spec``):
+    name, path, box, label, kind, min, max, choice, branch, enum, patterns, minLength,
+    maxLength, minValue, maxValue, choices and children.
+    """
+
+    code: PageCode
+    element: str
+    title: str
+    dormant: bool
+    node: dict[str, JsonValue]
+
+
+@cache
+def _schema_pages() -> list[SchemaPage]:
+    return [
+        SchemaPage(
+            code=page.code,
+            element=page.element,
+            title=page.title,
+            dormant=page.dormant,
+            node=page.node.to_json(),
+        )
+        for page in load_spec().pages()
+    ]
+
+
 api = APIRouter(prefix="/api")
+
+
+@api.get("/schema/pages")
+def schema_pages() -> list[SchemaPage]:
+    """List the supplementary pages A to P with their schema spec, for generic forms."""
+    return _schema_pages()
 
 
 @api.get("/health")

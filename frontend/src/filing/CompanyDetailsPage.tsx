@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
-import { TextInput } from "@/components/forms";
+import { Radios, TextInput } from "@/components/forms";
 import { useDraft } from "@/filing/draft";
-import { type FieldErrors, SECTION_TITLES, validateCompany } from "@/filing/model";
+import {
+  COMPANY_TYPES,
+  EMPTY_COMPANY,
+  type FieldErrors,
+  SECTION_TITLES,
+  validateCompany,
+} from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
 
@@ -11,9 +17,7 @@ export function CompanyDetailsPage() {
   const { draft, saveSection } = useDraft();
   const { next } = useNextPage();
   const navigate = useNavigate();
-  const [values, setValues] = useState(
-    draft.company ?? { name: "", registration_number: "", utr: "" },
-  );
+  const [values, setValues] = useState({ ...EMPTY_COMPANY, ...draft.company });
   const [errors, setErrors] = useState<FieldErrors>({});
 
   function save() {
@@ -22,7 +26,7 @@ export function CompanyDetailsPage() {
       setErrors(result.errors);
       return;
     }
-    saveSection("company", result.value);
+    saveSection("company", values);
     navigate(next);
   }
 
@@ -30,7 +34,7 @@ export function CompanyDetailsPage() {
     <SectionFrame
       title={SECTION_TITLES.company}
       errors={errors}
-      fieldOrder={["name", "registration_number", "utr"]}
+      fieldOrder={["name", "registration_number", "utr", "principal_activity", "company_type"]}
       onSubmit={save}
     >
       <TextInput
@@ -64,6 +68,25 @@ export function CompanyDetailsPage() {
         width="10"
         inputMode="numeric"
         spellCheck={false}
+      />
+      <TextInput
+        id="principal_activity"
+        label="What does the company do?"
+        hint="Its principal activity, as stated in its accounts. For example, software development."
+        value={values.principal_activity}
+        onChange={(principalActivity) =>
+          setValues({ ...values, principal_activity: principalActivity })
+        }
+        error={errors.principal_activity}
+      />
+      <Radios
+        name="company_type"
+        legend="Type of company"
+        hint="Box 4 on the CT600."
+        options={COMPANY_TYPES}
+        value={values.company_type}
+        onChange={(companyType) => setValues({ ...values, company_type: companyType })}
+        error={errors.company_type}
       />
     </SectionFrame>
   );

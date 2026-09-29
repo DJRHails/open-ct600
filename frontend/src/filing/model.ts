@@ -2,9 +2,10 @@
  * The draft return: what the user has typed, section by section, and how each section
  * is validated and turned into the API payload.
  *
- * A section is stored only once it validates, so "saved" means "completed".
+ * A section is stored only once it validates, so "saved" means "completed". A section saved
+ * before its questions changed no longer validates, and shows as incomplete again.
  */
-import type { CompanyDetails, CT600Return } from "@/api";
+import type { AccountsDetails, CompanyDetails, CT600Return, TradingStatus } from "@/api";
 import type { DateParts } from "@/components/forms";
 import {
   formatDate,
@@ -17,14 +18,33 @@ import {
 
 type AmountSections = Pick<CT600Return, "profit_and_loss" | "tax_adjustments" | "balance_sheet">;
 export type AmountSectionKey = keyof AmountSections;
-export type SectionKey = "company" | "period" | AmountSectionKey;
+export type SectionKey = "company" | "period" | AmountSectionKey | "accounts";
+
+export type CompanyAnswers = {
+  name: string;
+  registration_number: string;
+  utr: string;
+  /** CT600 box 4 code, "0" to "11". */
+  company_type: string;
+  principal_activity: string;
+};
+
+export type AccountsAnswers = {
+  standard: AccountsDetails["standard"] | "";
+  directors: string[];
+  signing_director: string;
+  approval_date: DateParts;
+  average_employees: string;
+  trading_status: TradingStatus | "";
+};
 
 export type Draft = {
-  company?: { name: string; registration_number: string; utr: string };
+  company?: CompanyAnswers;
   period?: { start: DateParts; end: DateParts };
   profit_and_loss?: Record<string, string>;
   tax_adjustments?: Record<string, string>;
   balance_sheet?: Record<string, string>;
+  accounts?: AccountsAnswers;
 };
 
 export type FieldErrors = Record<string, string>;
@@ -150,9 +170,15 @@ export const BALANCE_SHEET: AmountSection<"balance_sheet"> = {
   slug: "balance-sheet",
   title: "Balance sheet",
   intro:
-    "Enter your company's balance sheet at the end of the accounting period, in whole pounds. " +
-    "Leave a box blank if the amount is zero.",
+    "Enter your company's balance sheet at the end of the accounting period, in whole pounds, " +
+    "in the order of the micro-entity format. Leave a box blank if the amount is zero.",
   fields: [
+    {
+      key: "called_up_share_capital_not_paid",
+      label: "Called up share capital not paid",
+      errorLabel: "called up share capital not paid",
+      hint: "Money shareholders still owe the company for shares it has called up.",
+    },
     {
       key: "fixed_assets",
       label: "Fixed assets",
@@ -163,7 +189,13 @@ export const BALANCE_SHEET: AmountSection<"balance_sheet"> = {
       key: "current_assets",
       label: "Current assets",
       errorLabel: "current assets",
-      hint: "Cash at bank, money owed to the company, stock and prepayments.",
+      hint: "Cash at bank, money owed to the company and stock.",
+    },
+    {
+      key: "prepayments_and_accrued_income",
+      label: "Prepayments and accrued income",
+      errorLabel: "prepayments and accrued income",
+      hint: "Costs paid in advance for the next period, and income earned but not yet billed.",
     },
     {
       key: "creditors_within_one_year",
@@ -175,6 +207,18 @@ export const BALANCE_SHEET: AmountSection<"balance_sheet"> = {
       key: "creditors_after_one_year",
       label: "Creditors: amounts falling due after more than one year",
       errorLabel: "creditors due after more than one year",
+    },
+    {
+      key: "provisions",
+      label: "Provisions for liabilities",
+      errorLabel: "provisions for liabilities",
+      hint: "Amounts set aside for liabilities whose timing or amount is uncertain.",
+    },
+    {
+      key: "accruals_and_deferred_income",
+      label: "Accruals and deferred income",
+      errorLabel: "accruals and deferred income",
+      hint: "Costs of this period not yet billed, and income received in advance.",
     },
     {
       key: "called_up_share_capital",
@@ -193,6 +237,7 @@ export const SECTION_TITLES: Record<SectionKey, string> = {
   profit_and_loss: PROFIT_AND_LOSS.title,
   tax_adjustments: TAX_ADJUSTMENTS.title,
   balance_sheet: BALANCE_SHEET.title,
+  accounts: "Accounts details",
 };
 
 export const SECTION_SLUGS: Record<SectionKey, string> = {
@@ -201,6 +246,7 @@ export const SECTION_SLUGS: Record<SectionKey, string> = {
   profit_and_loss: PROFIT_AND_LOSS.slug,
   tax_adjustments: TAX_ADJUSTMENTS.slug,
   balance_sheet: BALANCE_SHEET.slug,
+  accounts: "accounts-details",
 };
 
 export const SECTION_ORDER: SectionKey[] = [
@@ -209,17 +255,59 @@ export const SECTION_ORDER: SectionKey[] = [
   "profit_and_loss",
   "tax_adjustments",
   "balance_sheet",
+  "accounts",
 ];
+
+/** CT600 box 4, type of company, as the Company Tax Return guide lists the codes. */
+export const COMPANY_TYPES: { value: string; label: string; hint?: string }[] = [
+  {
+    value: "0",
+    label: "UK trading or professional company",
+    hint: "Most companies. Choose this unless one of the other types applies.",
+  },
+  { value: "1", label: "Unit trust or open-ended investment company" },
+  { value: "2", label: "Community interest company" },
+  {
+    value: "3",
+    label: "Company in liquidation",
+    hint: "For the second and later accounting periods of the liquidation.",
+  },
+  { value: "4", label: "Qualifying asset holding company" },
+  {
+    value: "5",
+    label: "Insurance company",
+    hint: "Where the policyholders' share of profits is charged at the basic rate.",
+  },
+  { value: "6", label: "Members' club or voluntary association" },
+  { value: "7", label: "Property management company" },
+  { value: "8", label: "Charity, or a company owned by a charity" },
+  { value: "9", label: "Real Estate Investment Trust (REIT) group: residual business" },
+  { value: "10", label: "Real Estate Investment Trust (REIT): tax-exempt business" },
+  { value: "11", label: "Non-resident company" },
+];
+
+export const EMPTY_COMPANY: CompanyAnswers = {
+  name: "",
+  registration_number: "",
+  utr: "",
+  company_type: "0",
+  principal_activity: "",
+};
 
 const COMPANY_NUMBER = /^(?:\d{8}|[A-Z]{2}\d{6})$/;
 const UTR = /^\d{10}$/;
 const MAX_ASSOCIATED_COMPANIES = 999;
+const MAX_PRINCIPAL_ACTIVITY = 200;
+const MAX_DIRECTOR_NAME = 120;
+const MAX_EMPLOYEES = 9_999_999;
 
-export function validateCompany(values: NonNullable<Draft["company"]>): Validated<CompanyDetails> {
+export function validateCompany(values: CompanyAnswers): Validated<CompanyDetails> {
   const errors: FieldErrors = {};
   const name = values.name.trim();
   const registrationNumber = values.registration_number.replace(/\s+/g, "").toUpperCase();
   const utr = values.utr.replace(/\s+/g, "");
+  const principalActivity = (values.principal_activity ?? "").trim();
+  const companyType = COMPANY_TYPES.find((type) => type.value === values.company_type);
   if (!name) errors.name = "Enter the company name";
   else if (name.length > 160) errors.name = "Company name must be 160 characters or fewer";
   if (!registrationNumber) errors.registration_number = "Enter the company registration number";
@@ -231,8 +319,97 @@ export function validateCompany(values: NonNullable<Draft["company"]>): Validate
   else if (!UTR.test(utr)) {
     errors.utr = "Enter a Unique Taxpayer Reference in the correct format, like 1234567890";
   }
+  if (!companyType) errors.company_type = "Select the type of company";
+  if (!principalActivity) errors.principal_activity = "Enter what the company does";
+  else if (principalActivity.length > MAX_PRINCIPAL_ACTIVITY) {
+    errors.principal_activity = `What the company does must be ${MAX_PRINCIPAL_ACTIVITY} characters or fewer`;
+  }
+  if (Object.keys(errors).length > 0 || !companyType) return { ok: false, errors };
+  return {
+    ok: true,
+    value: {
+      name,
+      registration_number: registrationNumber,
+      utr,
+      company_type: Number(companyType.value),
+      principal_activity: principalActivity,
+    },
+  };
+}
+
+export const EMPTY_ACCOUNTS: AccountsAnswers = {
+  standard: "",
+  directors: [""],
+  signing_director: "",
+  approval_date: { day: "", month: "", year: "" },
+  average_employees: "",
+  trading_status: "",
+};
+
+/** The director fields' ids, so errors can link to the right input. */
+export function directorId(index: number): string {
+  return `directors-${index}`;
+}
+
+function directorErrors(directors: string[]): FieldErrors {
+  const errors: FieldErrors = {};
+  const seen = new Set<string>();
+  directors.forEach((director, index) => {
+    const key = directorId(index);
+    const folded = director.toLowerCase();
+    if (!director) errors[key] = `Enter the name of director ${index + 1}`;
+    else if (director.length > MAX_DIRECTOR_NAME) {
+      errors[key] = `Director's name must be ${MAX_DIRECTOR_NAME} characters or fewer`;
+    } else if (seen.has(folded)) errors[key] = `${director} is already listed`;
+    seen.add(folded);
+  });
+  return errors;
+}
+
+function parseEmployees(raw: string) {
+  if (!raw.trim()) {
+    return { ok: false as const, error: "Enter the average number of employees" };
+  }
+  return parseCount(raw, "average number of employees", MAX_EMPLOYEES);
+}
+
+/**
+ * Validate the accounts details. ``endOfPeriod`` (an ISO date), when known, is checked against
+ * the approval date: accounts are approved after the period ends.
+ */
+export function validateAccounts(
+  values: AccountsAnswers,
+  endOfPeriod?: string,
+): Validated<AccountsDetails> {
+  const directors = values.directors.map((director) => director.trim());
+  const errors: FieldErrors = directorErrors(directors);
+  const approval = parseDateParts(values.approval_date, "date the accounts were approved");
+  const employees = parseEmployees(values.average_employees);
+  const { standard, trading_status: tradingStatus } = values;
+  if (!standard) errors.standard = "Select how the accounts were prepared";
+  if (!values.signing_director || !directors.includes(values.signing_director)) {
+    errors.signing_director = "Select the director who signed the accounts";
+  }
+  if (!approval.ok) errors.approval_date = approval.error;
+  else if (endOfPeriod !== undefined && approval.value <= endOfPeriod) {
+    errors.approval_date =
+      "The date the accounts were approved must be after the end of the accounting period";
+  }
+  if (!employees.ok) errors.average_employees = employees.error;
+  if (!tradingStatus) errors.trading_status = "Select whether the company traded";
+  if (!standard || !tradingStatus || !approval.ok || !employees.ok) return { ok: false, errors };
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { name, registration_number: registrationNumber, utr } };
+  return {
+    ok: true,
+    value: {
+      standard,
+      approval_date: approval.value,
+      directors,
+      signing_director: values.signing_director,
+      average_employees: employees.value,
+      trading_status: tradingStatus,
+    },
+  };
 }
 
 export function validatePeriod(
@@ -275,16 +452,62 @@ export function validateAmounts<K extends AmountSectionKey>(
   return { ok: true, value: parsed as AmountSections[K] };
 }
 
+/** The saved period's end date, if the period section is complete. */
+export function periodEnd(draft: Draft): string | undefined {
+  if (!draft.period) return undefined;
+  const period = validatePeriod(draft.period);
+  return period.ok ? period.value.end : undefined;
+}
+
+type SectionValues = {
+  company: CompanyDetails;
+  period: CT600Return["period"];
+  profit_and_loss: CT600Return["profit_and_loss"];
+  tax_adjustments: CT600Return["tax_adjustments"];
+  balance_sheet: CT600Return["balance_sheet"];
+  accounts: AccountsDetails;
+};
+
+/** Validate one saved section; ``null`` if it has not been saved. */
+function validateSection<K extends SectionKey>(
+  draft: Draft,
+  key: K,
+): Validated<SectionValues[K]> | null {
+  const validators: { [S in SectionKey]: () => Validated<SectionValues[S]> | null } = {
+    company: () => (draft.company ? validateCompany(draft.company) : null),
+    period: () => (draft.period ? validatePeriod(draft.period) : null),
+    profit_and_loss: () =>
+      draft.profit_and_loss ? validateAmounts(PROFIT_AND_LOSS, draft.profit_and_loss) : null,
+    tax_adjustments: () =>
+      draft.tax_adjustments ? validateAmounts(TAX_ADJUSTMENTS, draft.tax_adjustments) : null,
+    balance_sheet: () =>
+      draft.balance_sheet ? validateAmounts(BALANCE_SHEET, draft.balance_sheet) : null,
+    accounts: () => (draft.accounts ? validateAccounts(draft.accounts, periodEnd(draft)) : null),
+  };
+  return validators[key]();
+}
+
+/** Whether a section has been saved and its answers are still valid. */
+export function sectionComplete(draft: Draft, key: SectionKey): boolean {
+  return validateSection(draft, key)?.ok === true;
+}
+
 /** Build the API payload, or ``null`` if any section is not yet completed. */
 export function toReturn(draft: Draft): CT600Return | null {
-  if (!draft.company || !draft.period) return null;
-  if (!draft.profit_and_loss || !draft.tax_adjustments || !draft.balance_sheet) return null;
-  const company = validateCompany(draft.company);
-  const period = validatePeriod(draft.period);
-  const profitAndLoss = validateAmounts(PROFIT_AND_LOSS, draft.profit_and_loss);
-  const adjustments = validateAmounts(TAX_ADJUSTMENTS, draft.tax_adjustments);
-  const balanceSheet = validateAmounts(BALANCE_SHEET, draft.balance_sheet);
-  if (!company.ok || !period.ok || !profitAndLoss.ok || !adjustments.ok || !balanceSheet.ok) {
+  const company = validateSection(draft, "company");
+  const period = validateSection(draft, "period");
+  const profitAndLoss = validateSection(draft, "profit_and_loss");
+  const adjustments = validateSection(draft, "tax_adjustments");
+  const balanceSheet = validateSection(draft, "balance_sheet");
+  const accounts = validateSection(draft, "accounts");
+  if (
+    !company?.ok ||
+    !period?.ok ||
+    !profitAndLoss?.ok ||
+    !adjustments?.ok ||
+    !balanceSheet?.ok ||
+    !accounts?.ok
+  ) {
     return null;
   }
   return {
@@ -293,11 +516,36 @@ export function toReturn(draft: Draft): CT600Return | null {
     profit_and_loss: profitAndLoss.value,
     tax_adjustments: adjustments.value,
     balance_sheet: balanceSheet.value,
+    accounts: accounts.value,
   };
 }
 
 export function completedCount(draft: Draft): number {
-  return SECTION_ORDER.filter((key) => draft[key] !== undefined).length;
+  return SECTION_ORDER.filter((key) => sectionComplete(draft, key)).length;
+}
+
+const STANDARD_LABELS: Record<AccountsDetails["standard"], string> = {
+  micro: "Micro-entity accounts (FRS 105)",
+  small: "Small company accounts (FRS 102 section 1A)",
+};
+
+export const TRADING_STATUS_LABELS: Record<TradingStatus, string> = {
+  trading: "It traded during the period",
+  never_traded: "It has never traded",
+  no_longer_trading: "It has stopped trading",
+};
+
+export const STANDARD_OPTIONS = (["micro", "small"] as const).map((value) => ({
+  value,
+  label: STANDARD_LABELS[value],
+}));
+
+export const TRADING_STATUS_OPTIONS = (
+  ["trading", "never_traded", "no_longer_trading"] as const
+).map((value) => ({ value, label: TRADING_STATUS_LABELS[value] }));
+
+function companyTypeLabel(code: number): string {
+  return COMPANY_TYPES.find((type) => type.value === String(code))?.label ?? String(code);
 }
 
 export type AnswerRow = { key: string; label: string; value: string };
@@ -314,7 +562,19 @@ export function answerRows(ct600: CT600Return, section: SectionKey): AnswerRow[]
           value: ct600.company.registration_number,
         },
         { key: "utr", label: "Unique Taxpayer Reference", value: ct600.company.utr },
+        {
+          key: "company_type",
+          label: "Type of company",
+          value: companyTypeLabel(ct600.company.company_type),
+        },
+        {
+          key: "principal_activity",
+          label: "What the company does",
+          value: ct600.company.principal_activity,
+        },
       ];
+    case "accounts":
+      return accountsRows(ct600.accounts);
     case "period":
       return [
         { key: "start", label: "Start date", value: formatDate(ct600.period.start) },
@@ -327,6 +587,33 @@ export function answerRows(ct600: CT600Return, section: SectionKey): AnswerRow[]
     case "balance_sheet":
       return amountRows(BALANCE_SHEET, ct600.balance_sheet);
   }
+}
+
+function accountsRows(accounts: AccountsDetails): AnswerRow[] {
+  return [
+    { key: "standard", label: "Accounts prepared as", value: STANDARD_LABELS[accounts.standard] },
+    { key: "directors", label: "Directors", value: accounts.directors.join(", ") },
+    {
+      key: "signing_director",
+      label: "Director who signed the accounts",
+      value: accounts.signing_director,
+    },
+    {
+      key: "approval_date",
+      label: "Date the accounts were approved",
+      value: formatDate(accounts.approval_date),
+    },
+    {
+      key: "average_employees",
+      label: "Average number of employees",
+      value: String(accounts.average_employees),
+    },
+    {
+      key: "trading_status",
+      label: "Trading",
+      value: TRADING_STATUS_LABELS[accounts.trading_status],
+    },
+  ];
 }
 
 function amountRows<K extends AmountSectionKey>(

@@ -12,11 +12,20 @@ SUBMISSION = {
             "name": "Acme Widgets Ltd",
             "registration_number": "01234567",
             "utr": "1234567890",
+            "principal_activity": "Manufacture of widgets",
         },
         "period": {"start": "2024-04-01", "end": "2025-03-31"},
         "profit_and_loss": {"turnover": 100_000},
         "tax_adjustments": {},
         "balance_sheet": {},
+        "accounts": {
+            "standard": "micro",
+            "approval_date": "2025-06-30",
+            "directors": ["Ada Lovelace"],
+            "signing_director": "Ada Lovelace",
+            "average_employees": 1,
+            "trading_status": "trading",
+        },
     },
     "declaration": {"name": "Ada Lovelace", "capacity": "director", "confirmed": True},
 }
@@ -65,9 +74,40 @@ def test_compute_return():
         response = client.post("/api/returns/compute", json=SUBMISSION["ct600"])
 
     assert response.status_code == 200
-    boxes = {box["number"]: box["value"] for box in response.json()["boxes"]}
-    assert boxes[315] == "100000"
-    assert boxes[440] == "22750.00"
+    body = response.json()
+    boxes = {box["box"]: box["value"] for box in body["boxes"]}
+    assert boxes["315"] == "100000"
+    assert boxes["440"] == "22750.00"
+    assert body["pages"] == {}
+
+
+def test_compute_return_locates_supplementary_page_problems():
+    ct600 = {**SUBMISSION["ct600"], "supplementary_pages": {"A": {"BeforeEndPeriod": "no"}}}
+    with client_for() as client:
+        response = client.post("/api/returns/compute", json=ct600)
+
+    assert response.status_code == 422
+    (problem,) = response.json()["detail"]
+    assert problem["loc"] == ["body", "supplementary_pages", "A", "TaxPayable"]
+    assert problem["msg"] == "Enter tax payable s419"
+    assert problem["ctx"]["box"] == "A80"
+
+
+def test_schema_pages_lists_every_page_with_its_spec():
+    with client_for() as client:
+        response = client.get("/api/schema/pages")
+
+    assert response.status_code == 200
+    pages = response.json()
+    assert [page["code"] for page in pages] == list("ABCDEFGHIJKLMNP")
+    loans = pages[0]
+    assert loans["title"] == "Loans to participators by close companies"
+    assert loans["node"]["path"] == "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies"
+    assert [child["name"] for child in loans["node"]["children"]][:2] == [
+        "BeforeEndPeriod",
+        "LoansInformation",
+    ]
+    assert [page["code"] for page in pages if page["dormant"]] == ["G"]
 
 
 def test_submit_issues_a_receipt_with_a_stable_fingerprint():

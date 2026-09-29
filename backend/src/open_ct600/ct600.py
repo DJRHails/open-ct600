@@ -1,8 +1,9 @@
 """CT600 return: the answers a company gives, and the boxes and accounts derived from them.
 
-This models the simple case the old HMRC online filing service supported: a UK trading
-company preparing micro-entity accounts, with trading profits, bank interest, chargeable
-gains, trading losses brought forward and qualifying charitable donations.
+The main return models a UK company preparing micro-entity or small company accounts, with
+trading profits, bank interest, chargeable gains, trading losses brought forward and
+qualifying charitable donations. Supplementary pages (CT600A to CT600P) are element trees
+validated against HMRC's schema (see ``open_ct600.schema``).
 """
 
 import re
@@ -12,8 +13,20 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import InitErrorDetails, PydanticCustomError
 
+from open_ct600.schema.spec import PageCode, load_spec
+from open_ct600.schema.trees import validate_tree
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
 
 MAX_POUNDS = 99_999_999_999
@@ -43,12 +56,45 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
+def _answer_error(
+    message: str, location: tuple[str | int, ...], value: object, box: str | None = None
+) -> InitErrorDetails:
+    """One answer's validation error, located below the field being validated.
+
+    The message goes in the error's context (``{message}``) because pydantic only takes
+    literal message templates; ``box`` is the CT600 box id, when there is one.
+    """
+    context = {"message": message, "box": box}
+    error = PydanticCustomError("invalid_answer", "{message}", context)
+    return InitErrorDetails(type=error, loc=location, input=value)
+
+
+def _located_error(message: str, location: tuple[str | int, ...], value: object) -> ValueError:
+    """A validation error pointing below the field being validated (pydantic prefixes it)."""
+    details = [_answer_error(message, location, value)]
+    return ValidationError.from_exception_data("CT600Return", details)
+
+
 class CompanyDetails(_Strict):
-    """Who the return is for."""
+    """Who the return is for.
+
+    Attributes:
+        company_type: CT600 box 4, the type of company. ``0`` is a UK trading company (or any
+            company not listed); ``1`` a unit trust or open-ended investment company; ``2`` a
+            community interest company; ``3`` a company in liquidation, for its second or later
+            accounting period; ``4`` a qualifying asset holding company; ``5`` an insurance
+            company whose policyholders' share of profits is charged at the basic rate; ``6`` a
+            members' club or voluntary association; ``7`` a property management company; ``8``
+            a charity or company owned by a charity; ``9`` a REIT group company's residual
+            business; ``10`` a REIT's tax-exempt business; ``11`` a non-resident company.
+        principal_activity: What the company does, as stated in its accounts.
+    """
 
     name: Annotated[str, Field(min_length=1, max_length=160)]
     registration_number: str
     utr: str
+    company_type: Annotated[int, Field(ge=0, le=11)] = 0
+    principal_activity: Annotated[str, Field(min_length=1, max_length=200)]
 
     @field_validator("registration_number")
     @classmethod
@@ -116,23 +162,103 @@ class TaxAdjustments(_Strict):
 
 
 class BalanceSheet(_Strict):
-    """Micro-entity balance sheet at the end of the period, in whole pounds."""
+    """Balance sheet at the end of the period in the micro-entity format, in whole pounds.
 
+    The items are those of the Companies Act micro-entity balance sheet (FRS 105): called up
+    share capital not paid (A), fixed assets (B), current assets (C), prepayments and accrued
+    income (D), creditors within one year (E), creditors after more than one year (H),
+    provisions for liabilities (I), accruals and deferred income (J) and called up share
+    capital (part of K). Totals are derived in ``AccountsSummary``.
+    """
+
+    called_up_share_capital_not_paid: Pounds = 0
     fixed_assets: Pounds = 0
     current_assets: Pounds = 0
+    prepayments_and_accrued_income: Pounds = 0
     creditors_within_one_year: Pounds = 0
     creditors_after_one_year: Pounds = 0
+    provisions: Pounds = 0
+    accruals_and_deferred_income: Pounds = 0
     called_up_share_capital: Pounds = 0
 
 
+DirectorName = Annotated[str, Field(min_length=1, max_length=120)]
+
+
+class AccountsDetails(_Strict):
+    """Facts about the statutory accounts filed with the return.
+
+    Attributes:
+        standard: ``micro`` for FRS 105 micro-entity accounts, ``small`` for FRS 102
+            section 1A small company accounts.
+        approval_date: When the board approved the accounts; after the period ends.
+        directors: Everyone who was a director during the period.
+        signing_director: The director who signed the balance sheet; one of ``directors``.
+        average_employees: Average number of employees (including directors) in the period.
+        trading_status: Whether the company traded in the period, never has, or has stopped.
+    """
+
+    standard: Literal["micro", "small"]
+    approval_date: date
+    directors: Annotated[list[DirectorName], Field(min_length=1, max_length=50)]
+    signing_director: DirectorName
+    average_employees: Annotated[int, Field(ge=0, le=9_999_999)]
+    trading_status: Literal["trading", "never_traded", "no_longer_trading"]
+
+    @field_validator("directors")
+    @classmethod
+    def _check_directors_are_distinct(cls, directors: list[str]) -> list[str]:
+        seen: set[str] = set()
+        for index, director in enumerate(directors):
+            if director.casefold() in seen:
+                raise _located_error(
+                    f"{director} is already listed; enter each director once", (index,), director
+                )
+            seen.add(director.casefold())
+        return directors
+
+    @model_validator(mode="after")
+    def _check_signing_director(self) -> Self:
+        if self.signing_director not in self.directors:
+            raise _located_error(
+                "Select the director who signed the accounts from the list of directors",
+                ("signing_director",),
+                self.signing_director,
+            )
+        return self
+
+
+SupplementaryPages = dict[PageCode, dict[str, JsonValue]]
+
+
+def _answer_at(tree: JsonValue, path: tuple[str | int, ...]) -> JsonValue:
+    """The answer at ``path`` in an element tree, or ``None`` where it is missing."""
+    answer = tree
+    for step in path:
+        if isinstance(step, int) and isinstance(answer, list) and step < len(answer):
+            answer = answer[step]
+        elif isinstance(step, str) and isinstance(answer, dict):
+            answer = answer.get(step)
+        else:
+            return None
+    return answer
+
+
 class CT600Return(_Strict):
-    """Everything needed to compute a company's CT600 return."""
+    """Everything needed to compute a company's CT600 return.
+
+    Attributes:
+        supplementary_pages: Supplementary pages by code (``"A"`` for CT600A), each an element
+            tree for that page's root element (see ``open_ct600.schema.trees``).
+    """
 
     company: CompanyDetails
     period: ReturnPeriod
     profit_and_loss: ProfitAndLoss
     tax_adjustments: TaxAdjustments
     balance_sheet: BalanceSheet
+    accounts: AccountsDetails
+    supplementary_pages: SupplementaryPages = Field(default_factory=dict)
 
     @field_validator("tax_adjustments")
     @classmethod
@@ -148,6 +274,48 @@ class CT600Return(_Strict):
                 "profit and loss account"
             )
         return adjustments
+
+    @field_validator("accounts")
+    @classmethod
+    def _check_accounts_approved_after_period(
+        cls, accounts: AccountsDetails, info: ValidationInfo
+    ) -> AccountsDetails:
+        period = info.data.get("period")
+        if period is not None and accounts.approval_date <= period.end:
+            raise _located_error(
+                "The date the accounts were approved must be after the end of the accounting "
+                "period",
+                ("approval_date",),
+                accounts.approval_date.isoformat(),
+            )
+        return accounts
+
+    @field_validator("supplementary_pages")
+    @classmethod
+    def _check_supplementary_pages(cls, pages: SupplementaryPages) -> SupplementaryPages:
+        spec = load_spec()
+        details: list[InitErrorDetails] = []
+        for code, tree in pages.items():
+            page = spec.page(code)
+            if page.dormant:
+                message = (
+                    f"Remove CT600{code} ({page.title}): the page is not in use because no "
+                    f"{page.title} rate of Corporation Tax is in force"
+                )
+                details.append(_answer_error(message, (code,), tree))
+                continue
+            details += [
+                _answer_error(
+                    problem.message,
+                    (code, *problem.path),
+                    _answer_at(tree, problem.path),
+                    problem.box,
+                )
+                for problem in validate_tree(page.node, tree)
+            ]
+        if details:
+            raise ValidationError.from_exception_data("SupplementaryPages", details)
+        return pages
 
 
 class SignatoryCapacity(StrEnum):
@@ -181,14 +349,15 @@ class CT600Box:
     """One box on the CT600 form.
 
     Attributes:
-        number: The box number printed on the CT600 (2023) version 3 form.
+        box: The box id: ``"145"`` on the main return, ``"A80"`` or ``"L210"`` on a
+            supplementary page, as in HMRC's CT600 schema.
         label: The box description.
         value: The box value; its meaning depends on ``kind``.
         kind: How to present ``value``: whole pounds, pounds and pence, a count, a
             rate, a financial year, or a tick box (1 ticked, 0 not).
     """
 
-    number: int
+    box: str
     label: str
     value: Decimal
     kind: BoxKind
@@ -196,7 +365,13 @@ class CT600Box:
 
 @dataclass(frozen=True)
 class AccountsSummary:
-    """Micro-entity accounts derived from the answers, in whole pounds except tax."""
+    """Accounts derived from the answers, in whole pounds except tax.
+
+    The balance sheet follows the micro-entity format: net current assets are current assets
+    plus prepayments less creditors due within a year; total assets less current liabilities
+    add fixed assets and share capital not paid; net assets then deduct creditors due after a
+    year, provisions, and accruals and deferred income.
+    """
 
     turnover: int
     interest_income: int
@@ -204,12 +379,16 @@ class AccountsSummary:
     profit_before_tax: int
     corporation_tax: Decimal
     profit_after_tax: Decimal
+    called_up_share_capital_not_paid: int
     fixed_assets: int
     current_assets: int
+    prepayments_and_accrued_income: int
     creditors_within_one_year: int
     net_current_assets: int
     total_assets_less_current_liabilities: int
     creditors_after_one_year: int
+    provisions: int
+    accruals_and_deferred_income: int
     net_assets: int
     called_up_share_capital: int
     profit_and_loss_reserve: int
@@ -217,17 +396,24 @@ class AccountsSummary:
 
 @dataclass(frozen=True)
 class ReturnComputation:
-    """The computed CT600: boxes, tax computation, accounts and loss position."""
+    """The computed CT600: boxes, tax computation, accounts and loss position.
+
+    Attributes:
+        pages: The completed supplementary page trees, by page code. For now these are the
+            validated answers as given; computed page boxes are not yet filled in.
+    """
 
     boxes: tuple[CT600Box, ...]
     tax: TaxComputation
     accounts: AccountsSummary
     trading_loss_arising: int
     losses_carried_forward: int
+    pages: dict[str, dict[str, JsonValue]]
 
 
 def _box(number: int, label: str, value: int | Decimal, kind: BoxKind = "pounds") -> CT600Box:
-    return CT600Box(number=number, label=label, value=Decimal(value), kind=kind)
+    """A main return box; their ids are plain numbers."""
+    return CT600Box(box=str(number), label=label, value=Decimal(value), kind=kind)
 
 
 @dataclass(frozen=True)
@@ -314,9 +500,20 @@ def _tax_boxes(tax: TaxComputation) -> list[CT600Box]:
 def _accounts(ct600: CT600Return, corporation_tax: Decimal) -> AccountsSummary:
     pnl, sheet = ct600.profit_and_loss, ct600.balance_sheet
     profit_before_tax = pnl.turnover + pnl.interest_income - pnl.total_expenses
-    net_current_assets = sheet.current_assets - sheet.creditors_within_one_year
-    total_less_current = sheet.fixed_assets + net_current_assets
-    net_assets = total_less_current - sheet.creditors_after_one_year
+    net_current_assets = (
+        sheet.current_assets
+        + sheet.prepayments_and_accrued_income
+        - sheet.creditors_within_one_year
+    )
+    total_less_current = (
+        sheet.called_up_share_capital_not_paid + sheet.fixed_assets + net_current_assets
+    )
+    net_assets = (
+        total_less_current
+        - sheet.creditors_after_one_year
+        - sheet.provisions
+        - sheet.accruals_and_deferred_income
+    )
     return AccountsSummary(
         turnover=pnl.turnover,
         interest_income=pnl.interest_income,
@@ -324,12 +521,16 @@ def _accounts(ct600: CT600Return, corporation_tax: Decimal) -> AccountsSummary:
         profit_before_tax=profit_before_tax,
         corporation_tax=corporation_tax,
         profit_after_tax=profit_before_tax - corporation_tax,
+        called_up_share_capital_not_paid=sheet.called_up_share_capital_not_paid,
         fixed_assets=sheet.fixed_assets,
         current_assets=sheet.current_assets,
+        prepayments_and_accrued_income=sheet.prepayments_and_accrued_income,
         creditors_within_one_year=sheet.creditors_within_one_year,
         net_current_assets=net_current_assets,
         total_assets_less_current_liabilities=total_less_current,
         creditors_after_one_year=sheet.creditors_after_one_year,
+        provisions=sheet.provisions,
+        accruals_and_deferred_income=sheet.accruals_and_deferred_income,
         net_assets=net_assets,
         called_up_share_capital=sheet.called_up_share_capital,
         profit_and_loss_reserve=net_assets - sheet.called_up_share_capital,
@@ -364,4 +565,5 @@ def compute_return(ct600: CT600Return) -> ReturnComputation:
             - position.losses_used
             + position.trading_loss_arising
         ),
+        pages={str(code): tree for code, tree in ct600.supplementary_pages.items()},
     )

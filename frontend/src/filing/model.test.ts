@@ -1,26 +1,65 @@
-import { toReturn, validateCompany, validatePeriod, type Draft } from "@/filing/model";
+import {
+  completedCount,
+  EMPTY_ACCOUNTS,
+  sectionComplete,
+  toReturn,
+  validateAccounts,
+  validateCompany,
+  validatePeriod,
+  type Draft,
+} from "@/filing/model";
+
+const COMPANY = {
+  name: " Acme Widgets Ltd ",
+  registration_number: "sc 123456",
+  utr: "12345 67890",
+  company_type: "0",
+  principal_activity: " Software development ",
+};
+
+const ACCOUNTS = {
+  standard: "micro" as const,
+  directors: ["Ada Lovelace", " Charles Babbage "],
+  signing_director: "Ada Lovelace",
+  approval_date: { day: "30", month: "6", year: "2025" },
+  average_employees: "2",
+  trading_status: "trading" as const,
+};
 
 const COMPLETE = {
-  company: { name: " Acme Widgets Ltd ", registration_number: "sc 123456", utr: "12345 67890" },
+  company: COMPANY,
   period: {
     start: { day: "1", month: "4", year: "2024" },
     end: { day: "31", month: "3", year: "2025" },
   },
   profit_and_loss: { turnover: "120,000", staff_costs: "30000" },
   tax_adjustments: { associated_companies: "1" },
-  balance_sheet: {},
+  balance_sheet: { prepayments_and_accrued_income: "1,000", provisions: "500" },
+  accounts: ACCOUNTS,
 } satisfies Draft;
 
 describe("validateCompany", () => {
-  it("normalises identifiers", () => {
-    expect(validateCompany(COMPLETE.company)).toEqual({
+  it("normalises identifiers and reads the company type code", () => {
+    expect(validateCompany({ ...COMPANY, company_type: "8" })).toEqual({
       ok: true,
-      value: { name: "Acme Widgets Ltd", registration_number: "SC123456", utr: "1234567890" },
+      value: {
+        name: "Acme Widgets Ltd",
+        registration_number: "SC123456",
+        utr: "1234567890",
+        company_type: 8,
+        principal_activity: "Software development",
+      },
     });
   });
 
   it("explains every problem", () => {
-    const result = validateCompany({ name: "", registration_number: "123", utr: "abc" });
+    const result = validateCompany({
+      name: "",
+      registration_number: "123",
+      utr: "abc",
+      company_type: "12",
+      principal_activity: "",
+    });
 
     expect(result).toEqual({
       ok: false,
@@ -29,6 +68,8 @@ describe("validateCompany", () => {
         registration_number:
           "Enter a company registration number in the correct format, like 01234567 or SC123456",
         utr: "Enter a Unique Taxpayer Reference in the correct format, like 1234567890",
+        company_type: "Select the type of company",
+        principal_activity: "Enter what the company does",
       },
     });
   });
@@ -57,21 +98,79 @@ describe("validatePeriod", () => {
   });
 });
 
+describe("validateAccounts", () => {
+  it("builds the accounts details, trimming names", () => {
+    expect(validateAccounts(ACCOUNTS, "2025-03-31")).toEqual({
+      ok: true,
+      value: {
+        standard: "micro",
+        approval_date: "2025-06-30",
+        directors: ["Ada Lovelace", "Charles Babbage"],
+        signing_director: "Ada Lovelace",
+        average_employees: 2,
+        trading_status: "trading",
+      },
+    });
+  });
+
+  it("explains every problem with an empty answer", () => {
+    const result = validateAccounts(EMPTY_ACCOUNTS);
+
+    expect(result).toEqual({
+      ok: false,
+      errors: {
+        "directors-0": "Enter the name of director 1",
+        standard: "Select how the accounts were prepared",
+        signing_director: "Select the director who signed the accounts",
+        approval_date: "Enter the date the accounts were approved",
+        average_employees: "Enter the average number of employees",
+        trading_status: "Select whether the company traded",
+      },
+    });
+  });
+
+  it("rejects a director listed twice", () => {
+    const result = validateAccounts({ ...ACCOUNTS, directors: ["Ada Lovelace", "ada lovelace"] });
+
+    expect(!result.ok && result.errors["directors-1"]).toBe("ada lovelace is already listed");
+  });
+
+  it("needs the signing director to be one of the directors", () => {
+    const result = validateAccounts({ ...ACCOUNTS, signing_director: "Grace Hopper" });
+
+    expect(!result.ok && result.errors.signing_director).toBe(
+      "Select the director who signed the accounts",
+    );
+  });
+
+  it("needs the accounts approved after the period ends", () => {
+    const approvedOnLastDay = { day: "31", month: "3", year: "2025" };
+    const result = validateAccounts(
+      { ...ACCOUNTS, approval_date: approvedOnLastDay },
+      "2025-03-31",
+    );
+
+    expect(!result.ok && result.errors.approval_date).toMatch(/after the end of the accounting/);
+  });
+});
+
 describe("toReturn", () => {
   it("is null until every section is complete", () => {
-    expect(
-      toReturn({
-        company: COMPLETE.company,
-        period: COMPLETE.period,
-        profit_and_loss: COMPLETE.profit_and_loss,
-        tax_adjustments: COMPLETE.tax_adjustments,
-      }),
-    ).toBeNull();
+    const { accounts: _, ...withoutAccounts } = COMPLETE;
+
+    expect(toReturn(withoutAccounts)).toBeNull();
+    expect(completedCount(withoutAccounts)).toBe(5);
   });
 
   it("builds the full API payload, treating blank amounts as zero", () => {
     expect(toReturn(COMPLETE)).toEqual({
-      company: { name: "Acme Widgets Ltd", registration_number: "SC123456", utr: "1234567890" },
+      company: {
+        name: "Acme Widgets Ltd",
+        registration_number: "SC123456",
+        utr: "1234567890",
+        company_type: 0,
+        principal_activity: "Software development",
+      },
       period: { start: "2024-04-01", end: "2025-03-31" },
       profit_and_loss: {
         turnover: 120_000,
@@ -91,12 +190,32 @@ describe("toReturn", () => {
         associated_companies: 1,
       },
       balance_sheet: {
+        called_up_share_capital_not_paid: 0,
         fixed_assets: 0,
         current_assets: 0,
+        prepayments_and_accrued_income: 1_000,
         creditors_within_one_year: 0,
         creditors_after_one_year: 0,
+        provisions: 500,
+        accruals_and_deferred_income: 0,
         called_up_share_capital: 0,
       },
+      accounts: {
+        standard: "micro",
+        approval_date: "2025-06-30",
+        directors: ["Ada Lovelace", "Charles Babbage"],
+        signing_director: "Ada Lovelace",
+        average_employees: 2,
+        trading_status: "trading",
+      },
     });
+  });
+
+  it("treats a section saved before its questions changed as incomplete", () => {
+    const { company_type: _, principal_activity: __, ...oldCompany } = COMPANY;
+    const saved = { ...COMPLETE, company: oldCompany } as unknown as Draft;
+
+    expect(sectionComplete(saved, "company")).toBe(false);
+    expect(toReturn(saved)).toBeNull();
   });
 });
