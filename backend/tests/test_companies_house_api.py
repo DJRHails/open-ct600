@@ -2,6 +2,7 @@
 
 import base64
 import logging
+from typing import get_args
 
 import httpx2
 import pytest
@@ -17,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from open_ct600.companies_house.routes import companies_house_http
 from open_ct600.config import Settings
+from open_ct600.ct600 import LegalForm
 from open_ct600.main import create_app
 
 API_KEY = "placeholder-for-tests"
@@ -128,6 +130,9 @@ def test_company_record():
     assert previous["period"] == {"start": "2025-04-01", "end": "2026-03-31"}
     assert previous["standard"] == "small"
     assert previous["profit_and_loss"]["turnover"] == 162336
+    # The frontend copies these into Comparatives.tax_on_profit and average_employees.
+    assert previous["profit_and_loss"]["tax"] == 7208
+    assert previous["average_employees"] == 0
     assert previous["balance_sheet"]["net_assets"] == 280310
     assert previous["directors"][0] == "S Durbin-Wood"
     assert set(previous) == {
@@ -198,26 +203,39 @@ def test_a_company_without_next_accounts_has_no_suggested_period():
     assert record["suggested_period"] is None
 
 
+CIC = "community-interest-company"
+
+
 @pytest.mark.parametrize(
-    ("company_type", "subtype", "legal_form"),
+    ("company_type", "extra", "legal_form"),
     [
-        ("ltd", None, "private-limited-company"),
-        ("ltd", "community-interest-company", "community-interest-company"),
-        ("private-limited-guarant-nsc", None, "private-company-limited-by-guarantee"),
-        ("private-unlimited", None, "private-unlimited-company"),
-        ("plc", None, "public-limited-company"),
-        ("llp", None, "limited-liability-partnership"),
-        ("registered-society-non-jurisdictional", None, None),
+        ("ltd", {}, "private-limited-company"),
+        ("private-limited-shares-section-30-exemption", {}, "private-limited-company"),
+        ("private-limited-guarant-nsc", {}, "private-company-limited-by-guarantee"),
+        (
+            "private-limited-guarant-nsc-limited-exemption",
+            {},
+            "private-company-limited-by-guarantee",
+        ),
+        ("private-unlimited", {}, "private-unlimited-company"),
+        ("private-unlimited-nsc", {}, "private-unlimited-company"),
+        ("ltd", {"subtype": CIC}, CIC),
+        ("private-limited-guarant-nsc", {"subtype": CIC}, CIC),
+        ("ltd", {"is_community_interest_company": True}, CIC),
+        (CIC, {}, CIC),
+        ("plc", {}, None),
+        ("llp", {}, None),
+        ("plc", {"subtype": CIC}, None),
+        ("registered-society-non-jurisdictional", {}, None),
     ],
 )
-def test_legal_form_from_company_type(company_type, subtype, legal_form):
+def test_legal_form_uses_the_models_values(company_type, extra, legal_form):
     stub = StubCompaniesHouse()
-    profile = fixture("company-profile.json") | {"type": company_type}
-    if subtype:
-        profile["subtype"] = subtype
+    profile = fixture("company-profile.json") | {"type": company_type} | extra
     stub.answers[f"/company/{COMPANY}"] = json_answer(profile)
 
     assert lookup(stub, f"/companies/{COMPANY}").json()["legal_form"] == legal_form
+    assert legal_form is None or legal_form in get_args(LegalForm)
 
 
 def with_latest_filing(**changes) -> StubCompaniesHouse:

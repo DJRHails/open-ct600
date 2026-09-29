@@ -8,7 +8,7 @@ import logging
 import re
 from collections.abc import Coroutine
 from datetime import date
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
@@ -26,6 +26,7 @@ from open_ct600.companies_house.filed_accounts import (
 )
 from open_ct600.companies_house.names import person_name
 from open_ct600.companies_house.sic import sic_description
+from open_ct600.ct600 import LegalForm
 from open_ct600.tax import twelve_month_period_end
 
 logger = logging.getLogger(__name__)
@@ -33,14 +34,7 @@ logger = logging.getLogger(__name__)
 XHTML = "application/xhtml+xml"
 MAX_SEARCH_RESULTS = 20
 
-LegalForm = Literal[
-    "private-limited-company",
-    "private-company-limited-by-guarantee",
-    "private-unlimited-company",
-    "community-interest-company",
-    "public-limited-company",
-    "limited-liability-partnership",
-]
+_CIC = "community-interest-company"
 _LEGAL_FORMS: dict[str, LegalForm] = {
     "ltd": "private-limited-company",
     "private-limited-shares-section-30-exemption": "private-limited-company",
@@ -48,11 +42,10 @@ _LEGAL_FORMS: dict[str, LegalForm] = {
     "private-limited-guarant-nsc-limited-exemption": "private-company-limited-by-guarantee",
     "private-unlimited": "private-unlimited-company",
     "private-unlimited-nsc": "private-unlimited-company",
-    "plc": "public-limited-company",
-    "llp": "limited-liability-partnership",
+    _CIC: _CIC,
 }
-"""Companies House company ``type`` → legal form; other types (societies, overseas
-companies, charitable incorporated organisations...) have none we support."""
+"""Companies House company ``type`` → the model's ``LegalForm``. Other types (public limited
+companies, LLPs, societies, overseas companies...) cannot prepare these accounts: ``None``."""
 
 _DOCUMENT_ID = re.compile(
     r"""(?x)
@@ -203,11 +196,10 @@ async def company_record(client: CompaniesHouseClient, number: str) -> CompanyRe
 
 
 def _legal_form(profile: dict[str, Any]) -> LegalForm | None:
+    """The model's legal form; a CIC (by type, subtype or flag) of a supported form is a CIC."""
     form = _LEGAL_FORMS.get(profile.get("type", ""))
-    is_cic = profile.get("subtype") == "community-interest-company" or profile.get(
-        "is_community_interest_company"
-    )
-    return "community-interest-company" if form == "private-limited-company" and is_cic else form
+    is_cic = profile.get("subtype") == _CIC or profile.get("is_community_interest_company")
+    return "community-interest-company" if form is not None and is_cic else form
 
 
 def _address(address: dict[str, str] | None) -> Address | None:
