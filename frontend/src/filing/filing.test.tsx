@@ -232,7 +232,8 @@ describe("filing a return", () => {
   it("shows GOV.UK errors and keeps the section incomplete", async () => {
     const user = renderApp("/file/company-details");
 
-    await user.type(screen.getByLabelText("Company registration number"), "123");
+    // Companies House lookup is off here (nothing answers /status), so the fields show.
+    await user.type(await screen.findByLabelText("Company registration number"), "123");
     await save(user);
 
     const summary = screen.getByRole("alert");

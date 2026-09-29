@@ -8,6 +8,7 @@
 import type {
   AccountsDetails,
   CompanyDetails,
+  CompanyRecord,
   CT600Return,
   ElementTree,
   PageCode,
@@ -53,6 +54,8 @@ export type AccountsAnswers = {
 export type YesNo = "yes" | "no" | "";
 
 export type Draft = {
+  /** The company's public record, from the company chosen in the Companies House search. */
+  companies_house?: CompanyRecord;
   company?: CompanyAnswers;
   period?: { start: DateParts; end: DateParts };
   profit_and_loss?: Record<string, string>;

@@ -77,6 +77,32 @@ export function Panel({ title, children }: { title: string; children?: ReactNode
   );
 }
 
+/** A GOV.UK notification banner, for important information that is not an error. */
+export function NotificationBanner({ title, children }: { title: string; children: ReactNode }) {
+  const id = `banner-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+  return (
+    <section className="govuk-notification-banner" aria-labelledby={id}>
+      <div className="govuk-notification-banner__header">
+        <h2 className="govuk-notification-banner__title" id={id}>
+          {title}
+        </h2>
+      </div>
+      <div className="govuk-notification-banner__content">{children}</div>
+    </section>
+  );
+}
+
+/** Says a section's answers came from Companies House, so the user checks them. */
+export function PrefilledBanner() {
+  return (
+    <NotificationBanner title="Important">
+      <p className="govuk-notification-banner__heading">
+        We’ve filled in some answers from Companies House. Check them before you continue.
+      </p>
+    </NotificationBanner>
+  );
+}
+
 export function WarningText({ children }: { children: ReactNode }) {
   return (
     <div className="govuk-warning-text">
