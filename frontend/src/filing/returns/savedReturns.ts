@@ -257,13 +257,22 @@ export function addReturn(
   return { currentId: open ? id : store.currentId, returns: [...store.returns, saved] };
 }
 
-/** Put imported answers in place of a saved return's, which is then no longer submitted. */
+/**
+ * Put imported answers in place of a saved return's. A submitted return is never replaced: its
+ * record of being submitted is what stops the same return being sent to HMRC twice, so the
+ * imported answers become a new return (``newId``) beside it instead.
+ */
 export function replaceReturn(
   store: ReturnsStore,
   id: string,
   draft: Draft,
   now: string,
+  newId: string,
 ): ReturnsStore {
+  const target = store.returns.find((saved) => saved.id === id);
+  if (target?.submitted_at !== undefined) {
+    return addReturn(store, draft, now, newId, { open: false });
+  }
   return {
     ...store,
     returns: store.returns.map((saved) =>

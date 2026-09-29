@@ -9,6 +9,7 @@ import {
   LEGACY_DRAFT_KEY,
   loadReturns,
   markSubmitted,
+  replaceReturn,
   returnLabel,
   RETURNS_KEY,
   returnStatus,
@@ -175,6 +176,18 @@ describe("loading saved returns", () => {
 });
 
 describe("changing saved returns", () => {
+  it("never replaces a submitted return, keeping the replacement alongside it", () => {
+    const store = markSubmitted(addReturn(EMPTY_STORE, ACME, MONDAY, "s", { open: true }), MONDAY);
+    const imported: Draft = { ...ACME, chosen_pages: [] };
+
+    const after = replaceReturn(store, "s", imported, TUESDAY, "imported");
+
+    expect(after.returns).toEqual([
+      { id: "s", created_at: MONDAY, updated_at: MONDAY, submitted_at: MONDAY, draft: ACME },
+      { id: "imported", created_at: TUESDAY, updated_at: TUESDAY, draft: imported },
+    ]);
+  });
+
   it("starts a return with the first answer saved, then changes that return", () => {
     const started = updateCurrent(EMPTY_STORE, () => ACME, MONDAY, "acme");
     expect(started).toEqual({

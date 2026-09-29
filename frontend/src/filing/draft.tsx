@@ -204,7 +204,7 @@ function ReturnsProvider({ initial, damagedLegacy, unsaved, children }: Provider
       importReturn: (draft: Draft) =>
         commit((saved) => addReturn(saved, draft, now(), newId(), { open: false })),
       replaceWithImport: (id: string, draft: Draft) =>
-        commit((saved) => replaceReturn(saved, id, draft, now())),
+        commit((saved) => replaceReturn(saved, id, draft, now(), newId())),
       deleteAnswers: () => {
         storeReceipt(null);
         setReceipt(null);

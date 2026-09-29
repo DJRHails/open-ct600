@@ -9,6 +9,7 @@ import { RETURNS } from "@/filing/paths";
 import { readReturnFile } from "@/filing/returns/returnFile";
 import type { ReturnsNotice } from "@/filing/returns/ReturnsPage";
 import { findSameReturn, returnLabel, type SavedReturn } from "@/filing/returns/savedReturns";
+import { formatDate } from "@/format";
 
 const FILE_ID = "return-file";
 const REPLACE_ID = "replace";
@@ -125,6 +126,46 @@ function ChooseReplace({ existing, onChoose }: ReplaceProps) {
   );
 }
 
+/**
+ * The file is for a company and period already submitted from this browser. Replacing that
+ * return would clear its record of being submitted and let the same return be sent twice, so
+ * the only choice offered is to keep both.
+ */
+function AlreadySubmitted({ existing, onImport }: { existing: SavedReturn; onImport: () => void }) {
+  const title = "You have already submitted a return for this company and period";
+  usePageTitle(title);
+  const submittedOn = formatDate((existing.submitted_at ?? "").slice(0, 10));
+  return (
+    <>
+      <span className="govuk-caption-l">{returnLabel(existing.draft)}</span>
+      <h1 className="govuk-heading-l">{title}</h1>
+      <p className="govuk-body">
+        The file is for the same company registration number and accounting period as a return
+        submitted from this browser on {submittedOn}. That return is kept as it is.
+      </p>
+      <p className="govuk-body">You can import the file as a separate return.</p>
+      <WarningText>
+        Do not submit it again unless you mean to send HMRC a second return for the same period.
+      </WarningText>
+      <div className="govuk-button-group">
+        <Button type="button" onClick={onImport}>
+          Import as a separate return
+        </Button>
+        <Link className="govuk-link" to={RETURNS}>
+          Cancel
+        </Link>
+      </div>
+    </>
+  );
+}
+
+function Pending(props: { existing: SavedReturn; onChoose: (replace: boolean) => void }) {
+  if (props.existing.submitted_at !== undefined) {
+    return <AlreadySubmitted existing={props.existing} onImport={() => props.onChoose(false)} />;
+  }
+  return <ChooseReplace existing={props.existing} onChoose={props.onChoose} />;
+}
+
 export function ImportReturnPage() {
   const { returns, importReturn, replaceWithImport } = useDraft();
   const navigate = useNavigate();
@@ -158,7 +199,7 @@ export function ImportReturnPage() {
       <BackLink to={RETURNS} />
       <TwoThirds>
         {pending ? (
-          <ChooseReplace existing={pending.existing} onChoose={choose} />
+          <Pending existing={pending.existing} onChoose={choose} />
         ) : (
           <ChooseFile onRead={read} />
         )}
