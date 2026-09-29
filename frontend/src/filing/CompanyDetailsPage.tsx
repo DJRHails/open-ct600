@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { api, ApiError, type CompanyRecord, type CompanySearchResult } from "@/api";
 import { PrefilledBanner } from "@/components/content";
-import { CompanySearch } from "@/components/CompanySearch";
 import { Radios, TextInput } from "@/components/forms";
 import { useCompaniesHouseLookup } from "@/filing/companiesHouse";
 import { useDraft } from "@/filing/draft";
@@ -19,6 +18,11 @@ import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
 
 const SEARCH_ID = "company-search";
+
+// The search (with its autocomplete and bundled Preact) loads only when lookup is switched on.
+const CompanySearch = lazy(async () => ({
+  default: (await import("@/components/CompanySearch")).CompanySearch,
+}));
 
 /** What to tell the user when Companies House cannot give a company's details. */
 export function companiesHouseError(error: unknown): string {
@@ -172,15 +176,17 @@ export function CompanyDetailsPage() {
       ) : null}
       {searching ? (
         <>
-          <CompanySearch
-            id={SEARCH_ID}
-            label="Find the company"
-            hint="Search Companies House by the company’s name or its 8-character company number, like 01234567."
-            error={errors[SEARCH_ID]}
-            search={api.searchCompanies}
-            onChoose={(company) => void choose(company)}
-            onSearchError={(error) => setErrors({ [SEARCH_ID]: companiesHouseError(error) })}
-          />
+          <Suspense fallback={<p className="govuk-body">Loading the company search…</p>}>
+            <CompanySearch
+              id={SEARCH_ID}
+              label="Find the company"
+              hint="Search Companies House by the company’s name or its 8-character company number, like 01234567."
+              error={errors[SEARCH_ID]}
+              search={api.searchCompanies}
+              onChoose={(company) => void choose(company)}
+              onSearchError={(error) => setErrors({ [SEARCH_ID]: companiesHouseError(error) })}
+            />
+          </Suspense>
           {fetching ? (
             <output className="govuk-body govuk-!-display-block">
               Getting the company’s details from Companies House…
