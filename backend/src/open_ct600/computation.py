@@ -66,7 +66,12 @@ from open_ct600.reliefs.research_and_development import (
 )
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import TaxComputation, average_main_rate, compute_corporation_tax
+from open_ct600.tax import (
+    COMPANY_TYPE_RATES,
+    TaxComputation,
+    average_main_rate,
+    compute_corporation_tax,
+)
 
 if TYPE_CHECKING:
     from open_ct600.ct600 import CT600Return
@@ -735,14 +740,20 @@ def _main_rate_company(
 ) -> bool:
     """Whether profits before the RDEC are taxed at the main rate or with marginal relief."""
     profits = _profits(run, _trading_result(run, claim, creative, rdec=False), standalone)
+    tax = _corporation_tax(run, profits)
+    return any(part.band in {"main", "marginal"} for part in tax.slices)
+
+
+def _corporation_tax(run: _Evaluation, profits: _Profits) -> TaxComputation:
+    """Tax box 315 at the rates the company's type allows (box 4, review finding H1)."""
     adjustments = run.ct600.tax_adjustments
-    tax = compute_corporation_tax(
+    return compute_corporation_tax(
         *run.period,
         taxable_profits=profits.chargeable,
         associated_companies=adjustments.associated_companies,
         exempt_distributions=adjustments.exempt_distributions,
+        basis=COMPANY_TYPE_RATES[run.ct600.company.company_type],
     )
-    return any(part.band in {"main", "marginal"} for part in tax.slices)
 
 
 def _scheme_name(claim: Claim) -> str:
@@ -1103,13 +1114,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     _check_losses_surrendered(run, stages.profits, surrendered)
     _profit_boxes(run, stages.profits)
     _loss_boxes(run, stages.profits.loss_arising, surrendered)
-    adjustments = ct600.tax_adjustments
-    tax = compute_corporation_tax(
-        *run.period,
-        taxable_profits=stages.profits.chargeable,
-        associated_companies=adjustments.associated_companies,
-        exempt_distributions=adjustments.exempt_distributions,
-    )
+    tax = _corporation_tax(run, stages.profits)
     _tax_boxes(run, tax)
     _reliefs_in_terms_of_tax(run, stages.standalone.tonnage_tax)
     redemption = _redeem_research_and_development(

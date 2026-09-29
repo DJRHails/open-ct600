@@ -110,7 +110,7 @@ async function completeEverySection(user: UserEvent) {
   await user.type(screen.getByLabelText("Company registration number"), "01234567");
   await user.type(screen.getByLabelText(/Unique Taxpayer Reference/), "1234567890");
   await user.type(screen.getByLabelText("What does the company do?"), "Manufacture of widgets");
-  expect(screen.getByLabelText("UK trading or professional company")).toBeChecked();
+  expect(screen.getByLabelText("None of these")).toBeChecked();
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Accounting period" }));

@@ -43,7 +43,12 @@ from open_ct600.reliefs.loans_to_participators import ParticipatorLoanDates
 from open_ct600.reliefs.research_and_development import ResearchAndDevelopment
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import PeriodError, twelve_month_period_end, validate_period
+from open_ct600.tax import (
+    COMPANY_TYPE_RATES,
+    PeriodError,
+    twelve_month_period_end,
+    validate_period,
+)
 
 __all__ = [
     "MAX_POUNDS",
@@ -105,18 +110,29 @@ def _located_error(message: str, location: tuple[str | int, ...], value: object)
     return ValidationError.from_exception_data("CT600Return", details)
 
 
+UNSUPPORTED_COMPANY_TYPES = {
+    5: "Insurance companies (type 5) tax the policyholders' share of profits at a separate "
+    "rate, which this service does not work out: use other software",
+    10: "A REIT's tax-exempt company (type 10) has profits exempt under the REIT rules, which "
+    "this service does not work out: use other software",
+}
+
+
 class CompanyDetails(StrictModel):
     """Who the return is for.
 
     Attributes:
-        company_type: CT600 box 4, the type of company. ``0`` is a UK trading company (or any
-            company not listed); ``1`` a unit trust or open-ended investment company; ``2`` a
-            community interest company; ``3`` a company in liquidation, for its second or later
-            accounting period; ``4`` a qualifying asset holding company; ``5`` an insurance
-            company whose policyholders' share of profits is charged at the basic rate; ``6`` a
-            members' club or voluntary association; ``7`` a property management company; ``8``
-            a charity or company owned by a charity; ``9`` a REIT group company's residual
-            business; ``10`` a REIT's tax-exempt business; ``11`` a non-resident company.
+        company_type: CT600 box 4, the type of company, with HMRC's codes (Company Tax Return
+            guide, box 4): ``0`` none of the others (most companies, including community
+            interest companies and companies in their first year of liquidation); ``1`` a unit
+            trust or open-ended investment company; ``2`` a close investment-holding company;
+            ``3`` a company in the second or later year of liquidation; ``4`` a qualifying
+            asset holding company; ``5`` insurance (policyholders' share at the basic rate);
+            ``6`` a members' club or voluntary association; ``7`` a property management
+            company; ``8`` a charity or company owned by a charity; ``9`` a REIT C residual
+            company; ``10`` a REIT C tax-exempt company; ``11`` a non-resident company. The
+            type decides the rates (``COMPANY_TYPE_RATES``); 5 and 10 need treatment the
+            service does not provide, so are refused.
         principal_activity: What the company does, as stated in its accounts.
     """
 
@@ -125,6 +141,13 @@ class CompanyDetails(StrictModel):
     utr: str
     company_type: Annotated[int, Field(ge=0, le=11)] = 0
     principal_activity: Annotated[str, Field(min_length=1, max_length=200)]
+
+    @field_validator("company_type")
+    @classmethod
+    def _check_company_type_is_supported(cls, value: int) -> int:
+        if value not in COMPANY_TYPE_RATES:
+            raise ValueError(UNSUPPORTED_COMPANY_TYPES[value])
+        return value
 
     @field_validator("registration_number")
     @classmethod
