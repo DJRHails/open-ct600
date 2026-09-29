@@ -181,6 +181,28 @@ export type AccountsDetails = {
   trading_status: TradingStatus;
   /** Dormant throughout the period: no turnover, expenses, income or gains, and not trading. */
   dormant: boolean;
+  /** Last period's figures, shown beside this period's; null (or absent) for the first period. */
+  comparatives?: Comparatives | null;
+  /** Defaults to ``private-limited-company`` when absent. */
+  legal_form?: LegalForm;
+};
+
+/** The legal forms the accounts can be prepared for (FRC ``LegalFormEntityDimension`` members). */
+export type LegalForm =
+  | "private-limited-company"
+  | "private-company-limited-by-guarantee"
+  | "private-unlimited-company"
+  | "community-interest-company";
+
+/** The previous period of account (up to 18 months, ending the day before this one starts). */
+export type Comparatives = {
+  period: { start: string; end: string };
+  profit_and_loss: CT600Return["profit_and_loss"];
+  balance_sheet: CT600Return["balance_sheet"];
+  /** The previous period's tax charge in its profit and loss account, in whole pounds. */
+  tax_on_profit: number;
+  /** The previous period's average number of employees; null only when it is not known. */
+  average_employees: number | null;
 };
 
 /** ``sme`` and ``rdec`` (large companies) before 1 April 2024; ``rdec`` (merged) and ``eris`` after. */

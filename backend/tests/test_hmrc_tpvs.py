@@ -115,10 +115,31 @@ SYNTHETIC_COMPANY = {
         "trading_status": "trading",
     },
 }
+COMPARATIVES = {
+    "period": {"start": "2023-04-01", "end": "2024-03-31"},
+    "profit_and_loss": {"turnover": 90_000, "staff_costs": 25_000, "other_expenses": 6_000},
+    "balance_sheet": {
+        "fixed_assets": 12_000,
+        "current_assets": 30_000,
+        "creditors_within_one_year": 9_000,
+        "called_up_share_capital": 100,
+    },
+    "tax_on_profit": 11_210,
+    "average_employees": 2,
+}
 END_TO_END = {
     "trading micro-entity (FRS 105)": {},
     "small company (FRS 102 section 1A)": {
         "accounts": {"standard": "small"},
+        "profit_and_loss": {"turnover": 400_000},
+    },
+    "micro-entity with comparatives": {"accounts": {"comparatives": COMPARATIVES}},
+    "small company limited by guarantee with comparatives": {
+        "accounts": {
+            "standard": "small",
+            "legal_form": "private-company-limited-by-guarantee",
+            "comparatives": COMPARATIVES,
+        },
         "profit_and_loss": {"turnover": 400_000},
     },
     # Negative core:Equity and TotalAssetsLessCurrentLiabilities, which Arelle's HMRC.5.3

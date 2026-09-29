@@ -74,7 +74,7 @@ from open_ct600.tax import (
 )
 
 if TYPE_CHECKING:
-    from open_ct600.ct600 import CT600Return
+    from open_ct600.ct600 import BalanceSheet, CT600Return, ProfitAndLoss
 
 BoxKind = Literal["pounds", "money", "count", "rate", "year", "flag"]
 
@@ -1076,8 +1076,24 @@ def _tax_on_profit(run: _Evaluation) -> Decimal:
     return taxes - credits
 
 
-def _accounts(ct600: "CT600Return", corporation_tax: Decimal, other_income: int) -> AccountsSummary:
-    pnl, sheet = ct600.profit_and_loss, ct600.balance_sheet
+def summarise_accounts(
+    pnl: "ProfitAndLoss",
+    sheet: "BalanceSheet",
+    *,
+    corporation_tax: Decimal,
+    other_income: int,
+) -> AccountsSummary:
+    """The accounts' totals for one period's profit and loss account and balance sheet.
+
+    Args:
+        pnl: The period's profit and loss account.
+        sheet: The balance sheet at the period's end.
+        corporation_tax: The period's tax charge.
+        other_income: Income the answers do not include (RDEC, AVEC/VGEC).
+
+    Returns:
+        The summary, with the micro-entity balance sheet's totals.
+    """
     profit_before_tax = pnl.turnover + pnl.interest_income + other_income - pnl.total_expenses
     net_current_assets = (
         sheet.current_assets
@@ -1224,7 +1240,12 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     computation = ReturnComputation(
         boxes=tuple(run.boxes[number] for number in sorted(run.boxes)),
         tax=tax,
-        accounts=_accounts(ct600, _tax_on_profit(run), trading_adjustments.taxable_credits),
+        accounts=summarise_accounts(
+            ct600.profit_and_loss,
+            ct600.balance_sheet,
+            corporation_tax=_tax_on_profit(run),
+            other_income=trading_adjustments.taxable_credits,
+        ),
         trading_loss_arising=stages.profits.loss_arising,
         losses_carried_forward=_losses_carried_forward(run, stages.profits, trading_adjustments),
         pages={str(code): page.tree for code, page in run.pages.items()},

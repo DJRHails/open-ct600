@@ -14,7 +14,7 @@ its additional information form) are reported like any other invalid answer.
 """
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal, Self
 
@@ -46,6 +46,7 @@ from open_ct600.schema.trees import validate_tree
 from open_ct600.tax import (
     COMPANY_TYPE_RATES,
     PeriodError,
+    add_months,
     twelve_month_period_end,
     validate_period,
 )
@@ -58,8 +59,11 @@ __all__ = [
     "CT600Box",
     "CT600Return",
     "CompanyDetails",
+    "Comparatives",
     "CreativeIndustries",
     "Declaration",
+    "LegalForm",
+    "PeriodOfAccount",
     "Pounds",
     "ProfitAndLoss",
     "ReliefsSummary",
@@ -268,6 +272,68 @@ class BalanceSheet(StrictModel):
 
 DirectorName = Annotated[str, Field(min_length=1, max_length=120)]
 
+MAX_PERIOD_OF_ACCOUNT_MONTHS = 18
+"""A period of account can be extended to at most 18 months (Companies Act 2006 s392)."""
+
+
+class PeriodOfAccount(StrictModel):
+    """A period of account of the company's accounts, which can be up to 18 months long."""
+
+    start: date
+    end: date
+
+    @model_validator(mode="after")
+    def _check_length(self) -> Self:
+        if self.end < self.start:
+            raise _located_error(
+                "The end date must be the same as or after the start date",
+                ("end",),
+                self.end.isoformat(),
+            )
+        longest = add_months(self.start, MAX_PERIOD_OF_ACCOUNT_MONTHS) - timedelta(days=1)
+        if self.end > longest:
+            raise _located_error(
+                f"A period of account cannot be longer than {MAX_PERIOD_OF_ACCOUNT_MONTHS} "
+                f"months, so it must end by {longest:%-d %B %Y}",
+                ("end",),
+                self.end.isoformat(),
+            )
+        return self
+
+
+class Comparatives(StrictModel):
+    """Last period's figures, shown beside this period's in the accounts.
+
+    Attributes:
+        period: The previous period of account; it ends the day before this one starts.
+        profit_and_loss: The previous period's profit and loss account.
+        balance_sheet: The balance sheet at the end of the previous period.
+        tax_on_profit: The previous period's tax charge in its profit and loss account, in
+            whole pounds.
+        average_employees: The previous period's average number of employees (including
+            directors); ``None`` only when it is not known.
+    """
+
+    period: PeriodOfAccount
+    profit_and_loss: ProfitAndLoss
+    balance_sheet: BalanceSheet
+    tax_on_profit: Pounds = 0
+    average_employees: Annotated[int, Field(ge=0, le=9_999_999)] | None = None
+
+
+LegalForm = Literal[
+    "private-limited-company",
+    "private-company-limited-by-guarantee",
+    "private-unlimited-company",
+    "community-interest-company",
+]
+"""The company's legal form, as the FRC taxonomy's ``LegalFormEntityDimension`` names it.
+
+Only forms that can prepare small or micro-entity accounts under the Companies Act and file a
+CT600 are offered. Public limited companies are left out because they cannot use the small
+companies regime (Companies Act 2006 s384), which these accounts are prepared under.
+"""
+
 
 class AccountsDetails(StrictModel):
     """Facts about the statutory accounts filed with the return.
@@ -283,6 +349,9 @@ class AccountsDetails(StrictModel):
         dormant: Whether the company was dormant (had no significant accounting transactions)
             throughout the period, so files dormant accounts. A dormant company has no
             turnover, expenses, income or gains, does not trade, and has no tax to pay.
+        comparatives: The previous period's figures; ``None`` when this is the company's
+            first period of account.
+        legal_form: The company's legal form.
     """
 
     standard: Literal["micro", "small"]
@@ -292,6 +361,8 @@ class AccountsDetails(StrictModel):
     average_employees: Annotated[int, Field(ge=0, le=9_999_999)]
     trading_status: Literal["trading", "never_traded", "no_longer_trading"]
     dormant: bool = False
+    comparatives: Comparatives | None = None
+    legal_form: LegalForm = "private-limited-company"
 
     @model_validator(mode="after")
     def _check_dormant_company_is_not_trading(self) -> Self:
@@ -449,6 +520,25 @@ class CT600Return(StrictModel):
                 "period",
                 ("approval_date",),
                 accounts.approval_date.isoformat(),
+            )
+        return accounts
+
+    @field_validator("accounts")
+    @classmethod
+    def _check_comparatives_precede_period(
+        cls, accounts: AccountsDetails, info: ValidationInfo
+    ) -> AccountsDetails:
+        period = info.data.get("period")
+        comparatives = accounts.comparatives
+        if period is None or comparatives is None:
+            return accounts
+        day_before = period.start - timedelta(days=1)
+        if comparatives.period.end != day_before:
+            raise _located_error(
+                f"The previous period of account must end on {day_before:%-d %B %Y}, the day "
+                "before this period starts",
+                ("comparatives", "period", "end"),
+                comparatives.period.end.isoformat(),
             )
         return accounts
 

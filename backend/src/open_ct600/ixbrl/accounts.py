@@ -2,28 +2,35 @@
 
 Micro-entity accounts (FRS 105) use the Companies Act micro-entity profit and loss format;
 small company accounts (FRS 102 section 1A) use format 1 (cost of sales, gross profit,
-administrative expenses). Both use the micro-entity balance sheet the return collects.
+administrative expenses). Both use the micro-entity balance sheet the return collects. After
+the company's first period of account, the profit and loss account and balance sheet show the
+previous period's figures beside this period's (``AccountsDetails.comparatives``).
 
 A company that answers that it was dormant (``AccountsDetails.dormant``, which requires a nil
-profit and loss account) has accounts that claim the section 480 audit exemption and omit the
-profit and loss account.
+profit and loss account) has accounts that claim the section 480 audit exemption. They omit the
+profit and loss account unless the previous period's has figures to compare.
 """
 
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from lxml import etree
 
-from open_ct600.ct600 import CT600Return, ReturnComputation
+from open_ct600.computation import summarise_accounts
+from open_ct600.ct600 import CT600Return, LegalForm, ReturnComputation
 from open_ct600.ixbrl.layout import (
     SOFTWARE_NAME,
     SOFTWARE_VERSION,
     STYLESHEET,
     IxbrlRenderError,
-    amount_row,
     period_ended,
     period_noun,
-    table,
+)
+from open_ct600.ixbrl.primary_statements import (
+    PeriodColumn,
+    balance_sheet_table,
+    profit_and_loss_table,
+    whole_pounds,
 )
 from open_ct600.ixbrl.taxonomies import FRC_2026
 from open_ct600.ixbrl.xhtml import (
@@ -45,6 +52,13 @@ _TRADING_STATUS_MEMBERS = {
     "never_traded": "bus:EntityHasNeverTraded",
     "no_longer_trading": "bus:EntityNoLongerTradingButTradedInPast",
 }
+LEGAL_FORM_MEMBERS: dict[LegalForm, str] = {
+    "private-limited-company": "bus:PrivateLimitedCompanyLtd",
+    "private-company-limited-by-guarantee": "bus:CompanyLimitedByGuarantee",
+    "private-unlimited-company": "bus:UnlimitedCompany",
+    "community-interest-company": "bus:CommunityInterestCompanyCIC",
+}
+"""The ``bus:LegalFormEntityDimension`` member for each legal form."""
 
 
 @dataclass(frozen=True)
@@ -54,9 +68,6 @@ class _Contexts:
 
     def during(self, id_: str, dimension: str, member: str) -> Context:
         return Context(id_, self.duration.period, (ExplicitMember(dimension, member),))
-
-    def at_end(self, id_: str, dimension: str, member: str) -> Context:
-        return Context(id_, self.end.period, (ExplicitMember(dimension, member),))
 
     def director(self, number: int) -> Context:
         return self.during(
@@ -69,8 +80,42 @@ def is_dormant(ct600: CT600Return) -> bool:
     return ct600.accounts.dormant
 
 
-def _whole_pounds(amount: Decimal) -> int:
-    return int(amount.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+def _columns(ct600: CT600Return, computation: ReturnComputation) -> list[PeriodColumn]:
+    """This period's column, then the previous period's when there are comparatives."""
+    current = PeriodColumn(
+        prefix="",
+        start=ct600.period.start,
+        end_date=ct600.period.end,
+        profit_and_loss=ct600.profit_and_loss,
+        summary=computation.accounts,
+        tax=whole_pounds(computation.accounts.corporation_tax),
+    )
+    comparatives = ct600.accounts.comparatives
+    if comparatives is None:
+        return [current]
+    previous = PeriodColumn(
+        prefix="prev-",
+        start=comparatives.period.start,
+        end_date=comparatives.period.end,
+        profit_and_loss=comparatives.profit_and_loss,
+        summary=summarise_accounts(
+            comparatives.profit_and_loss,
+            comparatives.balance_sheet,
+            corporation_tax=Decimal(comparatives.tax_on_profit),
+            other_income=0,
+        ),
+        tax=comparatives.tax_on_profit,
+    )
+    return [current, previous]
+
+
+def _shows_profit_and_loss(ct600: CT600Return) -> bool:
+    """Dormant accounts omit a nil profit and loss account with nothing to compare."""
+    comparatives = ct600.accounts.comparatives
+    has_previous_figures = comparatives is not None and (
+        any(comparatives.profit_and_loss.model_dump().values()) or comparatives.tax_on_profit > 0
+    )
+    return not is_dormant(ct600) or has_previous_figures
 
 
 def render_accounts(ct600: CT600Return, computation: ReturnComputation) -> str:
@@ -104,12 +149,31 @@ def render_accounts(ct600: CT600Return, computation: ReturnComputation) -> str:
         title=f"{ct600.company.name} - {kind} for the {period_ended(period.start, period.end)}",
         stylesheet=STYLESHEET,
     )
+    columns = _columns(ct600, computation)
+    noun = period_noun(period.start, period.end)
     _hide_report_facts(document, ct600, contexts)
     document.append(*_cover(document, ct600, contexts))
     document.append(*_directors_report(document, ct600, contexts))
-    if not is_dormant(ct600):
-        document.append(*_profit_and_loss(document, ct600, computation, contexts))
-    document.append(*_balance_sheet(document, ct600, computation, contexts))
+    if _shows_profit_and_loss(ct600):
+        document.append(
+            html.h2(f"Profit and loss account for the {period_ended(period.start, period.end)}"),
+            profit_and_loss_table(
+                document, details.standard, columns, f"Profit (loss) for the financial {noun}"
+            ),
+        )
+    funds = (
+        "Members' funds"
+        if details.legal_form == "private-company-limited-by-guarantee"
+        else "Shareholders' funds"
+    )
+    document.append(
+        html.h2(
+            "Balance sheet as at ",
+            document.date_fact("bus:BalanceSheetDate", contexts.end, period.end),
+        ),
+        balance_sheet_table(document, columns, funds),
+        *_statements(document, ct600, contexts),
+    )
     document.append(*_notes(document, ct600, contexts))
     return document.serialise()
 
@@ -147,7 +211,9 @@ def _hide_report_facts(document: InlineDocument, ct600: CT600Return, contexts: _
         document.non_numeric(
             "bus:LegalFormEntity",
             contexts.during(
-                "dur-legal-form", "bus:LegalFormEntityDimension", "bus:PrivateLimitedCompanyLtd"
+                "dur-legal-form",
+                "bus:LegalFormEntityDimension",
+                LEGAL_FORM_MEMBERS[details.legal_form],
             ),
         ),
         document.non_numeric(
@@ -235,260 +301,6 @@ def _directors_report(
     ]
 
 
-def _profit_and_loss(
-    document: InlineDocument,
-    ct600: CT600Return,
-    computation: ReturnComputation,
-    contexts: _Contexts,
-) -> list[etree._Element]:
-    period = ct600.period
-    summary = computation.accounts
-    tax = _whole_pounds(summary.corporation_tax)
-    dur = contexts.duration
-    rows = (
-        _micro_operating_rows(document, ct600, dur, summary.other_income)
-        if ct600.accounts.standard == "micro"
-        else _small_operating_rows(document, ct600, dur, summary.other_income)
-    )
-    return [
-        html.h2(f"Profit and loss account for the {period_ended(period.start, period.end)}"),
-        table(
-            *rows,
-            amount_row(
-                "Profit (loss) before tax",
-                document.money(
-                    "core:ProfitLossOnOrdinaryActivitiesBeforeTax", dur, summary.profit_before_tax
-                ),
-                total=True,
-            ),
-            amount_row(
-                "Tax on profit",
-                document.money("core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", dur, tax),
-                deduction=True,
-            ),
-            amount_row(
-                f"Profit (loss) for the financial {period_noun(period.start, period.end)}",
-                document.money("core:ProfitLoss", dur, summary.profit_before_tax - tax),
-                total=True,
-            ),
-        ),
-    ]
-
-
-def _micro_operating_rows(
-    document: InlineDocument, ct600: CT600Return, dur: Context, credits: int
-) -> list[etree._Element]:
-    """The micro-entity format's lines; other income includes the RDEC and AVEC/VGEC."""
-    pnl = ct600.profit_and_loss
-    return [
-        amount_row("Turnover", document.money("core:TurnoverRevenue", dur, pnl.turnover)),
-        amount_row(
-            "Other income",
-            document.money("core:OtherOperatingIncomeFormat2", dur, pnl.interest_income + credits),
-        ),
-        amount_row(
-            "Cost of raw materials and consumables",
-            document.money("core:RawMaterialsConsumablesUsed", dur, pnl.cost_of_sales),
-            deduction=True,
-        ),
-        amount_row(
-            "Staff costs",
-            document.money("core:StaffCostsEmployeeBenefitsExpense", dur, pnl.staff_costs),
-            deduction=True,
-        ),
-        amount_row(
-            "Depreciation and other amounts written off assets",
-            document.money("core:DepreciationAmortisationImpairmentExpense", dur, pnl.depreciation),
-            deduction=True,
-        ),
-        amount_row(
-            "Other charges",
-            document.money("core:OtherOperatingExpensesFormat2", dur, pnl.other_expenses),
-            deduction=True,
-        ),
-    ]
-
-
-def _small_operating_rows(
-    document: InlineDocument, ct600: CT600Return, dur: Context, credits: int
-) -> list[etree._Element]:
-    """Format 1's lines; the RDEC and AVEC/VGEC are other operating income."""
-    pnl = ct600.profit_and_loss
-    gross_profit = pnl.turnover - pnl.cost_of_sales
-    administrative = pnl.staff_costs + pnl.depreciation + pnl.other_expenses
-    other_income = (
-        [
-            amount_row(
-                "Other operating income",
-                document.money("core:OtherOperatingIncomeFormat1", dur, credits),
-            )
-        ]
-        if credits
-        else []
-    )
-    return [
-        amount_row("Turnover", document.money("core:TurnoverRevenue", dur, pnl.turnover)),
-        amount_row(
-            "Cost of sales",
-            document.money("core:CostSales", dur, pnl.cost_of_sales),
-            deduction=True,
-        ),
-        amount_row(
-            "Gross profit (loss)",
-            document.money("core:GrossProfitLoss", dur, gross_profit),
-            total=True,
-        ),
-        amount_row(
-            "Administrative expenses",
-            document.money("core:AdministrativeExpenses", dur, administrative),
-            deduction=True,
-        ),
-        *other_income,
-        amount_row(
-            "Operating profit (loss)",
-            document.money(
-                "core:OperatingProfitLoss", dur, gross_profit - administrative + credits
-            ),
-            total=True,
-        ),
-        amount_row(
-            "Interest receivable and similar income",
-            document.money(
-                "core:OtherInterestReceivableSimilarIncomeFinanceIncome", dur, pnl.interest_income
-            ),
-        ),
-    ]
-
-
-def _balance_sheet(
-    document: InlineDocument,
-    ct600: CT600Return,
-    computation: ReturnComputation,
-    contexts: _Contexts,
-) -> list[etree._Element]:
-    summary, end = computation.accounts, contexts.end
-    maturity = "core:MaturitiesOrExpirationPeriodsDimension"
-    return [
-        html.h2(
-            "Balance sheet as at ",
-            document.date_fact("bus:BalanceSheetDate", end, ct600.period.end),
-        ),
-        table(
-            amount_row(
-                "Called up share capital not paid",
-                document.money(
-                    "core:CalledUpShareCapitalNotPaidNotExpressedAsCurrentAsset",
-                    end,
-                    summary.called_up_share_capital_not_paid,
-                ),
-            ),
-            amount_row(
-                "Fixed assets", document.money("core:FixedAssets", end, summary.fixed_assets)
-            ),
-            amount_row(
-                "Current assets",
-                document.money("core:CurrentAssets", end, summary.current_assets),
-            ),
-            amount_row(
-                "Prepayments and accrued income",
-                document.money(
-                    "core:PrepaymentsAccruedIncomeNotExpressedWithinCurrentAssetSubtotal",
-                    end,
-                    summary.prepayments_and_accrued_income,
-                ),
-            ),
-            amount_row(
-                "Creditors: amounts falling due within one year",
-                document.money(
-                    "core:Creditors",
-                    contexts.at_end("end-within-one-year", maturity, "core:WithinOneYear"),
-                    summary.creditors_within_one_year,
-                ),
-                deduction=True,
-            ),
-            amount_row(
-                "Net current assets (liabilities)",
-                document.money("core:NetCurrentAssetsLiabilities", end, summary.net_current_assets),
-                total=True,
-            ),
-            amount_row(
-                "Total assets less current liabilities",
-                document.money(
-                    "core:TotalAssetsLessCurrentLiabilities",
-                    end,
-                    summary.total_assets_less_current_liabilities,
-                ),
-                total=True,
-            ),
-            amount_row(
-                "Creditors: amounts falling due after more than one year",
-                document.money(
-                    "core:Creditors",
-                    contexts.at_end("end-after-one-year", maturity, "core:AfterOneYear"),
-                    summary.creditors_after_one_year,
-                ),
-                deduction=True,
-            ),
-            amount_row(
-                "Provisions for liabilities",
-                document.money(
-                    "core:ProvisionsForLiabilitiesBalanceSheetSubtotal", end, summary.provisions
-                ),
-                deduction=True,
-            ),
-            amount_row(
-                "Accruals and deferred income",
-                document.money(
-                    "core:AccruedLiabilitiesNotExpressedWithinCreditorsSubtotal",
-                    end,
-                    summary.accruals_and_deferred_income,
-                ),
-                deduction=True,
-            ),
-            amount_row(
-                "Net assets (liabilities)",
-                document.money("core:NetAssetsLiabilities", end, summary.net_assets),
-                total=True,
-            ),
-            *_capital_and_reserves(document, computation, contexts),
-        ),
-        *_statements(document, ct600, contexts),
-    ]
-
-
-def _capital_and_reserves(
-    document: InlineDocument, computation: ReturnComputation, contexts: _Contexts
-) -> list[etree._Element]:
-    summary = computation.accounts
-    equity = "core:EquityClassesDimension"
-    return [
-        html.tr(html.td(html.strong("Capital and reserves")), html.td()),
-        amount_row(
-            "Called up share capital",
-            document.money(
-                "core:Equity",
-                contexts.at_end("end-share-capital", equity, "core:ShareCapital"),
-                summary.called_up_share_capital,
-            ),
-        ),
-        amount_row(
-            "Profit and loss account",
-            document.money(
-                "core:Equity",
-                contexts.at_end(
-                    "end-retained-earnings", equity, "core:RetainedEarningsAccumulatedLosses"
-                ),
-                summary.profit_and_loss_reserve,
-            ),
-        ),
-        amount_row(
-            "Shareholders' funds",
-            document.money("core:Equity", contexts.end, summary.net_assets),
-            total=True,
-        ),
-    ]
-
-
 def _statements(
     document: InlineDocument, ct600: CT600Return, contexts: _Contexts
 ) -> list[etree._Element]:
@@ -563,6 +375,20 @@ def _notes(
     document: InlineDocument, ct600: CT600Return, contexts: _Contexts
 ) -> list[etree._Element]:
     period = ct600.period
+    comparatives = ct600.accounts.comparatives
+    previous: list[str | etree._Element] = []
+    if comparatives is not None and comparatives.average_employees is not None:
+        before = comparatives.period
+        previous = [
+            " (previous period: ",
+            document.non_fraction(
+                "core:AverageNumberEmployeesDuringPeriod",
+                Context("prev-dur", Duration(before.start, before.end)),
+                comparatives.average_employees,
+                unit=Unit.PURE,
+            ),
+            ")",
+        ]
     return [
         html.h2("Notes to the accounts"),
         html.h3("Employees"),
@@ -575,6 +401,7 @@ def _notes(
                 ct600.accounts.average_employees,
                 unit=Unit.PURE,
             ),
+            *previous,
             ".",
         ),
     ]
