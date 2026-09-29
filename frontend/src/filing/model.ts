@@ -462,8 +462,9 @@ export function validatePeriod(
       errors.end = "End date must be the same as or after the start date";
     } else if (end.value > twelveMonthPeriodEnd(start.value)) {
       errors.end =
-        "End date must be within 12 months of the start date. " +
-        "Split a longer period of account into two returns.";
+        "End date must be within 12 months of the start date. This service prepares the " +
+        "accounts for the same period as the return, so it cannot file for a period of " +
+        "account longer than 12 months.";
     }
   }
   if (!start.ok || !end.ok || Object.keys(errors).length > 0) return { ok: false, errors };

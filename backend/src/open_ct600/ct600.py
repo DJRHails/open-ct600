@@ -43,7 +43,7 @@ from open_ct600.reliefs.loans_to_participators import ParticipatorLoanDates
 from open_ct600.reliefs.research_and_development import ResearchAndDevelopment
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import PeriodError, validate_period
+from open_ct600.tax import PeriodError, twelve_month_period_end, validate_period
 
 __all__ = [
     "MAX_POUNDS",
@@ -149,13 +149,25 @@ class CompanyDetails(StrictModel):
 
 
 class ReturnPeriod(StrictModel):
-    """The accounting period the return covers."""
+    """The accounting period the return covers, which is also the accounts' period of account.
+
+    The service prepares the statutory accounts for this same period, so it cannot file for a
+    period of account longer than 12 months: HMRC needs two returns for it, each with the
+    accounts for the whole period of account (review finding L4).
+    """
 
     start: date
     end: date
 
     @model_validator(mode="after")
     def _check_period(self) -> Self:
+        if self.end > twelve_month_period_end(self.start):
+            raise ValueError(
+                "The period cannot be longer than 12 months. This service prepares the accounts "
+                "for the same period as the return, so it cannot prepare a return for a period "
+                "of account longer than 12 months: that needs two returns, each with the "
+                "accounts for the whole period of account"
+            )
         try:
             validate_period(self.start, self.end)
         except PeriodError as error:

@@ -356,3 +356,20 @@ def test_boxes_780_and_785_are_not_given_without_a_loss():
 
 def boxes_of(computation) -> dict[str, Decimal]:
     return {box.box: box.value for box in computation.boxes}
+
+
+def test_a_period_of_account_over_12_months_is_refused_without_suggesting_a_split():
+    # Review L4: the service prepares the accounts for the return's own period, so splitting
+    # a longer period of account into two returns would file two sets of accounts that do not
+    # exist. Refuse it plainly instead.
+    with pytest.raises(ValidationError) as caught:
+        make_return(
+            period={"start": "2024-01-01", "end": "2025-06-30"},
+            accounts={"approval_date": "2025-09-01"},
+        )
+
+    (error,) = caught.value.errors()
+    assert error["loc"] == ("period",)
+    assert "Split" not in error["msg"]
+    assert "period of account" in error["msg"]
+    assert "cannot prepare" in error["msg"]

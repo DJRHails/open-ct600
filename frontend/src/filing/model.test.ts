@@ -88,6 +88,7 @@ describe("validatePeriod", () => {
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors.end).toMatch(/within 12 months/);
+    expect(!result.ok && result.errors.end).not.toMatch(/Split/);
   });
 
   it("rejects an end date before the start date", () => {

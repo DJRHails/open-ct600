@@ -172,8 +172,7 @@ def validate_period(start: date, end: date) -> None:
         raise PeriodError("The end date must be the same as or after the start date")
     if end > twelve_month_period_end(start):
         raise PeriodError(
-            "An accounting period for Corporation Tax cannot be longer than 12 months. "
-            "Split a longer period of account into two returns."
+            "An accounting period for Corporation Tax cannot be longer than 12 months"
         )
     first_year, last_year = financial_year_of(start), financial_year_of(end)
     if first_year < FIRST_SUPPORTED_YEAR:
