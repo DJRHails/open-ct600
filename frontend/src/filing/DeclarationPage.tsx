@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router";
 
 import {
@@ -131,6 +131,44 @@ function PendingBanner({ correlationId }: { correlationId: string | null }) {
   );
 }
 
+const METHODS: Record<Method, { label: string; hint: string }> = {
+  "test-in-live": {
+    label: "Send a test submission to HMRC (Test in Live)",
+    hint: "HMRC checks your return as it would a real one, but does not file it.",
+  },
+  live: { label: "Submit to HMRC", hint: "HMRC files your return for the company." },
+  demo: { label: "Do not send it: get a demonstration receipt", hint: "Nothing is sent to HMRC." },
+};
+
+/** The HMRC services this deployment allows, with the Gateway sign in, then the receipt only. */
+function methodOptions(environments: HmrcEnvironment[], credentials: ReactNode) {
+  return [
+    ...(["test-in-live", "live"] as const)
+      .filter((environment) => environments.includes(environment))
+      .map((environment) => ({
+        value: environment,
+        ...METHODS[environment],
+        conditional: credentials,
+      })),
+    { value: "demo" as const, ...METHODS.demo },
+  ];
+}
+
+/** Why there is no choice of how to send: the service is checking, or it cannot submit. */
+function CannotSend({ checking }: { checking: boolean }) {
+  if (checking) {
+    return <p className="govuk-body">Checking whether this service can send returns to HMRC…</p>;
+  }
+  return (
+    <div className="govuk-inset-text">
+      This service cannot send returns to HMRC: whoever runs it has not switched submission on. When
+      you submit, you get a demonstration receipt and nothing is sent to HMRC. To file for real,
+      download your return from check your answers and use HMRC-recognised software or an
+      accountant.
+    </div>
+  );
+}
+
 const WARNINGS: Record<Method, ReactNode> = {
   demo:
     "Your return will not be sent to HMRC. Giving false information in a real return can lead " +
@@ -139,7 +177,14 @@ const WARNINGS: Record<Method, ReactNode> = {
   live: "Giving false information in a return can lead to a penalty or prosecution.",
 };
 
-function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) {
+type DeclareProps = {
+  ct600: CT600Return;
+  pages: SchemaPage[];
+  /** The HMRC services this deployment can send to: none if it cannot; ``null`` while checking. */
+  environments: HmrcEnvironment[] | null;
+};
+
+function Declare({ ct600, pages, environments }: DeclareProps) {
   const { recordSubmission } = useDraft();
   const [answers, setAnswers] = useState<Answers>({
     name: "",
@@ -154,6 +199,9 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
   const [submitting, setSubmitting] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const set = (change: Partial<Answers>) => setAnswers({ ...answers, ...change });
+  const canSend = environments !== null && environments.length > 0;
+  // Without HMRC services on offer, the only way to finish is a demonstration receipt.
+  const method: Method | "" = canSend ? answers.method : "demo";
 
   const general = outcome?.kind === "errors" ? outcome.general : [];
   const summary: ErrorItem[] = [
@@ -166,8 +214,8 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
   usePageTitle("Declaration", summary.length > 0);
 
   /** Send the return; on success the draft is replaced by the receipt. */
-  async function send(declaration: Declaration, method: Method): Promise<Failure | null> {
-    if (method === "demo") {
+  async function send(declaration: Declaration, via: Method): Promise<Failure | null> {
+    if (via === "demo") {
       const receipt = await api.submitReturn(ct600, declaration);
       recordSubmission({ kind: "demo", ...receipt });
       return null;
@@ -177,7 +225,7 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
     const result = await api.submitToHmrc({
       ct600,
       declaration,
-      environment: method,
+      environment: via,
       ...credentials,
     });
     if (result.status === "rejected") {
@@ -198,11 +246,11 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const found = validate(answers, password);
+    const found = validate({ ...answers, method }, password);
     setErrors(found);
     setOutcome(null);
     setAttempt(attempt + 1);
-    const { capacity, method } = answers;
+    const { capacity } = answers;
     if (Object.keys(found).length > 0 || !capacity || !method) return;
     setSubmitting(true);
     let sorted: Failure | null;
@@ -227,25 +275,6 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
       errors={errors}
     />
   );
-  const methods: { value: Method; label: string; hint: string; conditional?: ReactNode }[] = [
-    {
-      value: "test-in-live",
-      label: "Send a test submission to HMRC (Test in Live)",
-      hint: "HMRC checks your return as it would a real one, but does not file it.",
-      conditional: credentials,
-    },
-    {
-      value: "live",
-      label: "Submit to HMRC",
-      hint: "HMRC files your return for the company.",
-      conditional: credentials,
-    },
-    {
-      value: "demo",
-      label: "Do not send it: get a demonstration receipt",
-      hint: "Nothing is sent to HMRC.",
-    },
-  ];
 
   return (
     <>
@@ -282,14 +311,18 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
             onChange={(capacity) => set({ capacity })}
             error={errors.capacity}
           />
-          <Radios
-            name="method"
-            legend="How do you want to send your return?"
-            options={methods}
-            value={answers.method}
-            onChange={(method) => set({ method })}
-            error={errors.method}
-          />
+          {canSend ? (
+            <Radios
+              name="method"
+              legend="How do you want to send your return?"
+              options={methodOptions(environments, credentials)}
+              value={answers.method}
+              onChange={(chosen) => set({ method: chosen })}
+              error={errors.method}
+            />
+          ) : (
+            <CannotSend checking={environments === null} />
+          )}
           <Checkbox
             id="confirmed"
             label="The information I have given in this Company Tax Return is correct and complete to the best of my knowledge and belief."
@@ -297,9 +330,12 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
             onChange={(confirmed) => set({ confirmed })}
             error={errors.confirmed}
           />
-          {answers.method ? <WarningText>{WARNINGS[answers.method]}</WarningText> : null}
-          <Button disabled={submitting} aria-disabled={submitting}>
-            {answers.method === "test-in-live" ? "Send test submission" : "Submit return"}
+          {method ? <WarningText>{WARNINGS[method]}</WarningText> : null}
+          <Button
+            disabled={submitting || environments === null}
+            aria-disabled={submitting || environments === null}
+          >
+            {method === "test-in-live" ? "Send test submission" : "Submit return"}
           </Button>
         </form>
       </TwoThirds>
@@ -307,13 +343,32 @@ function Declare({ ct600, pages }: { ct600: CT600Return; pages: SchemaPage[] }) 
   );
 }
 
+/** The HMRC services this deployment can send to; none if it cannot say. ``null`` until known. */
+function useSubmissionEnvironments(): HmrcEnvironment[] | null {
+  const [environments, setEnvironments] = useState<HmrcEnvironment[] | null>(null);
+  useEffect(() => {
+    let current = true;
+    api.submissionStatus().then(
+      (status) => current && setEnvironments(status.enabled ? status.environments : []),
+      () => current && setEnvironments([]),
+    );
+    return () => {
+      current = false;
+    };
+  }, []);
+  return environments;
+}
+
 export function DeclarationPage() {
   const { receipt } = useDraft();
   const built = useReturn();
+  const environments = useSubmissionEnvironments();
   // Submitting clears the draft, so a submitted return has no draft left to show.
   if (built.status === "incomplete") {
     return <Navigate to={receipt ? CONFIRMATION : TASK_LIST} replace />;
   }
-  if (built.status === "ready") return <Declare ct600={built.ct600} pages={built.pages} />;
+  if (built.status === "ready") {
+    return <Declare ct600={built.ct600} pages={built.pages} environments={environments} />;
+  }
   return <Pending title="Declaration" failure={built.status === "failed" ? built.message : null} />;
 }

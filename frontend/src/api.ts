@@ -533,6 +533,24 @@ async function download(document: ReturnDocument, ct600: CT600Return) {
   return { blob: await response.blob(), filename: named ?? filename };
 }
 
+/**
+ * Whether this deployment can send returns to HMRC, and to which of its services
+ * (``GET /api/submission``: ``{"enabled", "environments"}``). Nothing that asks for Government
+ * Gateway credentials is shown unless it can.
+ */
+export type SubmissionStatus = { enabled: boolean; environments: HmrcEnvironment[] };
+
+const HMRC_ENVIRONMENTS: HmrcEnvironment[] = ["test-in-live", "live"];
+
+async function submissionStatus(): Promise<SubmissionStatus> {
+  const reply = await send<unknown>("/submission");
+  const status =
+    typeof reply === "object" && reply !== null ? (reply as Record<string, unknown>) : {};
+  const listed: unknown[] = Array.isArray(status.environments) ? status.environments : [];
+  const environments = HMRC_ENVIRONMENTS.filter((environment) => listed.includes(environment));
+  return { enabled: status.enabled === true && environments.length > 0, environments };
+}
+
 async function submitToHmrc(submission: HmrcSubmission): Promise<HmrcOutcome> {
   const reply = await post<HmrcReply>("/returns/submit-to-hmrc", submission);
   if (reply.status === "accepted") return reply;
@@ -554,4 +572,5 @@ export const api = {
     post<SubmissionReceipt>("/returns/submit", { ct600, declaration }),
   submitToHmrc,
   schemaPages: () => send<SchemaPage[]>("/schema/pages"),
+  submissionStatus,
 };

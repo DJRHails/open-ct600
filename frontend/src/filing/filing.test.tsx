@@ -86,6 +86,7 @@ const RECEIPT: SubmissionReceipt = {
 function demoReplies(path: string) {
   if (path === "/returns/compute") return { status: 200, body: COMPUTATION };
   if (path === "/schema/pages") return { status: 200, body: schemaPages() };
+  if (path === "/submission") return { status: 200, body: { enabled: false, environments: [] } };
   if (path === "/returns/validate") {
     return { status: 200, body: { valid: true, documents_attached: true, problems: [] } };
   }
@@ -192,7 +193,7 @@ describe("filing a return", () => {
     await user.click(screen.getByRole("link", { name: "Continue" }));
     await user.type(screen.getByLabelText("Full name"), "Ada Lovelace");
     await user.click(screen.getByLabelText("Director"));
-    await user.click(screen.getByLabelText(/demonstration receipt/));
+    expect(await screen.findByText(/This service cannot send returns to HMRC/)).toBeInTheDocument();
     await user.click(screen.getByLabelText(/correct and complete/));
     await user.click(screen.getByRole("button", { name: "Submit return" }));
 
