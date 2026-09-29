@@ -337,6 +337,42 @@ describe("the previous period's figures (comparatives)", () => {
     expect(savedDraft().comparatives.profit_and_loss).not.toHaveProperty("tax");
   });
 
+  it("include last period's tax on profit, from the filed accounts", () => {
+    stubCompaniesHouse();
+    withRecord();
+    renderApp("/file/profit-and-loss");
+
+    expect(screen.getByLabelText("Tax on profit in the previous period")).toHaveValue("10825");
+  });
+
+  it("must end the day before this period starts, and last no more than 18 months", async () => {
+    stubCompaniesHouse();
+    withRecord(RECORD, {
+      period: {
+        start: { day: "1", month: "5", year: "2025" },
+        end: { day: "30", month: "4", year: "2026" },
+      },
+    });
+    const user = renderApp("/file/profit-and-loss");
+
+    await save(user);
+    expect(
+      screen.getByRole("link", {
+        name: "The previous period of account must end on 30 April 2025, the day before this period starts",
+      }),
+    ).toHaveAttribute("href", "#previous_end-day");
+
+    const start = line("When did the previous period of account start?");
+    await user.clear(within(start).getByLabelText("Year"));
+    await user.type(within(start).getByLabelText("Year"), "2023");
+    await save(user);
+    expect(
+      screen.getByRole("link", {
+        name: "A period of account cannot be longer than 18 months, so it must end by 30 September 2024",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("show the balance sheet at the previous period's end", () => {
     stubCompaniesHouse();
     withRecord();
@@ -403,6 +439,7 @@ describe("the previous period's figures (comparatives)", () => {
         },
         profit_and_loss: { turnover: "120,000" },
         balance_sheet: { fixed_assets: "10000" },
+        tax_on_profit: "9,000",
       },
       chosen_pages: [],
       research_and_development: { claiming: "no" },
@@ -414,6 +451,7 @@ describe("the previous period's figures (comparatives)", () => {
     ) as HTMLElement;
     expect(card).toHaveTextContent("1 April 2024 to 31 March 2025");
     expect(within(card).getByText("£120,000")).toBeInTheDocument();
+    expect(within(card).getByText("Tax on profit").closest("div")).toHaveTextContent("£9,000");
     expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
       accounts: {
         legal_form: "private-limited-company",
@@ -421,6 +459,7 @@ describe("the previous period's figures (comparatives)", () => {
           period: { start: "2024-04-01", end: "2025-03-31" },
           profit_and_loss: { turnover: 120_000, staff_costs: 0 },
           balance_sheet: { fixed_assets: 10_000, current_assets: 0 },
+          tax_on_profit: 9_000,
         },
       },
     });

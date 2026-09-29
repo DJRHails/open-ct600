@@ -672,7 +672,12 @@ function withComparatives<K extends "profit_and_loss" | "balance_sheet">(
   section: AmountSection<K>,
   amounts: Validated<AmountSections[K]>,
 ): Validated<AmountSections[K]> {
-  const problems = comparativesProblems(draft, section.key, section.fields);
+  const problems = comparativesProblems(
+    draft,
+    section.key,
+    section.fields,
+    savedPeriod(draft)?.start,
+  );
   if (Object.keys(problems).length === 0) return amounts;
   return { ok: false, errors: { ...(amounts.ok ? {} : amounts.errors), ...problems } };
 }
@@ -735,10 +740,11 @@ export function sectionsReturn(draft: Draft, pages?: SchemaPage[]): CT600Return 
   ) {
     return null;
   }
-  const comparatives = comparativesFor(draft, {
-    profit_and_loss: PROFIT_AND_LOSS.fields,
-    balance_sheet: BALANCE_SHEET.fields,
-  });
+  const comparatives = comparativesFor(
+    draft,
+    { profit_and_loss: PROFIT_AND_LOSS.fields, balance_sheet: BALANCE_SHEET.fields },
+    period.value.start,
+  );
   if (comparatives === undefined) return null;
   return {
     company: company.value,

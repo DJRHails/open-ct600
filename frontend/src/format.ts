@@ -125,3 +125,21 @@ function withoutNegativeZero(value: number | string): number {
   const amount = Number(value);
   return amount === 0 ? 0 : amount;
 }
+
+/** ``iso`` moved by whole days, like 2025-04-01 less 1 day = 2025-03-31. */
+export function addDays(iso: string, days: number): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  const moved = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, (day ?? 1) + days));
+  return moved.toISOString().slice(0, 10);
+}
+
+/** ``iso`` plus calendar months, clamped to a shorter month's last day (backend ``add_months``). */
+export function addMonths(iso: string, months: number): string {
+  const [year = 0, month = 1, day = 1] = iso.split("-").map(Number);
+  const index = month - 1 + months;
+  const targetYear = year + Math.floor(index / 12);
+  const targetMonth = ((index % 12) + 12) % 12;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0)).getUTCDate();
+  const target = new Date(Date.UTC(targetYear, targetMonth, Math.min(day, lastDay)));
+  return target.toISOString().slice(0, 10);
+}

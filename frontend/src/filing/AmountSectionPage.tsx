@@ -15,6 +15,7 @@ import {
   PREVIOUS_END,
   PREVIOUS_START,
   previousFigureId,
+  TAX_ON_PROFIT,
   validatePreviousPeriod,
 } from "@/filing/comparatives";
 import { useDraft } from "@/filing/draft";
@@ -23,6 +24,7 @@ import {
   type AmountSection,
   type AmountSectionKey,
   type FieldErrors,
+  savedPeriod,
   validateAmounts,
 } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
@@ -161,7 +163,13 @@ export function AmountSectionPage<K extends AmountSectionKey>({
     const saved = draft.comparatives ?? {};
     if (!prefill || !comparative) return saved;
     const period = saved.period ?? prefill.period;
-    return { ...saved, ...(period ? { period } : {}), [key]: prefill[key] ?? {} };
+    const tax = saved.tax_on_profit ?? prefill.tax_on_profit;
+    return {
+      ...saved,
+      ...(period ? { period } : {}),
+      ...(tax !== undefined ? { tax_on_profit: tax } : {}),
+      [key]: prefill[key] ?? {},
+    };
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   // Some amounts are only asked once an earlier answer makes them relevant.
@@ -174,6 +182,7 @@ export function AmountSectionPage<K extends AmountSectionKey>({
           { ...draft, comparatives: previous },
           key as ComparativeSection,
           section.fields,
+          savedPeriod(draft)?.start,
         )
       : {};
     const found = { ...(result.ok ? {} : result.errors), ...previousProblems };
@@ -219,6 +228,7 @@ export function AmountSectionPage<K extends AmountSectionKey>({
         PREVIOUS_START,
         PREVIOUS_END,
         ...asked.flatMap((field) => [field.key, previousFigureId(field.key)]),
+        previousFigureId(TAX_ON_PROFIT),
       ]}
       inputId={(field) =>
         field === PREVIOUS_START || field === PREVIOUS_END ? `${field}-day` : field
@@ -263,6 +273,16 @@ export function AmountSectionPage<K extends AmountSectionKey>({
           <MoneyInput key={field.key} {...props} />
         );
       })}
+      {askingPrevious && key === "profit_and_loss" ? (
+        <MoneyInput
+          id={previousFigureId(TAX_ON_PROFIT)}
+          label="Tax on profit in the previous period"
+          hint="The tax charge in last period’s profit and loss account. We work out this period’s."
+          value={previous.tax_on_profit ?? ""}
+          onChange={(value) => setPrevious((current) => ({ ...current, tax_on_profit: value }))}
+          error={errors[previousFigureId(TAX_ON_PROFIT)]}
+        />
+      ) : null}
     </SectionFrame>
   );
 }

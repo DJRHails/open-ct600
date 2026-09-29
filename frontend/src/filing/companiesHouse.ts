@@ -68,7 +68,8 @@ export function prefilledPeriod(
 export const LEGAL_FORMS: { value: LegalForm; label: string }[] = [
   { value: "private-limited-company", label: "Private company limited by shares" },
   { value: "private-company-limited-by-guarantee", label: "Private company limited by guarantee" },
-  { value: "public-limited-company", label: "Public limited company" },
+  { value: "private-unlimited-company", label: "Private unlimited company" },
+  { value: "community-interest-company", label: "Community interest company" },
 ];
 
 /** Companies House's legal form, if it is one the accounts can be prepared for. */

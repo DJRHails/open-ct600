@@ -139,6 +139,7 @@ function ComparativesCard({ comparatives }: { comparatives: Comparatives }) {
       key: field.label,
       value: formatPounds(comparatives.profit_and_loss[field.key]),
     })),
+    { key: "Tax on profit", value: formatPounds(comparatives.tax_on_profit) },
     ...BALANCE_SHEET.fields.map((field) => ({
       key: field.label,
       value: formatPounds(comparatives.balance_sheet[field.key]),
