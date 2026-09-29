@@ -19,7 +19,7 @@ from pathlib import Path
 
 from lxml import etree, isoschematron
 
-from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS
+from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS, parse_xml
 from open_ct600.schema.spec import load_spec
 
 ARTEFACTS = Path(__file__).parent / "artefacts"
@@ -159,7 +159,8 @@ def _as_message(document: etree._Element) -> etree._Element:
 
 
 def _detached(element: etree._Element) -> etree._Element:
-    return etree.fromstring(etree.tostring(element))
+    """Copy ``element`` into a document of its own, allowing iXBRL attachments over 10 MB."""
+    return parse_xml(etree.tostring(element))
 
 
 def _schema_problems(schema: etree.XMLSchema, tree: etree._ElementTree) -> list[Problem]:

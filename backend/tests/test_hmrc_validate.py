@@ -232,3 +232,12 @@ def test_pruned_schematron_reports_exactly_what_the_full_schematron_reports():
         compared += len(expected)
 
     assert compared > 200
+
+
+def test_attachments_over_libxml2s_10_mb_text_limit_are_validated():
+    envelope = build(make_return())
+    document = envelope.find(f".//{{{CT_NS}}}EncodedInlineXBRLDocument")
+    assert document is not None
+    document.text = "QUFB" * (3 * 1024 * 1024)  # 12 MB of base64
+
+    assert validate_return(envelope) == []
