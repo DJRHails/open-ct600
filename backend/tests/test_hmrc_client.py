@@ -331,18 +331,31 @@ AKAMAI_403 = httpx2.Response(
 )
 
 
-def test_tpvs_retries_once_after_akamai_403():
-    stub = StubTransactionEngine(AKAMAI_403, (FIXTURES / "tpvs-success-response.xml").read_bytes())
+def test_tpvs_resends_after_akamai_403s_with_backoff():
+    success = (FIXTURES / "tpvs-success-response.xml").read_bytes()
+    stub = StubTransactionEngine(AKAMAI_403, AKAMAI_403, success)
+    clock = FakeClock()
 
-    assert isinstance(run(stub, environment=Environment.TPVS), Receipt)
-    assert len(stub.requests) == 2
+    assert isinstance(run(stub, environment=Environment.TPVS, clock=clock), Receipt)
+    assert len(stub.requests) == 3
+    assert clock.sleeps == [2.0, 5.0]
 
 
-def test_repeated_403_is_reported():
-    stub = StubTransactionEngine(AKAMAI_403, AKAMAI_403)
+def test_persistent_403_is_reported():
+    stub = StubTransactionEngine(*[AKAMAI_403] * 4)
 
     with pytest.raises(UnexpectedResponseError, match="HTTP 403"):
         run(stub, environment=Environment.TPVS)
+    assert len(stub.requests) == 4
+
+
+def test_non_html_403_is_not_resent():
+    forbidden = httpx2.Response(403, content=b"{}", headers={"content-type": "application/json"})
+    stub = StubTransactionEngine(forbidden)
+
+    with pytest.raises(UnexpectedResponseError, match="HTTP 403"):
+        run(stub, environment=Environment.TPVS)
+    assert len(stub.requests) == 1
 
 
 def test_non_govtalk_reply_is_reported():

@@ -1,20 +1,20 @@
+import base64
 from pathlib import Path
 
 import httpx2
 import pytest
 from fastapi.testclient import TestClient
+from lxml import etree
 
 from open_ct600.config import Settings
 from open_ct600.hmrc.irmark import compute_irmark
-from open_ct600.hmrc.routes import IXBRLDocuments, http_client, ixbrl_renderer
+from open_ct600.hmrc.routes import http_client
 from open_ct600.hmrc.xmldoc import CT_NS, parse_xml
 from open_ct600.main import create_app
 
 FIXTURES = Path(__file__).parent / "fixtures/hmrc"
 PASSWORD = "correct-horse-battery-staple"
 CORRELATION_ID = "46DCD4CC7E194088B99857931C185829"
-XHTML = '<html xmlns="http://www.w3.org/1999/xhtml"><body><p>{}</p></body></html>'
-DOCUMENTS = IXBRLDocuments(accounts=XHTML.format("Accounts"), computations=XHTML.format("Tax"))
 
 CT600 = {
     "company": {
@@ -35,6 +35,11 @@ CT600 = {
         "average_employees": 1,
         "trading_status": "trading",
     },
+}
+AFTER_MARCH_2026 = {
+    **CT600,
+    "period": {"start": "2025-05-01", "end": "2026-04-30"},
+    "accounts": {**CT600["accounts"], "approval_date": "2026-06-30"},
 }
 DECLARATION = {"name": "Ada Lovelace", "capacity": "director", "confirmed": True}
 SUBMIT = {
@@ -83,9 +88,8 @@ class StubTransactionEngine:
         return httpx2.Response(200, content=self.replies.pop(0))
 
 
-def client_for(settings=ENABLED, *, engine=None, documents=DOCUMENTS):
+def client_for(settings=ENABLED, *, engine=None):
     app = create_app(settings)
-    app.dependency_overrides[ixbrl_renderer] = lambda: lambda ct600, computation: documents
     if engine is not None:
 
         async def stub_client():
@@ -104,13 +108,16 @@ def test_validate_accepts_a_complete_return():
     assert response.json() == {"valid": True, "documents_attached": True, "problems": []}
 
 
-def test_validate_reports_missing_ixbrl_until_it_can_be_rendered():
-    with client_for(documents=None) as client:
-        report = client.post("/api/returns/validate", json={"ct600": CT600}).json()
+def test_validate_explains_computations_missing_after_march_2026():
+    with client_for() as client:
+        report = client.post("/api/returns/validate", json={"ct600": AFTER_MARCH_2026}).json()
 
     assert report["valid"] is False
     assert report["documents_attached"] is False
-    assert sorted(problem["code"] for problem in report["problems"]) == [9113, 9965]
+    assert sorted(problem["code"] for problem in report["problems"]) == [9316, 9965]
+    for problem in report["problems"]:
+        assert "computations taxonomy" in problem["message"]
+        assert "2026-04-30" in problem["message"]
 
 
 def test_validate_locates_problems_on_supplementary_pages():
@@ -124,6 +131,20 @@ def test_validate_locates_problems_on_supplementary_pages():
     assert problem["box"] == "A80"
     assert problem["path"] == "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/TaxPayable"
     assert "Box 480" in problem["message"]
+
+
+def test_validate_explains_accounts_that_cannot_be_tagged():
+    directors = [f"Director {chr(65 + n // 26)}{chr(65 + n % 26)}" for n in range(41)]
+    accounts = {**CT600["accounts"], "directors": directors, "signing_director": directors[0]}
+
+    with client_for() as client:
+        report = client.post(
+            "/api/returns/validate", json={"ct600": {**CT600, "accounts": accounts}}
+        ).json()
+
+    assert sorted(problem["code"] for problem in report["problems"]) == [9113, 9315]
+    for problem in report["problems"]:
+        assert "at most 40 directors" in problem["message"]
 
 
 def test_validate_rejects_malformed_answers():
@@ -148,6 +169,32 @@ def test_download_ct600_xml():
     envelope = parse_xml(response.content)
     assert envelope.tag == f"{{{CT_NS}}}IRenvelope"
     assert envelope.findtext(f".//{{{CT_NS}}}Declaration/{{{CT_NS}}}Name") == "Ada Lovelace"
+    assert attachments(envelope) == {
+        "Computation": ("computations.xhtml", b"ct-comp"),
+        "Accounts": ("accounts.xhtml", b"frc"),
+    }
+    assert "x-ct600-missing-attachments" not in response.headers
+
+
+def test_download_after_march_2026_leaves_out_computations_and_says_why():
+    with client_for() as client:
+        response = client.post("/api/returns/ct600.xml", json={"ct600": AFTER_MARCH_2026})
+
+    assert response.status_code == 200
+    assert list(attachments(parse_xml(response.content))) == ["Accounts"]
+    assert response.headers["x-ct600-missing-attachments"] == "computations"
+    assert "computations taxonomy" in response.headers["x-ct600-missing-reason"]
+
+
+def attachments(envelope):
+    """Attached iXBRL documents by kind: filename and a taxonomy marker from the document."""
+    found = {}
+    for document in envelope.iterfind(f".//{{{CT_NS}}}EncodedInlineXBRLDocument"):
+        kind = etree.QName(document.getparent().getparent()).localname
+        xhtml = base64.b64decode(document.text or "")
+        marker = next(m for m in (b"ct-comp", b"frc") if m in xhtml)
+        found[kind] = (document.get("Filename"), marker)
+    return found
 
 
 @pytest.mark.parametrize(
@@ -165,14 +212,18 @@ def test_submission_is_off_unless_enabled_with_a_vendor_id(settings):
     assert engine.messages == []
 
 
-def test_submission_needs_ixbrl():
+def test_submission_after_march_2026_is_refused_before_anything_is_sent():
     engine = StubTransactionEngine()
 
-    with client_for(engine=engine, documents=None) as client:
-        response = client.post("/api/returns/submit-to-hmrc", json=SUBMIT)
+    with client_for(engine=engine) as client:
+        response = client.post(
+            "/api/returns/submit-to-hmrc", json={**SUBMIT, "ct600": AFTER_MARCH_2026}
+        )
 
     assert response.status_code == 409
-    assert response.json()["detail"]["error"] == "ixbrl_unavailable"
+    detail = response.json()["detail"]
+    assert detail["error"] == "ixbrl_unavailable"
+    assert "computations taxonomy" in detail["message"]
     assert engine.messages == []
 
 
