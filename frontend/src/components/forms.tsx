@@ -387,6 +387,7 @@ type CheckboxesProps<T extends string> = {
   onChange: (value: T[]) => void;
   hint?: ReactNode;
   error?: string | undefined;
+  help?: ReactNode;
 };
 
 /** GOV.UK checkboxes with an exclusive "none" option: choosing one clears the others. */
@@ -447,6 +448,7 @@ export function Checkboxes<T extends string>(props: CheckboxesProps<T>) {
           ) : null}
         </div>
       </fieldset>
+      {props.help}
     </div>
   );
 }

@@ -1,0 +1,104 @@
+import { ACCOUNTS_HELP } from "@/content/help/accounts";
+import { BALANCE_SHEET_HELP } from "@/content/help/balanceSheet";
+import { COMPANY_HELP } from "@/content/help/company";
+import { SAVED_GUIDES, words } from "@/content/help/guides.test-utils";
+import type { Guidance } from "@/content/help/hmrc/extract";
+import guidanceJson from "@/content/help/hmrc/guidance.json";
+import { indexGuidance } from "@/content/help/hmrc/lookup";
+import { PAGE_BOX_HELP } from "@/content/help/pages";
+import { PERIOD_HELP } from "@/content/help/period";
+import { PROFIT_AND_LOSS_HELP } from "@/content/help/profitAndLoss";
+import {
+  CHOOSE_PAGES_HELP,
+  CREATIVE_HELP,
+  LOAN_DATE_HELP,
+  RESEARCH_HELP,
+  SURRENDERER_HELP,
+} from "@/content/help/reliefs";
+import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
+import type { PlainHelp, QuestionHelp } from "@/content/help/types";
+import {
+  BALANCE_SHEET,
+  EMPTY_ACCOUNTS,
+  EMPTY_COMPANY,
+  PROFIT_AND_LOSS,
+  TAX_ADJUSTMENTS,
+} from "@/filing/model";
+import { EMPTY_RESEARCH } from "@/filing/reliefs";
+
+const INDEX = indexGuidance(guidanceJson as Guidance);
+
+const keys = (fields: readonly { key: string }[]) => fields.map((field) => field.key);
+
+/** Every question in the main return, by section: its help, and the questions asked. */
+const QUESTIONS: [section: string, help: Record<string, QuestionHelp>, asked: string[]][] = [
+  ["company details", COMPANY_HELP, Object.keys(EMPTY_COMPANY)],
+  ["accounting period", PERIOD_HELP, ["start", "end"]],
+  ["profit and loss", PROFIT_AND_LOSS_HELP, keys(PROFIT_AND_LOSS.fields)],
+  ["tax adjustments", TAX_ADJUSTMENTS_HELP, keys(TAX_ADJUSTMENTS.fields)],
+  ["balance sheet", BALANCE_SHEET_HELP, keys(BALANCE_SHEET.fields)],
+  ["accounts details", ACCOUNTS_HELP, Object.keys(EMPTY_ACCOUNTS)],
+  ["research and development", RESEARCH_HELP, Object.keys(EMPTY_RESEARCH)],
+  ["creative industries", CREATIVE_HELP, ["additional_information_submitted"]],
+  [
+    "surrendering companies",
+    SURRENDERER_HELP,
+    ["surrenderable_amount", "surrendered_to_others", "consortium_share"],
+  ],
+  ["loan dates", { loan_date: LOAN_DATE_HELP }, ["loan_date"]],
+  ["supplementary pages", { pages: CHOOSE_PAGES_HELP }, ["pages"]],
+];
+
+const EVERY_HELP = QUESTIONS.flatMap(([section, help]) =>
+  Object.entries(help).map(([key, question]) => [`${section}: ${key}`, question] as const),
+);
+
+function plainTexts(plain: PlainHelp): string[] {
+  return [...plain.meaning, ...plain.example, ...plain.excludes, ...plain.effect];
+}
+
+/** GOV.UK style: no Latin abbreviations, exclamation marks or ampersands (except R&D). */
+const OFF_STYLE = /\be\.g\.|\bi\.e\.|\betc\b|!|&(?!D\b)/;
+
+describe("help content", () => {
+  it.each(QUESTIONS)("covers every question in %s, and nothing else", (_, help, asked) => {
+    expect(Object.keys(help).sort()).toEqual([...asked].sort());
+  });
+
+  it.each(EVERY_HELP)("for %s explains it in plain English in every part", (_, question) => {
+    expect(question.topic).not.toBe("");
+    for (const part of Object.values(question.plain)) {
+      expect(part.length).toBeGreaterThan(0);
+      for (const text of part) expect(text.trim()).not.toBe("");
+    }
+  });
+
+  it.each(EVERY_HELP)("for %s has HMRC's guidance for each box it cites", (_, question) => {
+    expect(question.hmrc.length).toBeGreaterThan(0);
+    const boxes = question.hmrc.flatMap((ref) => ("box" in ref ? [ref.box] : []));
+    expect(boxes.filter((box) => INDEX.forBox(box).length === 0)).toEqual([]);
+  });
+
+  it.each(EVERY_HELP)("for %s quotes saved guides word for word", (_, question) => {
+    const quotes = question.hmrc.flatMap((ref) => ("quote" in ref ? [ref.quote] : []));
+    for (const quote of quotes) {
+      expect(Object.keys(SAVED_GUIDES)).toContain(quote.guide);
+      const guide = SAVED_GUIDES[quote.guide] ?? "";
+      const headings = guide
+        .split("\n")
+        .filter((line) => /^#{1,6}\s/.test(line))
+        .map((line) => line.replace(/^#+\s+/, "").trim());
+      expect(headings).toContain(quote.heading);
+      const missing = quote.paragraphs.filter((text) => !words(guide).includes(words(text)));
+      expect(missing).toEqual([]);
+    }
+  });
+
+  it("is written in GOV.UK style", () => {
+    const texts = [
+      ...EVERY_HELP.flatMap(([, question]) => [question.topic, ...plainTexts(question.plain)]),
+      ...Object.values(PAGE_BOX_HELP).flatMap(plainTexts),
+    ];
+    expect(texts.filter((text) => OFF_STYLE.test(text))).toEqual([]);
+  });
+});

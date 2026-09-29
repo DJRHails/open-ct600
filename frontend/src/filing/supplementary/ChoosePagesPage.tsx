@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 
 import type { PageCode, SchemaPage } from "@/api";
 import { Checkboxes } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { CHOOSE_PAGES_HELP } from "@/content/help/reliefs";
 import { useDraft } from "@/filing/draft";
 import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
@@ -63,6 +65,7 @@ function ChoosePages({ pages }: { pages: SchemaPage[] }) {
         value={chosen}
         onChange={setChosen}
         error={error}
+        help={<QuestionHelp id="pages-help" help={CHOOSE_PAGES_HELP} />}
       />
     </SectionFrame>
   );

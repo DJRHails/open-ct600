@@ -3,6 +3,8 @@ import { useNavigate } from "react-router";
 
 import type { ResearchAndDevelopmentClaimScheme } from "@/api";
 import { MoneyInput, Radios, TextInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { RESEARCH_HELP } from "@/content/help/reliefs";
 import { useDraft } from "@/filing/draft";
 import { type FieldErrors, savedPeriod, YES_NO, type YesNo } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
@@ -45,6 +47,10 @@ const FIELD_ORDER = [
   "additional_information_submitted",
 ];
 
+function helpFor(name: keyof ResearchAnswers) {
+  return <QuestionHelp id={`${name}-help`} help={RESEARCH_HELP[name]} />;
+}
+
 type YesNoQuestion = {
   name: keyof ResearchAnswers;
   legend: string;
@@ -63,6 +69,7 @@ function Claim({ values, set, errors, start }: ClaimProps) {
       onChange={(answer) => set({ [name]: answer })}
       error={errors[name]}
       inline
+      help={helpFor(name)}
     />
   );
   const text = (name: keyof ResearchAnswers) => ({
@@ -70,6 +77,7 @@ function Claim({ values, set, errors, start }: ClaimProps) {
     value: values[name],
     onChange: (value: string) => set({ [name]: value }),
     error: errors[name],
+    help: helpFor(name),
   });
   return (
     <>
@@ -80,6 +88,7 @@ function Claim({ values, set, errors, start }: ClaimProps) {
         value={values.scheme}
         onChange={(scheme) => set({ scheme })}
         error={errors.scheme}
+        help={helpFor("scheme")}
       />
       {shown.companyIsSme
         ? yesNo({
@@ -191,6 +200,7 @@ export function ResearchAndDevelopmentPage() {
         onChange={(claiming) => set({ claiming })}
         error={errors.claiming}
         inline
+        help={helpFor("claiming")}
       />
       {values.claiming === "yes" ? (
         <Claim values={values} set={set} errors={errors} start={start} />

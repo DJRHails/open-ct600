@@ -3,6 +3,8 @@ import { Navigate, useNavigate } from "react-router";
 
 import type { SchemaPage } from "@/api";
 import { MoneyInput, TextInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { SURRENDERER_HELP } from "@/content/help/reliefs";
 import { useDraft } from "@/filing/draft";
 import type { FieldErrors } from "@/filing/model";
 import { TASK_LIST, useNextPage } from "@/filing/paths";
@@ -72,6 +74,11 @@ function Surrenderers({ pages }: { pages: SchemaPage[] }) {
               [reference]: { ...BLANK, ...current[reference], [key]: value },
             })),
           error: errors[surrendererId(index, key)],
+          // The questions are the same for every company, so their help is under the first's.
+          help:
+            index === 0 ? (
+              <QuestionHelp id={`${key}-help`} help={SURRENDERER_HELP[key]} />
+            ) : undefined,
         });
         return (
           <div className="govuk-form-group" key={reference}>
