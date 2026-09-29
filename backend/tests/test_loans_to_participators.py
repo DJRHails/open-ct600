@@ -6,6 +6,7 @@ from decimal import Decimal
 import pytest
 from answers import boxes, compute, page_of, period, problems
 
+from open_ct600.reliefs import loans_to_participators
 from open_ct600.reliefs.loans_to_participators import (
     filed_s455_rate,
     nine_months_after,
@@ -65,7 +66,8 @@ def test_research_worked_example():
     assert loans.amendment_due == 0
 
 
-def test_loans_from_6_april_2026_are_filed_at_33_75_until_hmrc_accepts_35_75():
+def test_loans_from_6_april_2026_are_filed_at_33_75_until_hmrc_accepts_35_75(monkeypatch):
+    on(monkeypatch, "2027-07-01")
     page = loans_page(("J Smith", 40_000), repaid=[repayment(15_000, "2027-06-30")])
     computation = compute(**TAX_YEAR_2026, supplementary_pages={"A": page})
 
@@ -132,7 +134,15 @@ def test_loan_dates_must_be_in_the_period():
     assert list(found) == [("participator_loan_dates", "loans", 0)]
 
 
-def test_later_relief_ticks_box_485():
+def on(monkeypatch: pytest.MonkeyPatch, day: str) -> None:
+    """File the return on ``day``: the clock the date rules compare against."""
+    monkeypatch.setattr(loans_to_participators, "today", lambda: date.fromisoformat(day))
+
+
+def test_later_relief_ticks_box_485(monkeypatch):
+    # Written off 15 January 2027, in the period to 31 December 2027: relief is due from
+    # 1 October 2028 (s458(5)), so a return filed then can claim it in part 3.
+    on(monkeypatch, "2028-10-01")
     page = loans_page(("J Smith", 40_000), later=[repayment(0, "2027-01-15", released=5_000)])
     computation = compute(**CALENDAR_2025, supplementary_pages={"A": page})
 
@@ -220,3 +230,35 @@ def test_rates_by_the_date_the_loan_was_made():
 )
 def test_nine_months_after_keeps_month_ends(period_end, last_day):
     assert nine_months_after(period_end) == last_day
+
+
+def test_later_relief_is_refused_until_it_is_due(monkeypatch):
+    # Review M5. CTA 2010 s458(5), CTM61610: relief for a repayment more than nine months
+    # after the period end is due nine months and a day after the end of the accounting
+    # period of the repayment. Repaid 1 November 2025, in the period to 31 December 2025
+    # (periods taken to run for 12 months): due 1 October 2026.
+    page = loans_page(("J Smith", 40_000), later=[repayment(40_000, "2025-11-01")])
+    calendar_2024 = period("2024-01-01", "2024-12-31", "2025-06-01")
+
+    on(monkeypatch, "2026-09-30")
+    found = problems(**calendar_2024, supplementary_pages={"A": page})
+    ((location, message),) = found.items()
+    assert location == ("supplementary_pages", "A", "LoanLaterReliefNow", "Loan", 0, "Date")
+    assert "1 October 2026" in message
+
+    on(monkeypatch, "2026-10-01")
+    computation = compute(**calendar_2024, supplementary_pages={"A": page})
+    assert boxes(computation)["480"] == 0
+
+
+def test_repayment_dates_cannot_be_in_the_future(monkeypatch):
+    # Rules 9884 and 9431: the date of repayment must not be later than today.
+    on(monkeypatch, "2025-05-31")
+    page = loans_page(("J Smith", 6_000), repaid=[repayment(1_000, "2025-06-30")])
+
+    found = problems(supplementary_pages={"A": page})
+
+    assert (
+        "cannot be in the future"
+        in found[("supplementary_pages", "A", "ReliefEarlierThan", "Loan", 0, "Date")]
+    )
