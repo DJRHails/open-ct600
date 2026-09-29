@@ -84,13 +84,17 @@ SERVICES: dict[Environment, Service] = {
 }
 
 
+MAX_USER_ID_LENGTH = 64
+MAX_PASSWORD_LENGTH = 256
+
+
 class GatewayCredentials(BaseModel):
     """A Government Gateway user ID and password. The password never appears in reprs."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    user_id: str = Field(min_length=1, max_length=64)
-    password: SecretStr = Field(min_length=1, max_length=256)
+    user_id: str = Field(min_length=1, max_length=MAX_USER_ID_LENGTH)
+    password: SecretStr = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
 
 
 @dataclass(frozen=True)

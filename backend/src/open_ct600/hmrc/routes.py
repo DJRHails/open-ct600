@@ -37,6 +37,8 @@ from open_ct600.hmrc.client import (
     TransactionEngineError,
 )
 from open_ct600.hmrc.govtalk import (
+    MAX_PASSWORD_LENGTH,
+    MAX_USER_ID_LENGTH,
     Environment,
     GatewayCredentials,
     GovTalkError,
@@ -44,6 +46,7 @@ from open_ct600.hmrc.govtalk import (
     Vendor,
     build_submission,
 )
+from open_ct600.hmrc.irmark import IRmark
 from open_ct600.hmrc.validate import Problem, validate_return
 from open_ct600.hmrc.xml import build_return_xml
 from open_ct600.hmrc.xmldoc import serialise
@@ -94,8 +97,21 @@ class SubmitRequest(_Request):
     ct600: CT600Return
     declaration: Declaration
     environment: Literal["test-in-live", "live"]
-    gateway_user_id: Annotated[str, Field(min_length=1, max_length=64)]
-    gateway_password: Annotated[SecretStr, Field(min_length=1)]
+    gateway_user_id: Annotated[str, Field(min_length=1, max_length=MAX_USER_ID_LENGTH)]
+    gateway_password: Annotated[SecretStr, Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)]
+
+
+class SubmissionStatus(BaseModel):
+    """Whether this deployment submits returns to HMRC.
+
+    Attributes:
+        enabled: Whether ``POST /api/returns/submit-to-hmrc`` is switched on. When it is not,
+            do not ask for Government Gateway credentials at all.
+        environments: Where a submission can go when enabled.
+    """
+
+    enabled: bool
+    environments: list[Literal["test-in-live", "live"]]
 
 
 class ReturnProblem(BaseModel):
@@ -240,9 +256,17 @@ _FAILURES: tuple[tuple[type[TransactionEngineError], int, str], ...] = (
 
 def hmrc_router(settings: Settings) -> APIRouter:
     """Build the HMRC filing routes for a deployment's settings."""
-    router = APIRouter(prefix="/api/returns", tags=["hmrc"])
-    router.add_api_route("/validate", check_return, methods=["POST"])
-    router.add_api_route("/ct600.xml", download_xml, methods=["POST"], response_class=Response)
+    router = APIRouter(prefix="/api", tags=["hmrc"])
+    router.add_api_route("/returns/validate", check_return, methods=["POST"])
+    router.add_api_route(
+        "/returns/ct600.xml", download_xml, methods=["POST"], response_class=Response
+    )
+
+    def submission_status() -> SubmissionStatus:
+        """Say whether this deployment submits to HMRC (ask for credentials only if so)."""
+        return SubmissionStatus(
+            enabled=_submission_enabled(settings), environments=["test-in-live", "live"]
+        )
 
     async def submit_to_hmrc(
         request: SubmitRequest,
@@ -252,7 +276,8 @@ def hmrc_router(settings: Settings) -> APIRouter:
         """Submit a declared return to HMRC and return HMRC's answer."""
         return await _submit(settings, request, http, render)
 
-    router.add_api_route("/submit-to-hmrc", submit_to_hmrc, methods=["POST"])
+    router.add_api_route("/submission", submission_status, methods=["GET"])
+    router.add_api_route("/returns/submit-to-hmrc", submit_to_hmrc, methods=["POST"])
     return router
 
 
@@ -306,6 +331,32 @@ async def _submit(
     render: IXBRLRenderer,
 ) -> HMRCReceipt | HMRCRejection:
     vendor = _vendor(settings)
+    environment = Environment(request.environment)
+    # Computing, rendering, validating and IRmarking take up to a few hundred milliseconds;
+    # a worker thread keeps them off the event loop that other submissions' polls run on.
+    message, irmark = await run_in_threadpool(_prepare, request, render, environment, vendor)
+    client = TransactionEngineClient(environment, http=http, max_wait=POLL_TIMEOUT_SECONDS)
+    failure: HTTPException | None = None
+    try:
+        outcome = await client.submit(message)
+    except TransactionEngineError as error:
+        failure = _hmrc_failure(error)
+    if failure is not None:
+        # Raised outside the except block, so HMRC's error is not attached as its context.
+        raise failure
+    if isinstance(outcome, BusinessErrors):
+        return HMRCRejection(
+            environment=environment,
+            correlation_id=outcome.correlation_id,
+            errors=[_hmrc_error(error) for error in outcome.errors],
+        )
+    return _receipt(outcome, environment, irmark.base32)
+
+
+def _prepare(
+    request: SubmitRequest, render: IXBRLRenderer, environment: Environment, vendor: Vendor
+) -> tuple[bytes, IRmark]:
+    """Build the IRmarked GovTalk message, refusing a return HMRC would not accept."""
     computation = compute_return(request.ct600)
     documents = render(request.ct600, computation)
     if documents.missing:
@@ -316,32 +367,23 @@ async def _submit(
             f"so it cannot be submitted: {'; '.join(documents.missing.values())}.",
         )
     envelope = _envelope(request.ct600, computation, request.declaration, documents)
-    problems = await run_in_threadpool(validate_return, envelope)
+    problems = validate_return(envelope)
     if problems:
         raise _invalid(problems)
-    environment = Environment(request.environment)
     credentials = GatewayCredentials(
         user_id=request.gateway_user_id, password=request.gateway_password
     )
-    message, irmark = build_submission(
+    return build_submission(
         envelope, environment=environment, vendor=vendor, credentials=credentials
     )
-    client = TransactionEngineClient(environment, http=http, max_wait=POLL_TIMEOUT_SECONDS)
-    try:
-        outcome = await client.submit(message)
-    except TransactionEngineError as error:
-        raise _hmrc_failure(error) from None
-    if isinstance(outcome, BusinessErrors):
-        return HMRCRejection(
-            environment=environment,
-            correlation_id=outcome.correlation_id,
-            errors=[_hmrc_error(error) for error in outcome.errors],
-        )
-    return _receipt(outcome, environment, irmark.base32)
+
+
+def _submission_enabled(settings: Settings) -> bool:
+    return settings.hmrc_submission_enabled and settings.hmrc_vendor_id is not None
 
 
 def _vendor(settings: Settings) -> Vendor:
-    if not settings.hmrc_submission_enabled or settings.hmrc_vendor_id is None:
+    if not _submission_enabled(settings) or settings.hmrc_vendor_id is None:
         raise _failure(
             status.HTTP_403_FORBIDDEN,
             "submission_disabled",

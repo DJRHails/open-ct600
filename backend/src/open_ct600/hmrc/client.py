@@ -2,7 +2,7 @@
 
 The submission message carries the Government Gateway password, so nothing here logs it, keeps
 it, or lets it reach an exception: errors carry HMRC's error texts and the CorrelationID only,
-and transport errors are re-raised without the request attached.
+and transport errors are raised with neither cause nor context, so the request is unreachable.
 """
 
 import asyncio
@@ -224,11 +224,13 @@ class TransactionEngineClient:
                 url, content=content, headers={"Content-Type": "application/xml"}
             )
         except httpx2.HTTPError as error:
-            # Re-raised without chaining: the original holds the request, and its credentials.
-            raise TransactionEngineUnavailableError(
-                f"Could not reach HMRC at {url} ({type(error).__name__}: {error}). "
-                "If this happened while submitting, the return may or may not have been sent."
-            ) from None
+            failure = f"{type(error).__name__}: {error}"
+        # Raised outside the except block, so the httpx error, whose request holds the
+        # credentials, is neither the cause nor the context of this one.
+        raise TransactionEngineUnavailableError(
+            f"Could not reach HMRC at {url} ({failure}). "
+            "If this happened while submitting, the return may or may not have been sent."
+        )
 
 
 def _is_html(response: httpx2.Response) -> bool:

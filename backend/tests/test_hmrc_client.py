@@ -213,8 +213,9 @@ def test_transport_failure_leaks_no_password(caplog):
         run(stub)
 
     assert "may or may not have been sent" in str(raised.value)
+    # Neither cause nor implicit context may lead back to the request and its password.
     assert raised.value.__cause__ is None
-    assert raised.value.__suppress_context__
+    assert raised.value.__context__ is None
     for text in (str(raised.value), repr(raised.value.args), caplog.text):
         assert PASSWORD not in text
 
