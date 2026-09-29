@@ -15,6 +15,7 @@ from starlette.types import Scope
 from open_ct600.config import Settings
 from open_ct600.ct600 import CT600Return, Pounds, ReturnComputation, Submission, compute_return
 from open_ct600.filing import SubmissionReceipt, submit_return
+from open_ct600.hmrc.routes import hmrc_router
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.tax import PeriodError, TaxComputation, compute_corporation_tax, validate_period
 
@@ -143,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     resolved = settings or Settings()
     app = FastAPI(title="Open CT600", version="0.1.0")
     app.include_router(api)
+    app.include_router(hmrc_router(resolved))
     if resolved.static_dir is not None:
         if not (resolved.static_dir / "index.html").is_file():
             raise RuntimeError(
