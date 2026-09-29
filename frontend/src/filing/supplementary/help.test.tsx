@@ -5,6 +5,7 @@ import { boxHelpKey } from "@/components/help";
 import type { Guidance } from "@/content/help/hmrc/extract";
 import guidanceJson from "@/content/help/hmrc/guidance.json";
 import { boxLookups, indexGuidance } from "@/content/help/hmrc/lookup";
+import { loadGuidance } from "@/content/help/hmrc/useGuidance";
 import { PAGE_BOX_HELP } from "@/content/help/pages";
 import { asked, pageScreens, withComputed } from "@/filing/supplementary/spec";
 import { schemaPages } from "@/test-schema";
@@ -22,6 +23,9 @@ function askedBoxes(node: SpecNode): string[] {
   const own = node.box && asked(node) ? [node.box] : [];
   return [...own, ...node.children.filter(asked).flatMap(askedBoxes)];
 }
+
+// Loading HMRC's guidance the first time can take longer than a test waits under load.
+beforeAll(() => loadGuidance());
 
 describe("help on supplementary pages", () => {
   it.each(SCREENS)(

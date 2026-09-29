@@ -4,7 +4,11 @@ import { vi } from "vitest";
 
 import { BoxHelp, QuestionHelp } from "@/components/help";
 import { Tabs } from "@/components/Tabs";
+import { loadGuidance } from "@/content/help/hmrc/useGuidance";
 import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
+
+// Loading HMRC's guidance the first time can take longer than a test waits under load.
+beforeAll(() => loadGuidance());
 
 const TABS = [
   { id: "first", label: "First", panel: <a href="#somewhere">A link in the first panel</a> },

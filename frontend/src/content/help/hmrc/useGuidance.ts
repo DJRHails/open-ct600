@@ -15,7 +15,8 @@ export type GuidanceState =
 let loading: Promise<GuidanceIndex> | null = null;
 let loaded: GuidanceIndex | null = null;
 
-function load(): Promise<GuidanceIndex> {
+/** Load the guidance, once; pages that use it render it straight away afterwards. */
+export function loadGuidance(): Promise<GuidanceIndex> {
   loading ??= import("@/content/help/hmrc/guidance.json").then((module) => {
     // JSON's strings are not typed as the block kinds; extract.test.ts checks the file is
     // exactly what ``extractGuidance`` gives.
@@ -33,7 +34,7 @@ export function useGuidance(): GuidanceState {
   useEffect(() => {
     if (settled) return;
     let current = true;
-    load().then(
+    loadGuidance().then(
       (index) => current && setState({ status: "ready", index }),
       (error: unknown) => {
         // Let a later page try again, and say here that it could not be loaded.

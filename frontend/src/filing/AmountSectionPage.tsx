@@ -2,7 +2,10 @@ import { type ReactNode, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { PrefilledBanner } from "@/components/content";
-import { DateInput, MoneyInput, TextInput } from "@/components/forms";
+import { DateInput, MoneyInput, Radios, TextInput } from "@/components/forms";
+import { QuestionHelp } from "@/components/help";
+import { COMPARATIVES_HELP } from "@/content/help/accounts";
+import type { QuestionHelp as QuestionHelpContent } from "@/content/help/types";
 import { draftRecord } from "@/filing/companiesHouse";
 import {
   type ComparativesAnswers,
@@ -19,13 +22,17 @@ import {
   validatePreviousPeriod,
 } from "@/filing/comparatives";
 import { useDraft } from "@/filing/draft";
+import { answeredAmounts, gateErrors, gateId, type Gates, initialGates } from "@/filing/gates";
 import {
   type AmountField,
   type AmountSection,
   type AmountSectionKey,
+  type Draft,
   type FieldErrors,
   savedPeriod,
   validateAmounts,
+  YES_NO,
+  type YesNo,
 } from "@/filing/model";
 import { useNextPage } from "@/filing/paths";
 import { SectionFrame } from "@/filing/SectionFrame";
@@ -44,10 +51,12 @@ type ColumnsProps = {
   onCurrent: (value: string) => void;
   onPrevious: (value: string) => void;
   errors: FieldErrors;
+  help: ReactNode;
 };
 
 /** One line of the accounts with this period's figure beside the previous period's. */
-function Columns({ field, current, previous, onCurrent, onPrevious, errors }: ColumnsProps) {
+function Columns(props: ColumnsProps) {
+  const { field, current, previous, onCurrent, onPrevious, errors, help } = props;
   const hintId = `${field.key}-line-hint`;
   return (
     <div className="govuk-form-group">
@@ -75,6 +84,7 @@ function Columns({ field, current, previous, onCurrent, onPrevious, errors }: Co
           />
         </div>
       </fieldset>
+      {help}
     </div>
   );
 }
@@ -105,8 +115,50 @@ function PreviousPeriod({ period, onChange, errors }: PreviousPeriodProps) {
         value={dates.end}
         onChange={(end) => onChange({ ...dates, end })}
         error={errors[PREVIOUS_END]}
+        help={<QuestionHelp id="previous-period-help" help={COMPARATIVES_HELP.previous_period} />}
       />
     </>
+  );
+}
+
+/**
+ * The previous period's dates, asked with the profit and loss account; the balance sheet says
+ * which date its previous column is at.
+ */
+function PreviousHeading(props: PreviousPeriodProps & { sectionKey: AmountSectionKey }) {
+  const { sectionKey, ...dates } = props;
+  if (sectionKey === "profit_and_loss") return <PreviousPeriod {...dates} />;
+  const periodEnd = validatePreviousPeriod(dates.period);
+  if (!periodEnd.ok) return null;
+  return (
+    <p className="govuk-body">
+      The previous period’s balance sheet is at {formatDate(periodEnd.value.end)}.
+    </p>
+  );
+}
+
+type PreviousTaxProps = {
+  value: string;
+  onChange: (value: string) => void;
+  error: string | undefined;
+};
+
+/** Last period's tax charge, asked with the profit and loss account; this period's is worked out. */
+function PreviousTax({ value, onChange, error }: PreviousTaxProps) {
+  // A text keyboard, not a numeric one: some numeric keyboards have no minus sign.
+  return (
+    <TextInput
+      id={previousFigureId(TAX_ON_PROFIT)}
+      label="Tax on profit in the previous period"
+      hint="The tax charge in last period’s profit and loss account. If it was a tax credit, put a minus sign in front, like -1200. We work out this period’s."
+      value={value}
+      onChange={onChange}
+      error={error}
+      prefix="£"
+      width="10"
+      spellCheck={false}
+      help={<QuestionHelp id="tax-on-profit-help" help={COMPARATIVES_HELP.tax_on_profit} />}
+    />
   );
 }
 
@@ -133,32 +185,102 @@ function PreviousNotice({ prefilled, unavailable, firstUnknown }: NoticeProps) {
   return null;
 }
 
+type AmountProps = {
+  field: AmountField<AmountSectionKey>;
+  value: string;
+  onChange: (value: string) => void;
+  /** The previous period's figure, when it is asked beside this period's. */
+  previous: { value: string; onChange: (value: string) => void } | null;
+  errors: FieldErrors;
+  help: ReactNode;
+};
+
+/** One amount: a single figure, or this period's beside the previous period's. */
+function Amount({ field, value, onChange, previous, errors, help }: AmountProps) {
+  if (previous) {
+    return (
+      <Columns
+        field={field}
+        current={value}
+        previous={previous.value}
+        onCurrent={onChange}
+        onPrevious={previous.onChange}
+        errors={errors}
+        help={help}
+      />
+    );
+  }
+  const props = {
+    id: field.key,
+    label: field.label,
+    hint: field.hint,
+    value,
+    onChange,
+    error: errors[field.key],
+    help,
+  };
+  return field.kind === "count" ? (
+    <TextInput {...props} width="3" inputMode="numeric" />
+  ) : (
+    <MoneyInput {...props} />
+  );
+}
+
+type QuestionProps = Omit<AmountProps, "help"> & {
+  gate: YesNo;
+  onGate: (answer: YesNo) => void;
+  help: QuestionHelpContent | undefined;
+};
+
+/** An amount with its help, after its yes or no question if it has one. */
+function AmountQuestion({ gate, onGate, help, ...amount }: QuestionProps) {
+  const { field, errors } = amount;
+  const helpNode = help ? <QuestionHelp id={`${field.key}-help`} help={help} /> : undefined;
+  if (!field.gate) return <Amount {...amount} help={helpNode} />;
+  return (
+    <Radios
+      name={gateId(field.key)}
+      legend={field.gate.question}
+      hint={field.gate.hint}
+      options={YES_NO.map((option) =>
+        option.value === "yes"
+          ? { ...option, conditional: <Amount {...amount} help={undefined} /> }
+          : option,
+      )}
+      value={gate}
+      onChange={onGate}
+      error={errors[gateId(field.key)]}
+      help={helpNode}
+    />
+  );
+}
+
+/** Every answer on the page, in order, so the error summary lists problems top to bottom. */
+function fieldOrder<K extends AmountSectionKey>(asked: AmountField<K>[]): string[] {
+  return [
+    PREVIOUS_START,
+    PREVIOUS_END,
+    ...asked.flatMap((field) => [
+      ...(field.gate ? [gateId(field.key)] : []),
+      field.key,
+      previousFigureId(field.key),
+    ]),
+    previousFigureId(TAX_ON_PROFIT),
+  ];
+}
+
 /**
- * A section of the return made up of amounts: profit and loss, adjustments, balance sheet. After
- * the company's first period of account, the profit and loss account and balance sheet also ask
- * for the previous period's figures (comparatives), prefilled from the accounts last filed at
- * Companies House where they could be read.
+ * The previous period's answers: the saved comparatives, with the filed accounts' figures for
+ * this section (and their dates, if none are saved) until the section is saved.
  */
-export function AmountSectionPage<K extends AmountSectionKey>({
-  section,
-}: {
-  section: AmountSection<K>;
-}) {
-  const { draft, saveSection } = useDraft();
-  const { next } = useNextPage();
-  const navigate = useNavigate();
+function usePrevious<K extends AmountSectionKey>(section: AmountSection<K>, draft: Draft) {
   const key = section.key;
   const comparative = isComparative(key);
-  const askingPrevious = comparative && comparativesAsked(draft);
-  const record = draftRecord(draft);
   const [prefill] = useState(() =>
     comparative && !draft[key] && !draft.comparatives?.[key]
-      ? filedComparatives(record, key, section.fields)
+      ? filedComparatives(draftRecord(draft), key, section.fields)
       : null,
   );
-  const [values, setValues] = useState<Record<string, string>>(draft[key] ?? {});
-  // The saved comparatives, with the filed accounts' figures for this section (and their dates,
-  // if none are saved) until the section is saved.
   const [previous, setPrevious] = useState<ComparativesAnswers>(() => {
     const saved = draft.comparatives ?? {};
     if (!prefill || !comparative) return saved;
@@ -171,26 +293,78 @@ export function AmountSectionPage<K extends AmountSectionKey>({
       [key]: prefill[key] ?? {},
     };
   });
+  return { prefill, previous, setPrevious };
+}
+
+type SectionAnswers = {
+  values: Record<string, string>;
+  gates: Gates;
+  /** The previous period's answers, when they are asked. */
+  previous: ComparativesAnswers | null;
+};
+
+/** Everything wrong with a section's answers: amounts, yes or no questions, previous period. */
+function sectionProblems<K extends AmountSectionKey>(
+  section: AmountSection<K>,
+  draft: Draft,
+  { values, gates, previous }: SectionAnswers,
+): FieldErrors {
+  const result = validateAmounts(section, answeredAmounts(section, values, gates), draft);
+  const previousProblems = previous
+    ? comparativesProblems(
+        { ...draft, comparatives: previous },
+        section.key as ComparativeSection,
+        section.fields,
+        savedPeriod(draft)?.start,
+      )
+    : {};
+  return {
+    ...(result.ok ? {} : result.errors),
+    ...gateErrors(section, values, gates),
+    ...previousProblems,
+  };
+}
+
+type PageProps<K extends AmountSectionKey> = {
+  section: AmountSection<K>;
+  /** Help under each amount's question, by its key. */
+  help: Partial<Record<string, QuestionHelpContent>>;
+};
+
+/**
+ * A section of the return made up of amounts: profit and loss, adjustments, balance sheet. After
+ * the company's first period of account, the profit and loss account and balance sheet also ask
+ * for the previous period's figures (comparatives), prefilled from the accounts last filed at
+ * Companies House where they could be read. An amount with a yes or no question in front of it
+ * (``AmountField.gate``) is revealed on yes and is 0 on no. Each question has help under it.
+ */
+export function AmountSectionPage<K extends AmountSectionKey>({ section, help }: PageProps<K>) {
+  const { draft, saveSection } = useDraft();
+  const { next } = useNextPage();
+  const navigate = useNavigate();
+  const key = section.key;
+  const comparative = isComparative(key);
+  const askingPrevious = comparative && comparativesAsked(draft);
+  const record = draftRecord(draft);
+  const { prefill, previous, setPrevious } = usePrevious(section, draft);
+  const [values, setValues] = useState<Record<string, string>>(draft[key] ?? {});
+  const [gates, setGates] = useState<Gates>(() => initialGates(section, draft[key]));
   const [errors, setErrors] = useState<FieldErrors>({});
+  const answered = answeredAmounts(section, values, gates);
   // Some amounts are only asked once an earlier answer makes them relevant.
-  const asked = section.fields.filter((field) => field.askedWhen?.(values, draft) ?? true);
+  const asked = section.fields.filter((field) => field.askedWhen?.(answered, draft) ?? true);
 
   function save() {
-    const result = validateAmounts(section, values, draft);
-    const previousProblems = askingPrevious
-      ? comparativesProblems(
-          { ...draft, comparatives: previous },
-          key as ComparativeSection,
-          section.fields,
-          savedPeriod(draft)?.start,
-        )
-      : {};
-    const found = { ...(result.ok ? {} : result.errors), ...previousProblems };
+    const found = sectionProblems(section, draft, {
+      values,
+      gates,
+      previous: askingPrevious ? previous : null,
+    });
     if (Object.keys(found).length > 0) {
       setErrors(found);
       return;
     }
-    saveSection(key, values);
+    saveSection(key, answered);
     if (askingPrevious) saveSection("comparatives", previous);
     navigate(next);
   }
@@ -201,35 +375,12 @@ export function AmountSectionPage<K extends AmountSectionKey>({
       ...current,
       [key]: { ...current[key as ComparativeSection], [field]: value },
     }));
-  const periodEnd = validatePreviousPeriod(previous.period);
-
-  let heading: ReactNode = null;
-  if (askingPrevious && key === "profit_and_loss") {
-    heading = (
-      <PreviousPeriod
-        period={previous.period}
-        onChange={(period) => setPrevious({ ...previous, period })}
-        errors={errors}
-      />
-    );
-  } else if (askingPrevious && periodEnd.ok) {
-    heading = (
-      <p className="govuk-body">
-        The previous period’s balance sheet is at {formatDate(periodEnd.value.end)}.
-      </p>
-    );
-  }
 
   return (
     <SectionFrame
       title={section.title}
       errors={errors}
-      fieldOrder={[
-        PREVIOUS_START,
-        PREVIOUS_END,
-        ...asked.flatMap((field) => [field.key, previousFigureId(field.key)]),
-        previousFigureId(TAX_ON_PROFIT),
-      ]}
+      fieldOrder={fieldOrder(asked)}
       inputId={(field) =>
         field === PREVIOUS_START || field === PREVIOUS_END ? `${field}-day` : field
       }
@@ -244,47 +395,39 @@ export function AmountSectionPage<K extends AmountSectionKey>({
           firstUnknown={firstPeriod(draft) === ""}
         />
       ) : null}
-      {heading}
-      {asked.map((field) => {
-        const props = {
-          id: field.key,
-          label: field.label,
-          hint: field.hint,
-          value: values[field.key] ?? "",
-          onChange: (value: string) => setValues({ ...values, [field.key]: value }),
-          error: errors[field.key],
-        };
-        if (askingPrevious) {
-          return (
-            <Columns
-              key={field.key}
-              field={field as AmountField<AmountSectionKey>}
-              current={props.value}
-              previous={previousValues[field.key] ?? ""}
-              onCurrent={props.onChange}
-              onPrevious={(value) => setPreviousFigure(field.key, value)}
-              errors={errors}
-            />
-          );
-        }
-        return field.kind === "count" ? (
-          <TextInput key={field.key} {...props} width="3" inputMode="numeric" />
-        ) : (
-          <MoneyInput key={field.key} {...props} />
-        );
-      })}
+      {askingPrevious ? (
+        <PreviousHeading
+          sectionKey={key}
+          period={previous.period}
+          onChange={(period) => setPrevious({ ...previous, period })}
+          errors={errors}
+        />
+      ) : null}
+      {asked.map((field) => (
+        <AmountQuestion
+          key={field.key}
+          field={field as AmountField<AmountSectionKey>}
+          value={values[field.key] ?? ""}
+          onChange={(value) => setValues({ ...values, [field.key]: value })}
+          previous={
+            askingPrevious
+              ? {
+                  value: previousValues[field.key] ?? "",
+                  onChange: (value) => setPreviousFigure(field.key, value),
+                }
+              : null
+          }
+          gate={gates[field.key] ?? ""}
+          onGate={(answer) => setGates({ ...gates, [field.key]: answer })}
+          errors={errors}
+          help={help[field.key]}
+        />
+      ))}
       {askingPrevious && key === "profit_and_loss" ? (
-        // A text keyboard, not a numeric one: some numeric keyboards have no minus sign.
-        <TextInput
-          id={previousFigureId(TAX_ON_PROFIT)}
-          label="Tax on profit in the previous period"
-          hint="The tax charge in last period’s profit and loss account. If it was a tax credit, put a minus sign in front, like -1200. We work out this period’s."
+        <PreviousTax
           value={previous.tax_on_profit ?? ""}
           onChange={(value) => setPrevious((current) => ({ ...current, tax_on_profit: value }))}
           error={errors[previousFigureId(TAX_ON_PROFIT)]}
-          prefix="£"
-          width="10"
-          spellCheck={false}
         />
       ) : null}
     </SectionFrame>

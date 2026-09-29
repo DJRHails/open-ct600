@@ -1,8 +1,12 @@
 import { screen, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 
+import { loadGuidance } from "@/content/help/hmrc/useGuidance";
 import { TAX_ADJUSTMENTS } from "@/filing/model";
 import { openDraft, renderApp, seedDraft } from "@/test-utils";
+
+// Loading HMRC's guidance the first time can take longer than a test waits under load.
+beforeAll(() => loadGuidance());
 
 const PAGE = "/file/tax-adjustments";
 
