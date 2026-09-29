@@ -78,7 +78,6 @@ ROYALTY = {
     "Amount": "1000",
     "RoyaltiesAgreement": {"DoubleTaxationAgreement": "UK/Germany"},
     "DeductionRate": "5",
-    "DeductionAmount": "50",
 }
 
 SHAPES = {
@@ -122,22 +121,12 @@ def test_every_shape_is_accepted_by_hmrc_schema_and_rules(overrides):
     assert validate_return(build(make_return(**overrides))) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="CORE computation gives box 210 without box 220 (NetChargeableGains), which the "
-    "schema requires whenever ChargeableGains is present",
-)
 def test_chargeable_gains_are_accepted():
     ct600 = make_return(tax_adjustments={"chargeable_gains": 5_000})
 
     assert validate_return(build(ct600)) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="CORE computation gives boxes 326 (associated companies) for periods ending before "
-    "1 April 2023, when the form has no such section (rule 9389)",
-)
 def test_associated_companies_before_april_2023_are_accepted():
     ct600 = make_return(
         period={"start": "2021-04-01", "end": "2022-03-31"},
@@ -148,19 +137,10 @@ def test_associated_companies_before_april_2023_are_accepted():
     assert validate_return(build(ct600)) == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="CORE computation does not yet carry CT600A's box A80 to box 480 (rule 9428)",
-)
 def test_loans_to_participators_page_is_accepted():
     loans = {
         "BeforeEndPeriod": "no",
-        "LoansInformation": {
-            "Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}],
-            "TotalLoans": "6000",
-            "TaxChargeable": "2025.00",
-        },
-        "TaxPayable": "2025.00",
+        "LoansInformation": {"Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}]},
     }
 
     assert validate_return(build(make_return(supplementary_pages={"A": loans}))) == []

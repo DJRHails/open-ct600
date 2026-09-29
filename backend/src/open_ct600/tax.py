@@ -185,6 +185,21 @@ def validate_period(start: date, end: date) -> None:
         )
 
 
+def average_main_rate(start: date, end: date) -> Fraction:
+    """The main rate over a period, weighted by the days in each financial year.
+
+    Used where legislation charges "the main rate" for an accounting period that may straddle
+    a change of rate (the RDEC notional tax before April 2024, the CFC charge).
+    """
+    validate_period(start, end)
+    parts = _split_by_financial_year(start, end)
+    weighted = sum(
+        (Fraction(RATES[year].main_rate) * ((part_end - part_start).days + 1))
+        for year, part_start, part_end in parts
+    )
+    return Fraction(weighted) / ((end - start).days + 1)
+
+
 def _split_by_financial_year(start: date, end: date) -> list[tuple[int, date, date]]:
     parts = []
     cursor = start

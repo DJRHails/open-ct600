@@ -82,15 +82,59 @@ def test_compute_return():
 
 
 def test_compute_return_locates_supplementary_page_problems():
-    ct600 = {**SUBMISSION["ct600"], "supplementary_pages": {"A": {"BeforeEndPeriod": "no"}}}
+    loans = {"BeforeEndPeriod": "no", "LoansInformation": {"Loan": [{"AmountOfLoan": "500"}]}}
+    ct600 = {**SUBMISSION["ct600"], "supplementary_pages": {"A": loans}}
     with client_for() as client:
         response = client.post("/api/returns/compute", json=ct600)
 
     assert response.status_code == 422
     (problem,) = response.json()["detail"]
-    assert problem["loc"] == ["body", "supplementary_pages", "A", "TaxPayable"]
-    assert problem["msg"] == "Enter tax payable s419"
-    assert problem["ctx"]["box"] == "A80"
+    assert problem["loc"] == [
+        "body",
+        "supplementary_pages",
+        "A",
+        "LoansInformation",
+        "Loan",
+        0,
+        "Name",
+    ]
+    assert problem["msg"] == "Enter name of participator or associate"
+    assert problem["ctx"]["box"] == "A10A"
+
+
+def test_compute_return_reports_problems_the_computation_finds():
+    loans = {
+        "BeforeEndPeriod": "no",
+        "LoansInformation": {"Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "500"}]},
+        "ReliefEarlierThan": {
+            "Loan": [{"Name": "Ada Lovelace", "AmountRepaid": "900", "Date": "2025-05-01"}]
+        },
+    }
+    ct600 = {**SUBMISSION["ct600"], "supplementary_pages": {"A": loans}}
+    with client_for() as client:
+        response = client.post("/api/returns/compute", json=ct600)
+
+    assert response.status_code == 422
+    (problem,) = response.json()["detail"]
+    assert problem["loc"] == ["body", "supplementary_pages", "A", "ReliefEarlierThan", "TotalLoans"]
+    assert problem["ctx"]["box"] == "A40"
+    assert "cannot be more than the loans in part 1" in problem["msg"]
+
+
+def test_compute_return_gives_completed_pages_and_reliefs():
+    loans = {
+        "BeforeEndPeriod": "no",
+        "LoansInformation": {"Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}]},
+    }
+    ct600 = {**SUBMISSION["ct600"], "supplementary_pages": {"A": loans}}
+    with client_for() as client:
+        body = client.post("/api/returns/compute", json=ct600).json()
+
+    assert body["pages"]["A"]["TaxPayable"] == "2025.00"
+    boxes = {box["box"]: box["value"] for box in body["boxes"]}
+    assert (boxes["95"], boxes["480"]) == ("1", "2025.00")
+    assert body["reliefs"]["loans_to_participators"]["tax_payable"] == "2025.00"
+    assert body["reliefs"]["group_relief"] is None
 
 
 def test_schema_pages_lists_every_page_with_its_spec():
@@ -108,6 +152,8 @@ def test_schema_pages_lists_every_page_with_its_spec():
         "LoansInformation",
     ]
     assert [page["code"] for page in pages if page["dormant"]] == ["G"]
+    assert {"A15", "A20", "A80"} <= set(loans["computed"])
+    assert "A10B" not in loans["computed"]
 
 
 def test_submit_issues_a_receipt_with_a_stable_fingerprint():

@@ -49,15 +49,16 @@ SUBMIT = {
     "gateway_user_id": "123456789012",
     "gateway_password": PASSWORD,
 }
-LOANS_PAGE = {
-    "BeforeEndPeriod": "no",
-    "LoansInformation": {
-        "Loan": [{"Name": "Ada Lovelace", "AmountOfLoan": "6000"}],
-        "TotalLoans": "6000",
-        "TaxChargeable": "2025.00",
-    },
-    "TaxPayable": "2025.00",
+UNAUTHORISED_CLAIM_PAGE = {
+    "ClaimToGroupRelief": {
+        "CompanyInformation": {
+            "Company": [
+                {"Name": "Parent Ltd", "TaxReference": "1234567891", "AmountClaimed": "1000"}
+            ]
+        }
+    }
 }
+"""A group relief claim without its claim authorisation, which HMRC's rules require (9518)."""
 ENABLED = Settings(hmrc_submission_enabled=True, hmrc_vendor_id="0000")
 
 
@@ -121,16 +122,17 @@ def test_validate_explains_computations_missing_after_march_2026():
 
 
 def test_validate_locates_problems_on_supplementary_pages():
-    ct600 = {**CT600, "supplementary_pages": {"A": LOANS_PAGE}}
+    ct600 = {**CT600, "supplementary_pages": {"C": UNAUTHORISED_CLAIM_PAGE}}
 
     with client_for() as client:
         report = client.post("/api/returns/validate", json={"ct600": ct600}).json()
 
-    problem = next(p for p in report["problems"] if p["code"] == 9428)
-    assert problem["page"] == "A"
-    assert problem["box"] == "A80"
-    assert problem["path"] == "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/TaxPayable"
-    assert "Box 480" in problem["message"]
+    problem = next(p for p in report["problems"] if p["code"] == 9518)
+    assert problem["page"] == "C"
+    assert problem["path"] == "/IRenvelope/CompanyTaxReturn/GroupAndConsortium/ClaimToGroupRelief"
+    assert "Claim authorisation section must be completed" in problem["message"]
+    main_return = next(p for p in report["problems"] if p["code"] == 9955)
+    assert (main_return["page"], main_return["box"]) == (None, "310")
 
 
 def test_validate_explains_accounts_that_cannot_be_tagged():
@@ -229,7 +231,8 @@ def test_submission_after_march_2026_is_refused_before_anything_is_sent():
 
 def test_invalid_return_is_not_sent():
     engine = StubTransactionEngine()
-    submission = {**SUBMIT, "ct600": {**CT600, "supplementary_pages": {"A": LOANS_PAGE}}}
+    claim = {"C": UNAUTHORISED_CLAIM_PAGE}
+    submission = {**SUBMIT, "ct600": {**CT600, "supplementary_pages": claim}}
 
     with client_for(engine=engine) as client:
         response = client.post("/api/returns/submit-to-hmrc", json=submission)
@@ -237,7 +240,7 @@ def test_invalid_return_is_not_sent():
     assert response.status_code == 422
     detail = response.json()["detail"]
     assert detail["error"] == "invalid_return"
-    assert [error["code"] for error in detail["errors"]] == [9428]
+    assert [error["code"] for error in detail["errors"]] == [9955, 9518]
     assert engine.messages == []
 
 
