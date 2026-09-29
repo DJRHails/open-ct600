@@ -8198,7 +8198,7 @@
         "name": "ReliefEarlierThan",
         "path": "/IRenvelope/CompanyTaxReturn/LoansByCloseCompanies/ReliefEarlierThan",
         "box": null,
-        "label": "Loans made during the returning period - Relief for amounts repaid, released or written off after the end of the period but eariler than 9 months and 1 day after the end of the period",
+        "label": "Loans made during the return period - Relief for amounts repaid, released or written off after the end of the period but earlier than 9 months and 1 day after the end of the period",
         "kind": "group",
         "min": 0,
         "max": 1,
