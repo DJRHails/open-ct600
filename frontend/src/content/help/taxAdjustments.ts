@@ -4,6 +4,9 @@
  * https://www.gov.uk/capital-allowances, https://www.gov.uk/work-out-capital-allowances (pools
  * and writing down allowances: main pool 14% from 1 April 2026 for Corporation Tax, 18% before),
  * https://www.gov.uk/tax-limited-company-gives-to-charity,
+ * https://www.gov.uk/government/collections/corporation-tax-on-chargeable-gains-indexation-allowance-rates
+ * and the Capital Gains Manual (CG17231: indexation frozen at December 2017 for companies'
+ * disposals of assets held before 2018; CG46100: indexation cannot create or increase a loss),
  * https://www.gov.uk/guidance/corporation-tax-calculating-and-claiming-a-loss,
  * https://www.gov.uk/guidance/corporation-tax-marginal-relief and the Company Taxation Manual
  * (CTM03940 and CTM03945 for associated companies).
@@ -107,9 +110,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       meaning: [
         "If the company sold or gave away an asset for more than it cost, the profit on it may be a chargeable gain. Companies pay Corporation Tax on these gains, not Capital Gains Tax.",
         "Assets include land and buildings, shares in other companies, and some other investments.",
+        "The gain is what the company got for the asset, minus what it cost and the costs of buying and selling it. If the company owned the asset before 1 January 2018, it also takes off indexation allowance, which allows for inflation up to December 2017 only. Indexation allowance can reduce a gain to nothing, but cannot create or increase a loss.",
       ],
       example: [
-        "The company bought a small office for £150,000 and sold it this year for £190,000, paying £5,000 in legal and estate agent fees. The gain is £190,000 minus £150,000 minus £5,000, which is £35,000. Enter £35,000.",
+        "The company bought a small office in 2019 for £150,000 and sold it this year for £190,000, paying £5,000 in legal and estate agent fees. It bought the office after 2017, so there is no indexation allowance. The gain is £190,000 minus £150,000 minus £5,000, which is £35,000. Enter £35,000.",
+        "If it had bought the office in 2010 instead, it would also take off indexation allowance: £150,000 times the factor in HMRC's December 2017 table for the month it bought it. If that factor were 0.250, the allowance would be £37,500. That is more than the £35,000 gain, so the gain is reduced to nothing, not turned into a loss. Enter 0.",
       ],
       excludes: [
         "Equipment and vehicles the company claimed capital allowances on. Selling those is dealt with through capital allowances.",
@@ -118,10 +123,23 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Most intangible assets, like goodwill, created or bought after 1 April 2002.",
       ],
       effect: [
-        "We add the gain to the company's taxable profits, in boxes 210 and 220. Enter the gain after taking off any capital losses the company can use against it.",
+        "We add the gain to the company's taxable profits, in boxes 210 and 220. Enter the gain after indexation allowance and after taking off any capital losses the company can use against it.",
       ],
     },
-    hmrc: [{ box: "210" }, { box: "215" }],
+    hmrc: [
+      { box: "210" },
+      { box: "215" },
+      { box: "220" },
+      {
+        quote: {
+          guide: "corporation-tax-on-chargeable-gains-indexation-allowance-rates",
+          heading: "Indexation Allowance rates for Corporation Tax on chargeable gains",
+          paragraphs: [
+            "From 1 January 2018 the capital gains Indexation Allowance has been frozen. When a company or organisation makes a capital gain on or after 1 January 2018, the Indexation Allowance that is applied in order to determine the amount of the chargeable gain will be calculated up to December 2017.",
+          ],
+        },
+      },
+    ],
   },
   qualifying_donations: {
     topic: "qualifying charitable donations",
