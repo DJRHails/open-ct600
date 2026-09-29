@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,8 @@ class Settings(BaseSettings):
             handles Gateway passwords.
         hmrc_vendor_id: The 4-digit vendor ID HMRC's Software Developers Support Team issued
             to whoever runs this deployment; submission stays off without it.
+        companies_house_api_key: A Companies House public data API key. Looking companies
+            up is switched off without it.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -25,3 +27,4 @@ class Settings(BaseSettings):
     static_dir: Path | None = None
     hmrc_submission_enabled: bool = False
     hmrc_vendor_id: Annotated[str, Field(pattern=r"^[0-9]{4}$")] | None = None
+    companies_house_api_key: Annotated[SecretStr, Field(min_length=1)] | None = None
