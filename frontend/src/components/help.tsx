@@ -20,7 +20,10 @@ const HMRC = "HM Revenue and Customs";
 function Details({ summary, children }: { summary: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <details className="govuk-details" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <details
+      className="govuk-details govuk-!-margin-top-4"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
       <summary className="govuk-details__summary">
         <span className="govuk-details__summary-text">{summary}</span>
       </summary>
