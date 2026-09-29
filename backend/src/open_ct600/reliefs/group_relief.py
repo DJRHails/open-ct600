@@ -150,10 +150,13 @@ def _claim_limit(
     )
     facts = surrenderers.get((row.text(reference_box) or "").strip())
     if facts is not None:
-        surrenderable = Fraction(facts.surrenderable_amount * shared_days, days_between(*theirs))
-        surrenderable -= facts.surrendered_to_others
+        overlap_amount = Fraction(facts.surrenderable_amount * shared_days, days_between(*theirs))
+        surrenderable = overlap_amount - facts.surrendered_to_others
         if facts.consortium_share is not None:
-            surrenderable *= Fraction(facts.consortium_share) / 100
+            # CTA 2010 s143 (review M2): the member's ownership proportion applies to the
+            # whole loss for the overlap; other members' surrenders only cap what is left.
+            share = overlap_amount * Fraction(facts.consortium_share) / 100
+            surrenderable = min(share, surrenderable)
         if whole_pounds_down(max(surrenderable, Fraction(0))) < limit:
             limit = whole_pounds_down(max(surrenderable, Fraction(0)))
             reason = "the amount the surrendering company can surrender for the overlapping period"

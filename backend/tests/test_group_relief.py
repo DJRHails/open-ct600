@@ -316,3 +316,27 @@ def test_group_relief_is_limited_by_the_claimants_own_trading_loss():
     result = boxes(computation)
     # 315 = 60,000 - 10,000 = 50,000 at 19% = 9,500
     assert (result["310"], result["315"], result["440"]) == (10_000, 50_000, 9_500)
+
+
+def test_consortium_share_applies_to_the_whole_loss_before_other_members_surrenders():
+    # Review M2. CTA 2010 s143: a member's relief is limited to its ownership proportion of
+    # the consortium company's loss (35% x 100,000 = 35,000), and separately by what is left
+    # unsurrendered (100,000 - 60,000 = 40,000), not 35% of the 40,000 left.
+    surrenderer = {
+        "tax_reference": "1234567891",
+        "surrenderable_amount": 100_000,
+        "surrendered_to_others": 60_000,
+        "consortium_share": "35",
+    }
+
+    computation = compute(
+        group_relief_surrenderers=[surrenderer],
+        supplementary_pages={"C": claims(claim(35_000))},
+    )
+    assert boxes(computation)["310"] == 35_000
+
+    tight = {**surrenderer, "surrendered_to_others": 70_000}
+    found = problems(
+        group_relief_surrenderers=[tight], supplementary_pages={"C": claims(claim(35_000))}
+    )
+    assert "£30,000 or less" in next(iter(found.values()))
