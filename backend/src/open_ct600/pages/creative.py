@@ -289,7 +289,7 @@ def redeem_creative(
     remaining = _pre_step_1(page, liability)
     reached: set[str] = set()
     used_on_return, payable = ZERO, None
-    if claims.expenditure_credit > 0:
+    if claims.expenditure_credit > 0 or pre_step:
         reached.add("Step1")
         total, available, used = _step_1(page, remaining)
         if total - used > 0:
