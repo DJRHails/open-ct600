@@ -1,0 +1,46 @@
+{
+  "etag": "0f7a2cb3f6a1b3b2b4d1c9f2f6e1d4a8b7c6d5e4",
+  "items_per_page": 20,
+  "start_index": 0,
+  "total_results": 2,
+  "kind": "search#companies",
+  "items": [
+    {
+      "kind": "searchresults#company",
+      "title": "ACME WIDGETS LTD",
+      "company_number": "01234567",
+      "company_type": "ltd",
+      "company_status": "active",
+      "date_of_creation": "2019-05-01",
+      "description": "01234567 - Incorporated on  1 May 2019",
+      "description_identifier": ["incorporated-on"],
+      "address_snippet": "1 High Street, Leeds, LS1 1AA",
+      "address": {
+        "address_line_1": "1 High Street",
+        "locality": "Leeds",
+        "postal_code": "LS1 1AA"
+      },
+      "links": {"self": "/company/01234567"},
+      "matches": {"title": [1, 4]},
+      "snippet": ""
+    },
+    {
+      "kind": "searchresults#company",
+      "title": "ACME WIDGETS (NORTH) LIMITED",
+      "company_number": "SC123456",
+      "company_type": "ltd",
+      "company_status": "dissolved",
+      "date_of_creation": "2001-02-03",
+      "date_of_cessation": "2015-06-30",
+      "description": "SC123456 - Dissolved on 30 June 2015",
+      "description_identifier": ["dissolved-on"],
+      "address_snippet": "2 Low Road, Glasgow, G1 1AA",
+      "address": {
+        "address_line_1": "2 Low Road",
+        "locality": "Glasgow",
+        "postal_code": "G1 1AA"
+      },
+      "links": {"self": "/company/SC123456"}
+    }
+  ]
+}
