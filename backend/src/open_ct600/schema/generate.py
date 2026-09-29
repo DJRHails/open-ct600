@@ -18,7 +18,6 @@ documents), whose element gets kind ``any``.
 import csv
 import json
 import re
-from collections import deque
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -79,8 +78,6 @@ _BUILTIN_KINDS = {
 _PATTERN_KINDS = {"text", "integer"}
 """Kinds whose XSD patterns constrain what users enter. For the others the patterns only fix
 the XML lexical form (``1234.00``, ``2024-03-31``), which the XML writer produces."""
-_CUT_OFF_LENGTH = 80
-"""Box map paths at least this long may have been cut off; the shortest seen is 84."""
 _DATE_KINDS = {"date", "year"}
 _STEP = {"pounds": Decimal(1), "integer": Decimal(1)}
 _PENNY = Decimal("0.01")
@@ -239,72 +236,34 @@ class BoxRow:
 
 
 def load_box_map(path: Path) -> list[BoxRow]:
-    """Read the box map's rows, in schema order.
-
-    Descriptions are cut off at the table width like paths are; a dangling comma or colon
-    left at the cut is dropped.
-    """
+    """Read the box map's rows, in schema order."""
     with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t", quoting=csv.QUOTE_NONE)
-        return [
-            BoxRow(row["path"], row["box_id"], row["description"].strip().rstrip(",;:").strip())
-            for row in reader
-        ]
+        return [BoxRow(row["path"], row["box_id"], row["description"].strip()) for row in reader]
 
 
 class BoxMap:
-    """Box map rows matched to schema paths.
+    """Box map rows indexed by path.
 
-    HMRC's specification document, which the box map is parsed from, cuts long paths off at
-    the table's width (84 to 93 characters): ``…/Income/NonLoanAnnuitiesAnnualPaym``. Several
-    elements can share one cut-off path. A row whose path is not a schema path is taken to be
-    cut off, and is given to the first element, in schema order, whose path carries on from it
-    mid-name. Rows are in schema order, so the queue of rows behind each cut-off path lines up
-    with the elements that share it.
+    Where a path appears twice (an element in two branches of a choice), the first row wins;
+    both rows carry the same box id.
     """
 
-    def __init__(self, rows: Iterable[BoxRow], schema_paths: set[str]) -> None:
-        """Split ``rows`` into exact rows and queues of cut-off rows.
-
-        Args:
-            rows: The box map, in schema order.
-            schema_paths: Every key an element can be looked up by (see ``match``).
-        """
-        self._exact: dict[str, BoxRow] = {}
-        self._cut_off: dict[str, deque[BoxRow]] = {}
+    def __init__(self, rows: Iterable[BoxRow]) -> None:
+        """Index ``rows``, which are in schema order."""
+        self._rows: dict[str, BoxRow] = {}
         for row in rows:
-            if row.path in schema_paths:
-                self._exact.setdefault(row.path, row)
-            elif len(row.path) >= _CUT_OFF_LENGTH:
-                self._cut_off.setdefault(row.path, deque()).append(row)
+            self._rows.setdefault(row.path, row)
 
     def match(self, keys: list[str]) -> BoxRow | None:
-        """Return the row for an element known by ``keys``, most specific key first.
-
-        An exact row wins. Otherwise the longest cut-off path that one of the keys continues
-        mid-name gives up its next row.
-        """
-        for key in keys:
-            if key in self._exact:
-                return self._exact[key]
-        candidates = [
-            prefix
-            for key in keys
-            for prefix, queue in self._cut_off.items()
-            if queue
-            and key.startswith(prefix)
-            and key[len(prefix) : len(prefix) + 1] not in ("", "/")
-        ]
-        if not candidates:
-            return None
-        return self._cut_off[max(candidates, key=len)].popleft()
+        """Return the row for an element known by ``keys``, most specific key first."""
+        return next((self._rows[key] for key in keys if key in self._rows), None)
 
 
 def _assign_boxes(root: dict[str, Any], rows: list[BoxRow]) -> None:
     """Fill in each node's box and label, consuming its private lookup keys."""
-    nodes = list(iter_nodes(root))
-    box_map = BoxMap(rows, {key for node in nodes for key in node["_keys"]})
-    for node in nodes:
+    box_map = BoxMap(rows)
+    for node in iter_nodes(root):
         keys, page = node.pop("_keys"), node.pop("_page")
         row = box_map.match(keys)
         node["box"] = None if row is None else box_id(row.box, page)

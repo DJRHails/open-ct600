@@ -6,7 +6,7 @@ published under the Open Government Licence v3.0.
 | Path | What it is | Source |
 | --- | --- | --- |
 | `hmrc/ct600-v1.994/` | CT600 XML schema (v1.994, live), HMRC schematron business rules, GovTalk envelope and xmldsig schemas | HMRC Local Test Service artefacts `ct_ct600_v1-994.zip`, identical to the RIM artefacts on gov.uk |
-| `hmrc/box-map-v1.995.tsv` | CT600 box id → XML path, parsed from HMRC's v1.995 specification document | [CT600 RIM artefacts](https://www.gov.uk/government/publications/corporation-tax-technical-specifications-ct600-rim-artefacts) |
+| `hmrc/box-map-v1.995.tsv` | CT600 box id → XML path, cardinality and description for every element and attribute, parsed from HMRC's v1.995 specification document (full paths and descriptions; type and choice rows left out) | [CT600 RIM artefacts](https://www.gov.uk/government/publications/corporation-tax-technical-specifications-ct600-rim-artefacts) |
 | `hmrc/rules-v1.995.tsv` | Business rules with HMRC error codes and messages | as above |
 | `hmrc/samples/` | HMRC's valid CT600 XML samples | [valid XML samples](https://www.gov.uk/government/publications/corporation-tax-technical-specifications-ct600-valid-xml-samples) |
 | `hmrc/irmark/` | HMRC's IRmark worked example | [IRmark support](https://www.gov.uk/government/collections/hmrcirmark-support-for-software-developers) |
