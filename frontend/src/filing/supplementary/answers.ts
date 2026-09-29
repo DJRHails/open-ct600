@@ -6,7 +6,7 @@
  * mirroring the service's own checks (``open_ct600.schema.trees``), and produces the element
  * tree: element names as keys, lists for repeating elements and every value a string.
  */
-import type { ElementTree, JsonValue, PageAnswers, SchemaPage, SpecNode } from "@/api";
+import type { ElementTree, JsonValue, SchemaPage, SpecNode } from "@/api";
 import type { DateParts } from "@/components/forms";
 import {
   type Branch,
@@ -82,13 +82,13 @@ function missing(node: SpecNode): string {
   return `Enter ${phrase(node.label)}`;
 }
 
-/** Check a page's answers and build its element tree (or, for CT600K, its amount). */
-export function convertPage(page: SchemaPage, raw: RawTree | undefined): Conversion<PageAnswers> {
+/** Check a page's answers and build its element tree. */
+export function convertPage(page: SchemaPage, raw: RawTree | undefined): Conversion<ElementTree> {
   const root = pageSpec(page);
   const converted = convertGroup(root, raw ?? {}, [], { label: null });
   const value = converted.value?.[page.node.name];
-  if (value === undefined) return { value: undefined, problems: converted.problems };
-  return { value: value as PageAnswers, problems: converted.problems };
+  const tree = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  return { value: tree, problems: converted.problems };
 }
 
 function convertGroup(

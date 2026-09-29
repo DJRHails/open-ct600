@@ -130,17 +130,13 @@ function SupplementaryCards({ ct600, pages, computation }: PagesProps) {
       </Card>
       {titled.map((page) => {
         const answers = computation?.pages[page.code] ?? ct600.supplementary_pages?.[page.code];
-        const isGroup = typeof answers === "object";
         return (
           <Card
             key={page.code}
             title={`${pageName(page.code)}: ${page.title}`}
             change={`${pagePath(page.code)}?change=1`}
           >
-            <TreeSummary
-              nodes={isGroup ? page.node.children : [page.node]}
-              tree={isGroup ? answers : { [page.node.name]: answers ?? "" }}
-            />
+            <TreeSummary nodes={page.node.children} tree={answers ?? {}} />
           </Card>
         );
       })}

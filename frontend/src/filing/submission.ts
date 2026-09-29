@@ -60,7 +60,7 @@ export function failure(error: unknown, pages: SchemaPage[]): Failure {
       return {
         kind: "errors",
         fields: {
-          method: `${error.message} Choose to get a demonstration receipt instead, or file your return with other software.`,
+          method: `${error.message} To finish here, choose to get a demonstration receipt.`,
         },
         general: [],
       };

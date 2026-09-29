@@ -142,7 +142,8 @@ function Choice(props: {
   const options = item.branches.map((branch) => ({
     value: branch.name,
     label: branch.label,
-    hint: branch.members.length === 1 && branch.members[0] ? boxHint(branch.members[0]) : undefined,
+    // A branch's own questions show their boxes; a tick-box branch has only the radio to show it.
+    hint: answeredByChoosing(branch) && branch.members[0] ? boxHint(branch.members[0]) : undefined,
     conditional: answeredByChoosing(branch) ? undefined : (
       <Items
         items={branch.members.map((node) => ({ type: "node", node }) as const)}
@@ -357,7 +358,11 @@ function RepeatingGroup({ node, path, depth }: NodeProps) {
   const stored = getAt(answers, path);
   const list = Array.isArray(stored) ? stored : [];
   const count = Math.max(list.length, 1);
-  const [open, setOpen] = useState<number[]>([]);
+  // Items are summarised once answered, so on arrival only unanswered items are open for
+  // editing; items added or changed here stay open while the user types.
+  const [open, setOpen] = useState<number[]>(() =>
+    Array.from({ length: count }, (_, index) => index).filter((index) => isBlank(list[index])),
+  );
   const focusAdded = useRef<string | null>(null);
   const addId = `${fieldId(code, path)}-add`;
   const name = phrase(node.label);
@@ -381,7 +386,11 @@ function RepeatingGroup({ node, path, depth }: NodeProps) {
       path,
       list.filter((_, position) => position !== index),
     );
-    setOpen(open.filter((item) => item !== index).map((item) => (item > index ? item - 1 : item)));
+    const shifted = open
+      .filter((item) => item !== index)
+      .map((item) => (item > index ? item - 1 : item));
+    // Removing the last item leaves an empty one to fill in.
+    setOpen(list.length <= 1 ? [0] : shifted);
     clearErrors();
   }
 
@@ -394,7 +403,7 @@ function RepeatingGroup({ node, path, depth }: NodeProps) {
       {Array.from({ length: count }, (_, index) => {
         const item = list[index];
         const itemPath = [...path, index];
-        const editing = open.includes(index) || isBlank(item) || hasErrorsUnder(errors, itemPath);
+        const editing = open.includes(index) || hasErrorsUnder(errors, itemPath);
         const title = `${sentence(node.label)} ${index + 1}`;
         const removable = count > 1 || !isBlank(item);
         return editing ? (

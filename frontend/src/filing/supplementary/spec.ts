@@ -77,8 +77,7 @@ export function startsWith(path: TreePath, prefix: TreePath): boolean {
 
 /**
  * A spec for the whole page as a group holding the page's root element, which is required
- * because the user chose the page. This lets a page whose root is a single amount (CT600K)
- * be handled like any other.
+ * because the user chose the page, so answers are addressed from the root element's name.
  */
 export function pageSpec(page: SchemaPage): SpecNode {
   return {
@@ -108,9 +107,6 @@ function isPlainGroup(node: SpecNode): boolean {
 export function pageScreens(page: SchemaPage): Screen[] {
   let node = page.node;
   let path: TreePath = [node.name];
-  if (node.kind !== "group") {
-    return [{ id: node.name, title: page.title, path: [], items: [{ type: "node", node }] }];
-  }
   let only = node.children.length === 1 ? node.children[0] : undefined;
   while (only && isPlainGroup(only) && only.min > 0) {
     node = only;
@@ -124,9 +120,8 @@ export function pageScreens(page: SchemaPage): Screen[] {
     if (run.length === 0) return;
     const [first] = run;
     const id = first?.type === "node" ? first.node.name : (first?.branches[0]?.name ?? "");
-    const title =
-      run.length === 1 && first?.type === "node" ? first.node.label : continuedTitle(page, screens);
-    screens.push({ id, title, path, items: run });
+    // The question is the screen's legend, so the heading names the page, not the question.
+    screens.push({ id, title: continuedTitle(page, screens), path, items: run });
     run = [];
   };
   for (const item of formItems(node)) {

@@ -9,7 +9,7 @@ import type {
   AccountsDetails,
   CompanyDetails,
   CT600Return,
-  PageAnswers,
+  ElementTree,
   PageCode,
   SchemaPage,
   TradingStatus,
@@ -520,9 +520,9 @@ export function pageComplete(draft: Draft, page: SchemaPage): boolean {
 function supplementaryPages(
   draft: Draft,
   pages: SchemaPage[] | undefined,
-): Partial<Record<PageCode, PageAnswers>> | null {
+): Partial<Record<PageCode, ElementTree>> | null {
   if (draft.chosen_pages === undefined) return null;
-  const trees: Partial<Record<PageCode, PageAnswers>> = {};
+  const trees: Partial<Record<PageCode, ElementTree>> = {};
   for (const code of draft.chosen_pages) {
     const page = pages?.find((candidate) => candidate.code === code);
     if (!page || !pageComplete(draft, page)) return null;

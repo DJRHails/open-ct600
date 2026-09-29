@@ -92,12 +92,6 @@ export type PageCode =
   | "N"
   | "P";
 
-/**
- * A supplementary page's answers: the element tree of the page's root element. CT600K's root
- * (restitution tax) is a single amount, so its answer is a string.
- */
-export type PageAnswers = ElementTree | string;
-
 /** Reliefs the computation applied, in pounds and pence; absent until the service computes them. */
 export type ReliefsSummary = {
   group_relief: string;
@@ -114,7 +108,7 @@ export type ReturnComputation = {
   accounts: AccountsSummary;
   trading_loss_arising: number;
   losses_carried_forward: number;
-  pages: Partial<Record<PageCode, PageAnswers>>;
+  pages: Partial<Record<PageCode, ElementTree>>;
   reliefs?: ReliefsSummary;
 };
 
@@ -218,7 +212,7 @@ export type CT600Return = {
     called_up_share_capital: number;
   };
   accounts: AccountsDetails;
-  supplementary_pages?: Partial<Record<PageCode, PageAnswers>>;
+  supplementary_pages?: Partial<Record<PageCode, ElementTree>>;
 };
 
 export type SignatoryCapacity = "director" | "company_secretary" | "authorised_agent";
