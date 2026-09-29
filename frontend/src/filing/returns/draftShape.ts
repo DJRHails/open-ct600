@@ -3,8 +3,9 @@
  * draft. It checks types, not answers: a section whose answers no longer validate just shows as
  * incomplete, as it would for a draft saved here.
  */
-import type { PageCode } from "@/api";
+import type { CompanyRecord, PageCode, PreviousAccounts } from "@/api";
 import type { DateParts } from "@/components/forms";
+import type { ComparativesAnswers } from "@/filing/comparatives";
 import {
   type AccountsAnswers,
   type CompanyAnswers,
@@ -87,6 +88,92 @@ function fieldsLike(template: object): Check {
   return check;
 }
 
+const isNumber: Check = (value, path) =>
+  typeof value === "number" && Number.isFinite(value) ? null : path;
+
+const isBoolean: Check = (value, path) => (typeof value === "boolean" ? null : path);
+
+const orNull =
+  (check: Check): Check =>
+  (value, path) =>
+    value === null ? null : check(value, path);
+
+/** For a field the draft may leave out. */
+const optional =
+  (check: Check): Check =>
+  (value, path) =>
+    value === undefined ? null : check(value, path);
+
+const listOf =
+  (check: Check): Check =>
+  (value, path) =>
+    Array.isArray(value) ? firstProblem(value, path, check) : path;
+
+const numberByKey: Check = (value, path) =>
+  isRecord(value) ? firstProblem(value, path, isNumber) : path;
+
+/** Exactly the fields of ``T``, each passing its own check. */
+function shape<T>(fields: { [K in keyof Required<T>]: Check }): Check {
+  const checks = new Map<string, Check>(Object.entries(fields));
+  return (value, path) => {
+    if (!isRecord(value)) return path;
+    for (const [key, check] of checks) {
+      const problem = check(value[key], `${path}.${key}`);
+      if (problem) return problem;
+    }
+    const unknown = Object.keys(value).find((key) => !checks.has(key));
+    return unknown === undefined ? null : `${path}.${unknown}`;
+  };
+}
+
+const ISO_PERIOD = shape<{ start: string; end: string }>({ start: isText, end: isText });
+
+/** The company's record as the Companies House route returned it. */
+const COMPANY_RECORD = shape<CompanyRecord>({
+  number: isText,
+  name: isText,
+  status: isText,
+  incorporated_on: orNull(isText),
+  legal_form: orNull(isText),
+  registered_office: shape<CompanyRecord["registered_office"]>({
+    lines: isTextList,
+    postcode: orNull(isText),
+  }),
+  sic_codes: listOf(
+    shape<CompanyRecord["sic_codes"][number]>({ code: isText, description: isText }),
+  ),
+  principal_activity: orNull(isText),
+  directors: listOf(
+    shape<CompanyRecord["directors"][number]>({ name: isText, appointed_on: orNull(isText) }),
+  ),
+  accounts: shape<CompanyRecord["accounts"]>({
+    reference_date: orNull(isText),
+    last_made_up_to: orNull(isText),
+    next_period: orNull(ISO_PERIOD),
+  }),
+  suggested_period: orNull(
+    shape<NonNullable<CompanyRecord["suggested_period"]>>({
+      start: isText,
+      end: isText,
+      note: orNull(isText),
+    }),
+  ),
+  previous_accounts: orNull(
+    shape<PreviousAccounts>({
+      period: ISO_PERIOD,
+      filed_on: isText,
+      standard: orNull((value, path) => (value === "micro" || value === "small" ? null : path)),
+      dormant: orNull(isBoolean),
+      profit_and_loss: numberByKey,
+      balance_sheet: numberByKey,
+      average_employees: orNull(isNumber),
+      directors: isTextList,
+      principal_activity: orNull(isText),
+    }),
+  ),
+  previous_accounts_unavailable: orNull(isText),
+});
+
 /** A supplementary page's answers as typed: text, nested answers and lists of them. */
 const isRawValue: Check = (value, path) => {
   if (typeof value === "string") return null;
@@ -95,6 +182,7 @@ const isRawValue: Check = (value, path) => {
 };
 
 const EMPTY_DATE: DateParts = { day: "", month: "", year: "" };
+const PERIOD = fieldsLike({ start: EMPTY_DATE, end: EMPTY_DATE });
 const COMPANY: CompanyAnswers = EMPTY_COMPANY;
 const ACCOUNTS: AccountsAnswers = EMPTY_ACCOUNTS;
 const RESEARCH: ResearchAnswers = EMPTY_RESEARCH;
@@ -107,8 +195,9 @@ const SURRENDERER: SurrendererFigures = {
 
 /** One check for every part of a draft, so a new part cannot be added without one. */
 const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
+  companies_house: COMPANY_RECORD,
   company: fieldsLike(COMPANY),
-  period: fieldsLike({ start: EMPTY_DATE, end: EMPTY_DATE }),
+  period: PERIOD,
   profit_and_loss: textByKey,
   tax_adjustments: textByKey,
   balance_sheet: textByKey,
@@ -127,6 +216,13 @@ const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
   group_relief_surrenderers: (value, path) =>
     isRecord(value) ? firstProblem(value, path, fieldsLike(SURRENDERER)) : path,
   creative_industries: fieldsLike(CREATIVE),
+  comparatives: shape<ComparativesAnswers>({
+    period: optional(PERIOD),
+    profit_and_loss: optional(textByKey),
+    balance_sheet: optional(textByKey),
+    tax_on_profit: optional(isText),
+    average_employees: optional(isText),
+  }),
 };
 
 function hasCheck(key: string): key is keyof Draft {

@@ -537,7 +537,9 @@ export function validateAccounts(
 }
 
 /** The accounts details the user answers; comparatives come from the amount sections. */
-export type AccountsDetailsAnswered = Omit<AccountsDetails, "comparatives">;
+export type AccountsDetailsAnswered = Omit<AccountsDetails, "comparatives" | "legal_form"> & {
+  legal_form: LegalForm;
+};
 
 /** The directors listed, the legal form, and whether this is the first period of account. */
 function companyFormErrors(values: AccountsAnswers): FieldErrors {
@@ -832,6 +834,8 @@ export function answerRows(ct600: CT600Return, section: SectionKey): AnswerRow[]
 }
 
 function accountsRows(accounts: AccountsDetails): AnswerRow[] {
+  // The backend's default when a return leaves the legal form out.
+  const legalForm = accounts.legal_form ?? "private-limited-company";
   return [
     { key: "standard", label: "Accounts prepared as", value: STANDARD_LABELS[accounts.standard] },
     { key: "directors", label: "Directors", value: accounts.directors.join(", ") },
@@ -853,9 +857,7 @@ function accountsRows(accounts: AccountsDetails): AnswerRow[] {
     {
       key: "legal_form",
       label: "Legal form",
-      value:
-        LEGAL_FORMS.find((form) => form.value === accounts.legal_form)?.label ??
-        accounts.legal_form,
+      value: LEGAL_FORMS.find((form) => form.value === legalForm)?.label ?? legalForm,
     },
     {
       key: "first_period",

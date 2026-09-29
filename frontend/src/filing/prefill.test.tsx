@@ -3,9 +3,7 @@ import type { UserEvent } from "@testing-library/user-event";
 
 import type { CompanyRecord } from "@/api";
 import { RECORD, SEARCH_RESULT } from "@/test-companies-house";
-import { bodySentTo, renderApp, type Reply, stubApi } from "@/test-utils";
-
-const DRAFT_KEY = "open-ct600:draft:v1";
+import { bodySentTo, openDraft, renderApp, type Reply, seedDraft, stubApi } from "@/test-utils";
 
 type Handler = (path: string) => Reply | undefined;
 
@@ -22,10 +20,6 @@ function stubCompaniesHouse(handler: Handler = () => undefined) {
       return { status: 200, body: RECORD };
     return { status: 404, body: { detail: "Not Found" } };
   });
-}
-
-function savedDraft() {
-  return JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "{}");
 }
 
 async function save(user: UserEvent) {
@@ -57,14 +51,14 @@ describe("company details from Companies House", () => {
     const paths = fetchMock.mock.calls.map(([input]) => String(input));
     expect(paths).toContain("/api/companies-house/search?q=acme");
     expect(paths).toContain("/api/companies-house/companies/01234567");
-    expect(savedDraft().companies_house).toEqual(RECORD);
+    expect(openDraft().companies_house).toEqual(RECORD);
 
     await user.clear(screen.getByLabelText("What does the company do?"));
     await user.type(screen.getByLabelText("What does the company do?"), "Widget consultancy");
     await user.type(screen.getByLabelText(/Unique Taxpayer Reference/), "1234567890");
     await save(user);
 
-    expect(savedDraft().company).toMatchObject({
+    expect(openDraft().company).toMatchObject({
       name: "ACME WIDGETS LTD",
       registration_number: "01234567",
       principal_activity: "Widget consultancy",
@@ -153,18 +147,15 @@ describe("company details from Companies House", () => {
 
   it("shows a saved company's fields without searching again", async () => {
     stubCompaniesHouse();
-    window.localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({
-        company: {
-          name: "ACME WIDGETS LTD",
-          registration_number: "01234567",
-          utr: "1234567890",
-          company_type: "0",
-          principal_activity: "Widgets",
-        },
-      }),
-    );
+    seedDraft({
+      company: {
+        name: "ACME WIDGETS LTD",
+        registration_number: "01234567",
+        utr: "1234567890",
+        company_type: "0",
+        principal_activity: "Widgets",
+      },
+    });
     renderApp("/file/company-details");
 
     expect(screen.getByLabelText("Company name")).toHaveValue("ACME WIDGETS LTD");
@@ -193,12 +184,8 @@ const ACCOUNTS = {
   first_period: "no",
 };
 
-function seed(draft: object) {
-  window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-}
-
 function withRecord(record: CompanyRecord = RECORD, extra: object = {}) {
-  seed({ companies_house: record, company: COMPANY, ...extra });
+  seedDraft({ companies_house: record, company: COMPANY, ...extra });
 }
 
 function line(name: string) {
@@ -224,7 +211,7 @@ describe("later sections from the Companies House record", () => {
     await user.type(within(line("End date")).getByLabelText("Day"), "30");
     await save(user);
 
-    expect(savedDraft().period).toEqual({
+    expect(openDraft().period).toEqual({
       start: { day: "1", month: "4", year: "2025" },
       end: { day: "30", month: "3", year: "2026" },
     });
@@ -232,7 +219,10 @@ describe("later sections from the Companies House record", () => {
 
   it("does not use a record for a different company", () => {
     stubCompaniesHouse();
-    seed({ companies_house: RECORD, company: { ...COMPANY, registration_number: "SC123456" } });
+    seedDraft({
+      companies_house: RECORD,
+      company: { ...COMPANY, registration_number: "SC123456" },
+    });
     renderApp("/file/accounting-period");
 
     expect(within(line("Start date")).getByLabelText("Day")).toHaveValue("");
@@ -291,13 +281,13 @@ describe("later sections from the Companies House record", () => {
     await user.click(screen.getByLabelText("It traded during the period"));
     await save(user);
 
-    expect(savedDraft().accounts).toMatchObject({
+    expect(openDraft().accounts).toMatchObject({
       directors: ["Ada Lovelace"],
       signing_director: "Ada Lovelace",
       legal_form: "private-limited-company",
       first_period: "no",
     });
-    expect(savedDraft().comparatives).toMatchObject({ average_employees: "3" });
+    expect(openDraft().comparatives).toMatchObject({ average_employees: "3" });
   });
 
   it("types directors in when the record lists none", () => {
@@ -332,15 +322,15 @@ describe("the previous period's figures (comparatives)", () => {
     await user.type(within(turnover).getByLabelText("This period"), "150,000");
     await save(user);
 
-    expect(savedDraft().profit_and_loss).toMatchObject({ turnover: "150,000" });
-    expect(savedDraft().comparatives).toMatchObject({
+    expect(openDraft().profit_and_loss).toMatchObject({ turnover: "150,000" });
+    expect(openDraft().comparatives).toMatchObject({
       period: {
         start: { day: "1", month: "4", year: "2024" },
         end: { day: "31", month: "3", year: "2025" },
       },
       profit_and_loss: { turnover: "125,000", staff_costs: "30000" },
     });
-    expect(savedDraft().comparatives.profit_and_loss).not.toHaveProperty("tax");
+    expect(openDraft().comparatives.profit_and_loss).not.toHaveProperty("tax");
   });
 
   it("include last period's tax on profit, from the filed accounts", () => {
@@ -427,7 +417,7 @@ describe("the previous period's figures (comparatives)", () => {
     const fetchMock = stubCompaniesHouse((path) =>
       path === "/returns/compute" ? { status: 422, body: { detail: [] } } : undefined,
     );
-    seed({
+    seedDraft({
       companies_house: RECORD,
       company: COMPANY,
       period: {
@@ -475,7 +465,7 @@ describe("the previous period's figures (comparatives)", () => {
 
   it("reopen the profit and loss account once the company says it is not its first period", () => {
     stubCompaniesHouse();
-    seed({ profit_and_loss: { turnover: "150000" }, accounts: ACCOUNTS });
+    seedDraft({ profit_and_loss: { turnover: "150000" }, accounts: ACCOUNTS });
     renderApp("/file/tasks");
 
     expect(

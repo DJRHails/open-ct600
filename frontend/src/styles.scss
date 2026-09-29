@@ -80,6 +80,12 @@
 }
 
 // A company search suggestion's registered office, under its name.
+// The company search's menu uses the service's font, not the browser's default.
+.autocomplete__option,
+.autocomplete__hint {
+  @include govuk.govuk-font($size: 19);
+}
+
 .app-suggestion-detail {
   display: block;
   color: govuk.govuk-functional-colour(secondary-text);
