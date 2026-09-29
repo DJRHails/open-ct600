@@ -3,9 +3,7 @@ import type { UserEvent } from "@testing-library/user-event";
 
 import type { PageCode } from "@/api";
 import { schemaPages } from "@/test-schema";
-import { renderApp, stubApi } from "@/test-utils";
-
-const DRAFT_KEY = "open-ct600:draft:v1";
+import { openDraft as savedDraft, renderApp, seedDraft, stubApi } from "@/test-utils";
 
 function stubSchema() {
   return stubApi((path) =>
@@ -16,11 +14,7 @@ function stubSchema() {
 }
 
 function choose(...codes: PageCode[]) {
-  window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ chosen_pages: codes }));
-}
-
-function savedDraft() {
-  return JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "{}");
+  seedDraft({ chosen_pages: codes });
 }
 
 async function save(user: UserEvent) {
@@ -59,13 +53,10 @@ describe("choosing supplementary pages", () => {
 
   it("forgets the answers to a page that is no longer chosen", async () => {
     stubSchema();
-    window.localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({
-        chosen_pages: ["A", "D"],
-        supplementary_pages: { A: { LoansByCloseCompanies: {} }, D: { Insurance: {} } },
-      }),
-    );
+    seedDraft({
+      chosen_pages: ["A", "D"],
+      supplementary_pages: { A: { LoansByCloseCompanies: {} }, D: { Insurance: {} } },
+    });
     const user = renderApp("/file/supplementary-pages");
 
     await user.click(
@@ -149,24 +140,21 @@ describe("a supplementary page form", () => {
 
   it("summarises saved loans with change and remove", async () => {
     stubSchema();
-    window.localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({
-        chosen_pages: ["A"],
-        supplementary_pages: {
-          A: {
-            LoansByCloseCompanies: {
-              LoansInformation: {
-                Loan: [
-                  { Name: "Ada Lovelace", AmountOfLoan: "5000" },
-                  { Name: "Charles Babbage", AmountOfLoan: "2000" },
-                ],
-              },
+    seedDraft({
+      chosen_pages: ["A"],
+      supplementary_pages: {
+        A: {
+          LoansByCloseCompanies: {
+            LoansInformation: {
+              Loan: [
+                { Name: "Ada Lovelace", AmountOfLoan: "5000" },
+                { Name: "Charles Babbage", AmountOfLoan: "2000" },
+              ],
             },
           },
         },
-      }),
-    );
+      },
+    });
     const user = renderApp("/file/supplementary-pages/A/LoansInformation");
 
     expect(await screen.findByRole("heading", { name: "Loan 2", level: 3 })).toBeInTheDocument();
@@ -221,13 +209,10 @@ describe("a supplementary page form", () => {
 
   it("shows the problem to fix when arriving from a link to a field", async () => {
     stubSchema();
-    window.localStorage.setItem(
-      DRAFT_KEY,
-      JSON.stringify({
-        chosen_pages: ["A"],
-        supplementary_pages: { A: { LoansByCloseCompanies: { TotalLoansOutstanding: "12.345" } } },
-      }),
-    );
+    seedDraft({
+      chosen_pages: ["A"],
+      supplementary_pages: { A: { LoansByCloseCompanies: { TotalLoansOutstanding: "12.345" } } },
+    });
     renderApp("/file/supplementary-pages/A/TotalLoansOutstanding?change=1&check=1");
 
     const summary = await screen.findByRole("alert");

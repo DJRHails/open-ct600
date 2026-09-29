@@ -4,7 +4,14 @@ import { vi } from "vitest";
 
 import type { HmrcProblem, ReturnComputation } from "@/api";
 import { schemaPages } from "@/test-schema";
-import { bodySentTo, renderApp, type Reply, stubApi } from "@/test-utils";
+import {
+  bodySentTo,
+  openDraft,
+  renderApp,
+  type Reply,
+  seedDraft as seedReturn,
+  stubApi,
+} from "@/test-utils";
 
 const PASSWORD = "correct-horse-battery-staple";
 
@@ -145,7 +152,7 @@ function stubService(handler: Handler = () => undefined) {
 }
 
 function seedDraft() {
-  window.localStorage.setItem("open-ct600:draft:v1", JSON.stringify(DRAFT));
+  seedReturn(DRAFT);
 }
 
 function stored(): string {
@@ -589,7 +596,7 @@ describe("submitting to HMRC", () => {
     expect(banner).toHaveTextContent("HMRC is still processing your return");
     expect(banner).toHaveTextContent("5L0W5UBM15510N");
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(window.localStorage.getItem("open-ct600:draft:v1")).not.toBeNull();
+    expect(openDraft()).toEqual(DRAFT);
     expect(stored()).not.toContain(PASSWORD);
   });
 
