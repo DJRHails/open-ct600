@@ -32,14 +32,22 @@ export const FAQS: Faq[] = [
     answer: (
       <>
         <p className="govuk-body">
-          No. Open CT600 is a demonstration. It prepares your CT600 figures and works out your
-          Corporation Tax, but it does not send anything to HMRC. The submit step gives you a demo
-          receipt only.
+          Only where whoever runs the service has switched submission on. Sending returns to HMRC
+          needs an HMRC vendor ID, which HMRC gives to software developers, and the operator has to
+          enable it. Where it is on, you can send a test to HMRC’s Test in Live service, which
+          checks the return without filing it, or file it for real with the company’s Government
+          Gateway user ID and password.
         </p>
         <p className="govuk-body">
-          To file, use{" "}
+          Where it is off, the last step gives you a demonstration receipt and nothing is sent to
+          HMRC. You can still download the return, accounts and computations and file them with{" "}
           <ExternalLink href={RECOGNISED_SOFTWARE_URL}>HMRC-recognised software</ExternalLink> or an
           accountant.
+        </p>
+        <p className="govuk-body">
+          Returns for periods ending after 31 March 2026 cannot be sent yet. HMRC needs tax
+          computations in its computations taxonomy, and it has not yet published the 2025 version
+          that covers those periods.
         </p>
       </>
     ),
@@ -48,7 +56,9 @@ export const FAQS: Faq[] = [
     question: "Is Open CT600 recognised by HMRC?",
     answer: (
       <p className="govuk-body">
-        No. It is not on HMRC’s list of recognised Corporation Tax software.
+        No. It is not on HMRC’s list of recognised Corporation Tax software, and HMRC has not
+        approved or endorsed it. It checks returns against HMRC’s published schema and business
+        rules before sending them, but HMRC decides whether to accept each return.
       </p>
     ),
   },
@@ -86,8 +96,9 @@ export const FAQS: Faq[] = [
     question: "Do I need an account?",
     answer: (
       <p className="govuk-body">
-        No. There are no accounts or passwords. Your draft return is saved in your own browser.
-        Signing up only tells us you are interested.
+        No. There are no accounts to create. Your draft return is saved in your own browser. To send
+        a return to HMRC you enter the company’s Government Gateway user ID and password, which are
+        passed straight to HMRC and never stored.
       </p>
     ),
   },

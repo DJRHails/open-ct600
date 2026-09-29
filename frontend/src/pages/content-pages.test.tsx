@@ -47,6 +47,40 @@ describe("content pages", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(heading);
   });
 
+  it.each(PAGES)("does not claim the %s page's service never submits to HMRC", (_n, Page) => {
+    render(
+      <MemoryRouter>
+        <Page />
+      </MemoryRouter>,
+    );
+    expect(document.body).not.toHaveTextContent(/does not (submit|send) (returns|anything)/i);
+  });
+
+  it("says Government Gateway credentials go straight to HMRC and are never kept", () => {
+    render(
+      <MemoryRouter>
+        <PrivacyPage />
+      </MemoryRouter>,
+    );
+    const section = screen.getByRole("heading", { name: "Sending your return to HMRC" });
+    expect(section.nextElementSibling).toHaveTextContent(
+      /passed straight to HMRC .* never stored, in your browser or on the server, and never logged/,
+    );
+  });
+
+  it("explains when a return can be sent to HMRC", () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    expect(document.body).toHaveTextContent(/needs an HMRC vendor ID/);
+    expect(document.body).toHaveTextContent(/Test in Live/);
+    expect(document.body).toHaveTextContent(
+      /periods ending after 31 March 2026 cannot be sent yet/,
+    );
+  });
+
   it("renders a guide by its slug", () => {
     renderGuide("/guides/marginal-relief");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(

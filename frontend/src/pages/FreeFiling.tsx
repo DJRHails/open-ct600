@@ -52,14 +52,18 @@ function YourOptions() {
         . Some products on the list are marked as suitable for companies that file their own
         returns.
       </p>
-      <h3 className="govuk-heading-m">Prepare your figures with Open CT600</h3>
+      <h3 className="govuk-heading-m">Prepare your return with Open CT600</h3>
       <p className="govuk-body">
-        Open CT600 is free and open source. It helps you work out your Corporation Tax and the
-        figures for each CT600 box, so you know what to expect before you file.
+        Open CT600 is free and open source. It prepares your CT600, supplementary pages, iXBRL
+        accounts and tax computations, and checks the return against HMRC’s own rules. Where whoever
+        runs it has an HMRC vendor ID and has switched submission on, it can send a test to HMRC’s
+        Test in Live service or file the return with the company’s Government Gateway sign in.
       </p>
       <WarningText>
-        Open CT600 is a demonstration. It does not submit returns to HMRC and is not on HMRC’s list
-        of recognised software. You still need to file using one of the other options.
+        Open CT600 is not on HMRC’s list of recognised software. Where submission is switched off,
+        it gives you a demonstration receipt only, and you need one of the other options to file.
+        Returns for periods ending after 31 March 2026 cannot be sent until HMRC publishes the
+        computations taxonomy for them.
       </WarningText>
     </>
   );
@@ -84,7 +88,10 @@ function WhatToDoNow() {
           </Link>
           .
         </li>
-        <li>Choose an accountant or HMRC-recognised software to file your return.</li>
+        <li>
+          Choose how to file: an accountant, HMRC-recognised software, or Open CT600 where
+          submission is switched on.
+        </li>
       </ol>
       <h2 className="govuk-heading-l">Companies House accounts</h2>
       <p className="govuk-body">

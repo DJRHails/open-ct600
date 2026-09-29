@@ -94,9 +94,10 @@ function PhaseBanner() {
   return (
     <div className="govuk-phase-banner">
       <p className="govuk-phase-banner__content">
-        <strong className="govuk-tag govuk-phase-banner__content__tag">Demo</strong>
+        <strong className="govuk-tag govuk-phase-banner__content__tag">Beta</strong>
         <span className="govuk-phase-banner__text">
-          This is an open-source demonstration. It does not submit returns to HMRC.{" "}
+          Open-source software, not recognised by HMRC. It only sends returns to HMRC where whoever
+          runs it has an HMRC vendor ID and has switched submission on.{" "}
           <a className="govuk-link" href={REPOSITORY_URL}>
             View the source code
           </a>

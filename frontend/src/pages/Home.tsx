@@ -29,8 +29,10 @@ function Hero() {
             .
           </p>
           <div className="govuk-inset-text govuk-!-margin-bottom-0">
-            Open CT600 is a free, open-source demonstration. It does not submit returns to HMRC and
-            is not HMRC-recognised software.
+            Open CT600 is free, open-source software. It is not on HMRC’s list of recognised
+            software. It can send your return to HMRC only where whoever runs it has an HMRC vendor
+            ID and has switched submission on; otherwise it gives you a demonstration receipt and
+            nothing is sent.
           </div>
         </div>
       </div>
@@ -49,7 +51,9 @@ const SUMMARY = [
   },
   {
     title: "Check before you file",
-    text: "Review your return, then file it using HMRC-recognised software or an accountant.",
+    text:
+      "Review your return against HMRC’s own rules, download the accounts, computations and " +
+      "CT600, then send it to HMRC where submission is switched on.",
   },
 ];
 
@@ -80,8 +84,9 @@ const STEPS = [
   {
     title: "Check and submit",
     text:
-      "Check your answers and figures. Submitting gives you a demo receipt. Nothing is sent " +
-      "to HMRC.",
+      "Check your answers against HMRC’s rules. Where submission is switched on, send a test " +
+      "to HMRC’s Test in Live service or file the return with the company’s Government Gateway " +
+      "sign in. Otherwise you get a demonstration receipt and nothing is sent to HMRC.",
   },
 ];
 
@@ -130,7 +135,9 @@ const FEATURES = [
   },
   {
     title: "Your data stays with you",
-    text: "No accounts or passwords. Your draft is saved in your own browser.",
+    text:
+      "No accounts to create. Your draft is saved in your own browser, and a Government " +
+      "Gateway password is passed straight to HMRC, never stored.",
   },
 ];
 

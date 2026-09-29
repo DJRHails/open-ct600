@@ -1,9 +1,9 @@
 """Demonstration filing: accept a declared return and issue a receipt.
 
-Nothing is sent to HMRC. Submitting to HMRC requires recognition as Corporation Tax
-software and Government Gateway credentials, which this open-source project does not hold.
-The receipt mirrors what HMRC's service returned: a submission reference and a
-fingerprint of exactly what was declared, which the company can keep for its records.
+Nothing is sent to HMRC. Real submission (``open_ct600.hmrc.routes``) needs an HMRC vendor ID
+and the operator switching it on; deployments without them offer this receipt instead. It
+mirrors what HMRC's service returns: a submission reference and a fingerprint of exactly what
+was declared, which the company can keep for its records.
 """
 
 import base64

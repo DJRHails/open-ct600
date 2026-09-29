@@ -54,7 +54,8 @@ function HowToFileBody() {
         <li>Fill in the boxes on the CT600 form.</li>
       </ol>
       <p className="govuk-body">
-        Open CT600 can help with steps 2 to 4. You can also try the{" "}
+        Open CT600 can help with all 4 steps: it prepares micro-entity or small company accounts and
+        your tax computations in iXBRL. You can also try the{" "}
         <Link className="govuk-link" to="/calculator">
           Corporation Tax calculator
         </Link>
@@ -63,12 +64,16 @@ function HowToFileBody() {
       <h2 className="govuk-heading-m">File your return</h2>
       <p className="govuk-body">
         You must file your return online with your accounts and tax computations, tagged in a format
-        called iXBRL. Since HMRC’s free filing service closed on 31 March 2026, you need to use{" "}
-        <ExternalLink href={RECOGNISED_SOFTWARE_URL}>HMRC-recognised software</ExternalLink> or an
+        called iXBRL. Since HMRC’s free filing service closed on 31 March 2026, you need software
+        that can send returns to HMRC, such as{" "}
+        <ExternalLink href={RECOGNISED_SOFTWARE_URL}>HMRC-recognised software</ExternalLink>, or an
         accountant to do this.
       </p>
       <div className="govuk-inset-text">
-        Open CT600 is a demonstration. It does not submit returns to HMRC.
+        Open CT600 is not on HMRC’s list of recognised software. It can send your return to HMRC
+        only where whoever runs it has an HMRC vendor ID and has switched submission on. Returns for
+        periods ending after 31 March 2026 cannot be sent until HMRC publishes the computations
+        taxonomy for them.
       </div>
     </>
   );
