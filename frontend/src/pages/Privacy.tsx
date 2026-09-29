@@ -14,17 +14,22 @@ function FiguresAndDrafts() {
         accounts, computations and CT600 documents. The server uses them for that request only and
         does not store them.
       </p>
-      <h2 className="govuk-heading-l">Your draft return</h2>
+      <h2 className="govuk-heading-l">Your saved returns</h2>
       <p className="govuk-body">
-        Your draft return is saved in your own browser, using a feature called local storage. It is
-        not sent to us to be stored. It stays on your device until you delete it.
+        The returns you prepare are saved in your own browser, using a feature called local storage.
+        They are not sent to us to be stored. They stay on your device until you delete them.
       </p>
       <p className="govuk-body">
-        You can delete your draft from the{" "}
-        <Link className="govuk-link" to="/file/tasks">
-          task list page
+        You can export a return to a file, to keep a copy or to import it into another browser. The
+        file is saved wherever you choose, and it is not encrypted, so it holds your company’s tax
+        details in plain text. Keep it somewhere safe. We never see the file.
+      </p>
+      <p className="govuk-body">
+        You can delete a return from{" "}
+        <Link className="govuk-link" to="/file/returns">
+          Your returns
         </Link>
-        . Clearing your browser’s site data also deletes it.
+        . Clearing your browser’s site data deletes all of them.
       </p>
       <SendingToHmrc />
       <h2 className="govuk-heading-l">Cookies and analytics</h2>

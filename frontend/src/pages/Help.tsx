@@ -96,9 +96,10 @@ export const FAQS: Faq[] = [
     question: "Do I need an account?",
     answer: (
       <p className="govuk-body">
-        No. There are no accounts to create. Your draft return is saved in your own browser. To send
-        a return to HMRC you enter the company’s Government Gateway user ID and password, which are
-        passed straight to HMRC and never stored.
+        No. There are no accounts to create. Your returns are saved in your own browser, and you can
+        export one to a file to carry on in another browser. To send a return to HMRC you enter the
+        company’s Government Gateway user ID and password, which are passed straight to HMRC and
+        never stored.
       </p>
     ),
   },
