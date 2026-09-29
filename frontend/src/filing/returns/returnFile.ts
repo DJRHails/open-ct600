@@ -3,7 +3,7 @@
  * The file is a versioned envelope around the draft, and is not encrypted.
  */
 import { draftShapeProblem } from "@/filing/returns/draftShape";
-import { type Draft, savedPeriod } from "@/filing/model";
+import { type Draft, savedPeriod, withAnswersAddedLater } from "@/filing/model";
 import { isRecord } from "@/filing/returns/savedReturns";
 
 export const FILE_FORMAT = "open-ct600-return";
@@ -82,7 +82,7 @@ export function parseReturnFile(text: string): Imported {
         `The problem is in ${problem}`,
     };
   }
-  return { ok: true, draft: parsed.draft as Draft };
+  return { ok: true, draft: withAnswersAddedLater(parsed.draft as Draft) };
 }
 
 /** Check the chosen file, then its contents. */

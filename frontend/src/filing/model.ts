@@ -530,6 +530,26 @@ export const EMPTY_ACCOUNTS: AccountsAnswers = {
   first_period: "",
 };
 
+/**
+ * Accounts answers first asked after returns could be saved and exported (#23). Drafts saved
+ * and files exported before then do not have them, and they are real users' work: they are
+ * read as not yet answered, so the accounts details show as incomplete until they are.
+ */
+export const ACCOUNTS_ANSWERS_ADDED_LATER = ["legal_form", "first_period"] as const;
+
+type AddedLater = (typeof ACCOUNTS_ANSWERS_ADDED_LATER)[number];
+/** Accounts answers as a draft may have saved them. */
+type AccountsAsSaved = Omit<AccountsAnswers, AddedLater> &
+  Partial<Pick<AccountsAnswers, AddedLater>>;
+
+/** ``draft`` with blank answers for any accounts question added since it was saved. */
+export function withAnswersAddedLater(draft: Draft): Draft {
+  const saved: AccountsAsSaved | undefined = draft.accounts;
+  if (!saved) return draft;
+  const { legal_form: legalForm = "", first_period: firstPeriod = "" } = saved;
+  return { ...draft, accounts: { ...saved, legal_form: legalForm, first_period: firstPeriod } };
+}
+
 /** The director fields' ids, so errors can link to the right input. */
 export function directorId(index: number): string {
   return `directors-${index}`;

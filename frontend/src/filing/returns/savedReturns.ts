@@ -6,7 +6,7 @@
  * result in React state and write it back.
  */
 import type { SchemaPage } from "@/api";
-import { type Draft, savedPeriod } from "@/filing/model";
+import { type Draft, savedPeriod, withAnswersAddedLater } from "@/filing/model";
 import { toReturn } from "@/filing/payload";
 import { formatDate } from "@/format";
 
@@ -102,7 +102,8 @@ function parseStored(raw: string): Loaded {
   }
   const known = typeof currentId === "string" && returns.some((saved) => saved.id === currentId);
   if (currentId !== null && !known) return unreadable("it points to a return that is not saved");
-  return { ok: true, store: { currentId, returns } };
+  const current = returns.map((saved) => ({ ...saved, draft: withAnswersAddedLater(saved.draft) }));
+  return { ok: true, store: { currentId, returns: current } };
 }
 
 export function writeReturns(storage: Storage, store: ReturnsStore) {
@@ -148,7 +149,7 @@ export function loadReturns(storage: Storage, now: string, newId: string): Loade
   if (!parsed.ok || !isRecord(parsed.value)) {
     return { ok: true, store: loaded.store, damagedLegacy: legacy };
   }
-  const draft = parsed.value as Draft;
+  const draft = withAnswersAddedLater(parsed.value as Draft);
   const store =
     Object.keys(draft).length === 0
       ? loaded.store

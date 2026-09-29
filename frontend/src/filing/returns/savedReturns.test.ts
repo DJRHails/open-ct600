@@ -62,6 +62,29 @@ describe("loading saved returns", () => {
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBeNull();
   });
 
+  it("gives drafts saved before the legal form and first period were asked blank answers", () => {
+    const accounts = {
+      standard: "micro",
+      directors: ["Jane Smith"],
+      signing_director: "Jane Smith",
+      approval_date: { day: "1", month: "6", year: "2026" },
+      average_employees: "1",
+      trading_status: "trading",
+      dormant: "no",
+    };
+    const older = { ...addReturn(EMPTY_STORE, { accounts } as Draft, MONDAY, "a", { open: true }) };
+    writeReturns(window.localStorage, older);
+    window.localStorage.setItem(LEGACY_DRAFT_KEY, JSON.stringify({ accounts }));
+
+    const loaded = loadReturns(window.localStorage, MONDAY, "migrated");
+
+    const answered = { ...accounts, legal_form: "", first_period: "" };
+    expect(loaded.ok && loaded.store.returns.map((kept) => kept.draft.accounts)).toEqual([
+      answered,
+      answered,
+    ]);
+  });
+
   it("adds an old draft to returns already saved, keeping them", () => {
     const earlier = addReturn(EMPTY_STORE, { chosen_pages: [] }, MONDAY, "first", { open: false });
     writeReturns(window.localStorage, earlier);

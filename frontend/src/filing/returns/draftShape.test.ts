@@ -1,4 +1,6 @@
+import type { Draft } from "@/filing/model";
 import { draftShapeProblem } from "@/filing/returns/draftShape";
+import { exportReturn, parseReturnFile } from "@/filing/returns/returnFile";
 import { RECORD } from "@/test-companies-house";
 
 const PREVIOUS_PERIOD = {
@@ -79,5 +81,35 @@ describe("the shape of the Companies House record and comparatives", () => {
     ["a part is unknown", { notes: "hello" }, "notes"],
   ])("names where the comparatives are wrong when %s", (_case, comparatives, field) => {
     expect(draftShapeProblem({ comparatives })).toBe(`draft.comparatives.${field}`);
+  });
+});
+
+/** Accounts details as saved before the legal form and first period were asked (#23). */
+const ACCOUNTS_BEFORE_LEGAL_FORM = {
+  standard: "micro",
+  directors: ["Jane Smith"],
+  signing_director: "Jane Smith",
+  approval_date: { day: "1", month: "6", year: "2026" },
+  average_employees: "1",
+  trading_status: "trading",
+  dormant: "no",
+};
+
+describe("returns saved before the legal form and first period were asked", () => {
+  it("imports them, with those two answers blank", async () => {
+    const { blob } = exportReturn({ accounts: ACCOUNTS_BEFORE_LEGAL_FORM } as Draft, "now");
+
+    const imported = parseReturnFile(await blob.text());
+
+    expect(imported).toEqual({
+      ok: true,
+      draft: { accounts: { ...ACCOUNTS_BEFORE_LEGAL_FORM, legal_form: "", first_period: "" } },
+    });
+  });
+
+  it("still refuses accounts missing any other answer", () => {
+    const { dormant: _dormant, ...withoutDormant } = ACCOUNTS_BEFORE_LEGAL_FORM;
+
+    expect(draftShapeProblem({ accounts: withoutDormant })).toBe("draft.accounts.dormant");
   });
 });

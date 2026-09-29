@@ -8,6 +8,7 @@ import type { DateParts } from "@/components/forms";
 import { LEGAL_FORMS } from "@/filing/companiesHouse";
 import type { ComparativesAnswers } from "@/filing/comparatives";
 import {
+  ACCOUNTS_ANSWERS_ADDED_LATER,
   type AccountsAnswers,
   type CompanyAnswers,
   type Draft,
@@ -70,13 +71,16 @@ const textByKey: Check = (value, path) =>
 
 /**
  * Exactly the fields of ``template``, each of the same kind as the template's: text, a list of
- * text, or answers of their own. The question pages always save every field.
+ * text, or answers of their own. The question pages always save every field, except that
+ * answers saved before a question was added (``addedLater``) do not have it.
  */
-function fieldsLike(template: object): Check {
+function fieldsLike(template: object, addedLater: readonly string[] = []): Check {
   const fields = new Map(Object.entries(template));
   const check: Check = (value, path) => {
     if (!isRecord(value)) return path;
-    const missing = [...fields.keys()].find((key) => !Object.hasOwn(value, key));
+    const missing = [...fields.keys()].find(
+      (key) => !Object.hasOwn(value, key) && !addedLater.includes(key),
+    );
     if (missing) return `${path}.${missing}`;
     return firstProblem(value, path, (field, fieldPath, key) => {
       if (!fields.has(key)) return fieldPath;
@@ -210,7 +214,7 @@ const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
   profit_and_loss: textByKey,
   tax_adjustments: textByKey,
   balance_sheet: textByKey,
-  accounts: fieldsLike(ACCOUNTS),
+  accounts: fieldsLike(ACCOUNTS, ACCOUNTS_ANSWERS_ADDED_LATER),
   chosen_pages: (value, path) => {
     if (!Array.isArray(value)) return path;
     return firstProblem(value, path, (code, codePath) => (isPageCode(code) ? null : codePath));
