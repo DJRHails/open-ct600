@@ -78,8 +78,10 @@ export function Panel({ title, children }: { title: string; children?: ReactNode
 }
 
 /** A GOV.UK notification banner, for important information that is not an error. */
-export function NotificationBanner({ title, children }: { title: string; children: ReactNode }) {
-  const id = `banner-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+export function NotificationBanner(props: { title: string; id?: string; children: ReactNode }) {
+  const { title, children } = props;
+  // Give an ``id`` when a page can show more than one banner with the same title.
+  const id = props.id ?? `banner-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
     <section className="govuk-notification-banner" aria-labelledby={id}>
       <div className="govuk-notification-banner__header">

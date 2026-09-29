@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 import type { Draft } from "@/filing/model";
 import {
   addReturn,
@@ -81,16 +83,35 @@ describe("loading saved returns", () => {
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBeNull();
   });
 
-  it("keeps an old draft it cannot read, and says so", () => {
+  it("keeps an old draft it cannot read, and says so without blocking the returns", () => {
+    writeReturns(window.localStorage, addReturn(EMPTY_STORE, ACME, MONDAY, "a", { open: true }));
     window.localStorage.setItem(LEGACY_DRAFT_KEY, "{not json");
 
     const loaded = loadReturns(window.localStorage, MONDAY, "new");
 
     expect(loaded).toMatchObject({
-      ok: false,
-      problem: { kind: "unreadable", raw: "{not json" },
+      ok: true,
+      store: { currentId: "a", returns: [{ id: "a" }] },
+      damagedLegacy: "{not json",
     });
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe("{not json");
+  });
+
+  it("opens the moved draft even when it cannot be saved, and says why", () => {
+    window.localStorage.setItem(LEGACY_DRAFT_KEY, JSON.stringify(ACME));
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+    });
+
+    const loaded = loadReturns(window.localStorage, MONDAY, "new");
+    setItem.mockRestore();
+
+    expect(loaded).toMatchObject({
+      ok: true,
+      store: { currentId: "new", returns: [{ id: "new", draft: ACME }] },
+      unsaved: "The quota has been exceeded.",
+    });
+    expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe(JSON.stringify(ACME));
   });
 
   it("refuses returns saved by a newer version rather than discarding them", () => {
@@ -99,7 +120,7 @@ describe("loading saved returns", () => {
 
     expect(loadReturns(window.localStorage, MONDAY, "new")).toEqual({
       ok: false,
-      problem: { kind: "newer-version", found: STORAGE_VERSION + 1, raw: newer },
+      problem: { kind: "newer-version", found: STORAGE_VERSION + 1, raw: newer, key: RETURNS_KEY },
     });
     expect(window.localStorage.getItem(RETURNS_KEY)).toBe(newer);
   });

@@ -31,12 +31,26 @@ export type ReturnsStore = {
   returns: SavedReturn[];
 };
 
-/** Why the saved returns cannot be opened. ``raw`` is kept so the user can still download it. */
+/**
+ * Why the saved returns cannot be opened. ``raw`` is kept so the user can still download it, and
+ * ``key`` says where it is, so deleting it removes nothing else. ``unavailable``: the browser
+ * will not let the site read its storage at all.
+ */
 export type StorageProblem =
-  | { kind: "newer-version"; found: number; raw: string }
-  | { kind: "unreadable"; reason: string; raw: string };
+  | { kind: "newer-version"; found: number; raw: string; key: string }
+  | { kind: "unreadable"; reason: string; raw: string; key: string }
+  | { kind: "unavailable"; reason: string };
 
-export type Loaded = { ok: true; store: ReturnsStore } | { ok: false; problem: StorageProblem };
+export type Loaded =
+  | {
+      ok: true;
+      store: ReturnsStore;
+      /** A draft left by an earlier version that cannot be read; the returns are unaffected. */
+      damagedLegacy?: string;
+      /** Why moving an earlier version's draft into the list could not be saved. */
+      unsaved?: string;
+    }
+  | { ok: false; problem: StorageProblem };
 
 export const EMPTY_STORE: ReturnsStore = { currentId: null, returns: [] };
 
@@ -65,9 +79,10 @@ function isSavedReturn(value: unknown): value is SavedReturn {
 
 /** Read ``RETURNS_KEY``. A version this code does not know is a problem, never an empty list. */
 function parseStored(raw: string): Loaded {
+  const key = RETURNS_KEY;
   const unreadable = (reason: string): Loaded => ({
     ok: false,
-    problem: { kind: "unreadable", reason, raw },
+    problem: { kind: "unreadable", reason, raw, key },
   });
   const parsed = parseJson(raw);
   if (!parsed.ok) return unreadable(`it is not valid JSON (${parsed.reason})`);
@@ -76,7 +91,7 @@ function parseStored(raw: string): Loaded {
     return unreadable("it has no version number");
   }
   if (stored.version > STORAGE_VERSION) {
-    return { ok: false, problem: { kind: "newer-version", found: stored.version, raw } };
+    return { ok: false, problem: { kind: "newer-version", found: stored.version, raw, key } };
   }
   if (stored.version !== STORAGE_VERSION) {
     return unreadable(`it has version ${stored.version}, which this site has never written`);
@@ -94,37 +109,116 @@ export function writeReturns(storage: Storage, store: ReturnsStore) {
   storage.setItem(RETURNS_KEY, JSON.stringify({ version: STORAGE_VERSION, ...store }));
 }
 
+/** An exception's message, for saying why storage could not be used. */
+export function failureReason(error: unknown): string {
+  // Storage throws DOMExceptions, which are not Errors in every environment.
+  const message = isRecord(error) || error instanceof Error ? error.message : undefined;
+  return typeof message === "string" ? message : String(error);
+}
+
+/** The returns as stored now, which another tab may have changed. */
+export function readReturns(storage: Storage): Loaded {
+  let raw: string | null;
+  try {
+    raw = storage.getItem(RETURNS_KEY);
+  } catch (error) {
+    return { ok: false, problem: { kind: "unavailable", reason: failureReason(error) } };
+  }
+  return raw === null ? { ok: true, store: EMPTY_STORE } : parseStored(raw);
+}
+
 /**
  * Load the saved returns. A draft left under ``LEGACY_DRAFT_KEY`` becomes a saved return and
  * the one the filing pages show, and the old key is removed, so nobody loses work on upgrade.
- * ``now`` and ``newId`` date and name that return.
+ * An old draft that cannot be read is left where it is and reported; it never blocks the
+ * returns. ``now`` and ``newId`` date and name the moved return.
  */
 export function loadReturns(storage: Storage, now: string, newId: string): Loaded {
-  const raw = storage.getItem(RETURNS_KEY);
-  const loaded = raw === null ? ({ ok: true, store: EMPTY_STORE } as const) : parseStored(raw);
-  const legacy = storage.getItem(LEGACY_DRAFT_KEY);
-  if (!loaded.ok || legacy === null) return loaded;
+  const loaded = readReturns(storage);
+  if (!loaded.ok) return loaded;
+  let legacy: string | null;
+  try {
+    legacy = storage.getItem(LEGACY_DRAFT_KEY);
+  } catch (error) {
+    return { ok: false, problem: { kind: "unavailable", reason: failureReason(error) } };
+  }
+  if (legacy === null) return loaded;
 
   const parsed = parseJson(legacy);
   if (!parsed.ok || !isRecord(parsed.value)) {
-    const reason = parsed.ok ? "it is not a set of answers" : parsed.reason;
-    return {
-      ok: false,
-      problem: {
-        kind: "unreadable",
-        reason: `the saved draft cannot be read: ${reason}`,
-        raw: legacy,
-      },
-    };
+    return { ok: true, store: loaded.store, damagedLegacy: legacy };
   }
   const draft = parsed.value as Draft;
   const store =
     Object.keys(draft).length === 0
       ? loaded.store
       : addReturn(loaded.store, draft, now, newId, { open: true });
-  writeReturns(storage, store);
-  storage.removeItem(LEGACY_DRAFT_KEY);
+  try {
+    writeReturns(storage, store);
+    storage.removeItem(LEGACY_DRAFT_KEY);
+  } catch (error) {
+    return { ok: true, store, unsaved: failureReason(error) };
+  }
   return { ok: true, store };
+}
+
+export type Saved = {
+  /** The returns after the change, with every change other tabs saved. */
+  store: ReturnsStore;
+  /** Why the change could not be written, if it was not. */
+  failure: string | null;
+  /** The return this tab had open was deleted in another tab. */
+  openDeleted: boolean;
+};
+
+/**
+ * Save one change to the returns. Other tabs may have saved returns since this tab loaded, so
+ * the change is made to the returns as stored now, never to this tab's copy of the list: a
+ * return added, changed or deleted elsewhere stays that way. Only this tab's open return
+ * (``tab.currentId``) is taken from this tab, and only if ``unsavedId`` names it: its latest
+ * answers were not written before, so the stored copy is behind.
+ */
+export function saveChange(
+  storage: Storage,
+  tab: ReturnsStore,
+  change: (store: ReturnsStore) => ReturnsStore,
+  unsavedId: string | null,
+): Saved {
+  const latest = readReturns(storage);
+  if (!latest.ok) {
+    const failure =
+      latest.problem.kind === "unavailable"
+        ? latest.problem.reason
+        : "the returns saved in this browser were changed by another version of Open CT600";
+    return { store: change(tab), failure, openDeleted: false };
+  }
+  const unsaved = tab.returns.find((kept) => kept.id === unsavedId);
+  const returns = latest.store.returns.map((kept) =>
+    unsaved && kept.id === unsaved.id ? unsaved : kept,
+  );
+  const openKept = returns.some((kept) => kept.id === tab.currentId);
+  const openDeleted = tab.currentId !== null && !openKept;
+  const store = change({ currentId: openKept ? tab.currentId : null, returns });
+  try {
+    writeReturns(storage, store);
+  } catch (error) {
+    return { store, failure: failureReason(error), openDeleted };
+  }
+  return { store, failure: null, openDeleted };
+}
+
+/** How the return this tab has open differs in ``latest``, which another tab saved. */
+export function openReturnChange(
+  tab: ReturnsStore,
+  latest: ReturnsStore,
+): "changed" | "deleted" | null {
+  const open = currentReturn(tab);
+  if (!open) return null;
+  const stored = latest.returns.find((kept) => kept.id === open.id);
+  if (!stored) return "deleted";
+  return stored.updated_at === open.updated_at && stored.submitted_at === open.submitted_at
+    ? null
+    : "changed";
 }
 
 export function currentReturn(store: ReturnsStore): SavedReturn | undefined {
