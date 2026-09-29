@@ -410,7 +410,8 @@ function RepeatingGroup({ node, path, depth }: NodeProps) {
           <EditItem key={index} node={node} path={itemPath} depth={depth} title={title}>
             {removable ? (
               <Button type="button" variant="secondary" onClick={() => remove(index)}>
-                Remove<span className="govuk-visually-hidden"> {phrase(title)}</span>
+                {"Remove "}
+                <span className="govuk-visually-hidden">{phrase(title)}</span>
               </Button>
             ) : null}
           </EditItem>
@@ -466,7 +467,7 @@ type SummaryItemProps = {
 };
 
 function SummaryItem({ node, item, title, onChange, onRemove }: SummaryItemProps) {
-  const hidden = <span className="govuk-visually-hidden"> {phrase(title)}</span>;
+  const hidden = <span className="govuk-visually-hidden">{phrase(title)}</span>;
   return (
     <div className="govuk-summary-card">
       <div className="govuk-summary-card__title-wrapper">
@@ -474,12 +475,14 @@ function SummaryItem({ node, item, title, onChange, onRemove }: SummaryItemProps
         <ul className="govuk-summary-card__actions">
           <li className="govuk-summary-card__action">
             <button type="button" className="govuk-link app-link-button" onClick={onChange}>
-              Change{hidden}
+              {"Change "}
+              {hidden}
             </button>
           </li>
           <li className="govuk-summary-card__action">
             <button type="button" className="govuk-link app-link-button" onClick={onRemove}>
-              Remove{hidden}
+              {"Remove "}
+              {hidden}
             </button>
           </li>
         </ul>

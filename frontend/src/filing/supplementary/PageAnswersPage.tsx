@@ -71,7 +71,7 @@ function PageAnswers({ page, changing }: PageProps) {
   if (raw === undefined && first) return <Navigate to={screenPath(page.code, first.id)} replace />;
 
   const converted = convertPage(page, raw);
-  const tree = { [page.node.name]: converted.value ?? {} };
+  const tree = { [page.node.name]: converted.value };
 
   function finish() {
     setAttempt(attempt + 1);

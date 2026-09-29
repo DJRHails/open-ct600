@@ -525,9 +525,10 @@ function supplementaryPages(
   const trees: Partial<Record<PageCode, ElementTree>> = {};
   for (const code of draft.chosen_pages) {
     const page = pages?.find((candidate) => candidate.code === code);
-    if (!page || !pageComplete(draft, page)) return null;
-    const converted = convertPage(page, draft.supplementary_pages?.[code]);
-    if (converted.value === undefined) return null;
+    const raw = draft.supplementary_pages?.[code];
+    if (!page || raw === undefined) return null;
+    const converted = convertPage(page, raw);
+    if (converted.problems.length > 0) return null;
     trees[code] = converted.value;
   }
   return trees;

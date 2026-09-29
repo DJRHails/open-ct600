@@ -290,14 +290,14 @@ export function Radios<T extends string>(props: RadiosProps<T>) {
                     value={option.value}
                     checked={checked}
                     onChange={() => onChange(option.value)}
-                    aria-describedby={option.hint ? `${inputId}-hint` : undefined}
+                    aria-describedby={option.hint ? `${inputId}-item-hint` : undefined}
                     aria-controls={option.conditional ? `${inputId}-conditional` : undefined}
                   />
                   <label className="govuk-label govuk-radios__label" htmlFor={inputId}>
                     {option.label}
                   </label>
                   {option.hint ? (
-                    <div id={`${inputId}-hint`} className="govuk-hint govuk-radios__hint">
+                    <div id={`${inputId}-item-hint`} className="govuk-hint govuk-radios__hint">
                       {option.hint}
                     </div>
                   ) : null}
@@ -397,13 +397,13 @@ export function Checkboxes<T extends string>(props: CheckboxesProps<T>) {
           value={option.value}
           checked={value.includes(option.value)}
           onChange={(event) => toggle(option.value, event.target.checked)}
-          aria-describedby={option.hint ? `${inputId}-hint` : undefined}
+          aria-describedby={option.hint ? `${inputId}-item-hint` : undefined}
         />
         <label className="govuk-label govuk-checkboxes__label" htmlFor={inputId}>
           {option.label}
         </label>
         {option.hint ? (
-          <div id={`${inputId}-hint`} className="govuk-hint govuk-checkboxes__hint">
+          <div id={`${inputId}-item-hint`} className="govuk-hint govuk-checkboxes__hint">
             {option.hint}
           </div>
         ) : null}

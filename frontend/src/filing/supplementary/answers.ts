@@ -83,7 +83,10 @@ function missing(node: SpecNode): string {
 }
 
 /** Check a page's answers and build its element tree. */
-export function convertPage(page: SchemaPage, raw: RawTree | undefined): Conversion<ElementTree> {
+export function convertPage(
+  page: SchemaPage,
+  raw: RawTree | undefined,
+): { value: ElementTree; problems: Problem[] } {
   const root = pageSpec(page);
   const converted = convertGroup(root, raw ?? {}, [], { label: null });
   const value = converted.value?.[page.node.name];
