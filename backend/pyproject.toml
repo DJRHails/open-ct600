@@ -15,8 +15,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "arelle-release==2.45.3",
     "pytest==9.1.1",
     "ruff==0.16.9",
+    "tinycss2==1.5.1",
     "ty==0.0.84",
     "types-lxml==2026.2.16",
 ]
