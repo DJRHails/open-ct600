@@ -32,9 +32,9 @@ of HMRC's old online filing service for small companies, which closed on 31 Marc
 
 Drafts are kept only in the user's browser (`localStorage`). The API stores nothing.
 
-| Task list | Check your answers | Confirmation |
-| --- | --- | --- |
-| ![Task list](docs/screenshots/task-list.png) | ![Check your answers](docs/screenshots/check-answers.png) | ![Confirmation](docs/screenshots/confirmation.png) |
+| Task list | Supplementary page (CT600A) | Check your answers | Declaration |
+| --- | --- | --- | --- |
+| ![Task list](docs/screenshots/task-list.png) | ![CT600A loans, generated from HMRC's schema](docs/screenshots/supplementary-page.png) | ![Check your answers, with HMRC's rules passing](docs/screenshots/check-answers.png) | ![Declaration on a deployment without submission](docs/screenshots/declaration.png) |
 
 ## How it is verified
 
@@ -84,6 +84,9 @@ HMRC_SUBMISSION_ENABLED=true   # off by default, so a public demo never handles 
   - Ring fence trades in periods starting before 1 April 2023, because the older ring fence limits aren't modelled.
 - **CT600A later-repayment relief** assumes the company's later accounting periods are 12 months long,
   because the page has no field for them.
+- **No PDF attachments.** Answers that HMRC requires a PDF for are rejected, for example CT600C
+  "notices of consent attached" (HMRC rule 9552). Use the simplified arrangements authorisation
+  instead.
 - **Accounts are single-period.** There are no prior-year comparatives, and the legal form is always
   private limited company. HMRC's ct-comp 2024 taxonomy has no elements for marginal relief or the
   merged RDEC and ERIS steps, so those appear in the computation text untagged.
