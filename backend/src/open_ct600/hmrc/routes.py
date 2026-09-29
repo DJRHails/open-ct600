@@ -47,6 +47,9 @@ from open_ct600.hmrc.govtalk import (
 from open_ct600.hmrc.validate import Problem, validate_return
 from open_ct600.hmrc.xml import build_return_xml
 from open_ct600.hmrc.xmldoc import serialise
+from open_ct600.ixbrl.accounts import render_accounts
+from open_ct600.ixbrl.computations import render_computations
+from open_ct600.ixbrl.layout import IxbrlRenderError
 from open_ct600.schema.spec import PAGE_DEFINITIONS, RETURN_PATH, PageCode, load_spec
 
 PRODUCT = "Open CT600"
@@ -118,8 +121,10 @@ class ValidationReport(BaseModel):
 
     Attributes:
         valid: Whether HMRC's schema and rules accept the return.
-        documents_attached: Whether the iXBRL accounts and computations could be attached.
-            Until they are, HMRC's rules report 9113 and 9965 (no accounts, no computations).
+        documents_attached: Whether the iXBRL accounts and computations could both be
+            produced. A missing document is reported under HMRC's rule for it (9113 accounts,
+            9965 computations) with the reason it is missing, such as no computations taxonomy
+            for periods ending after 31 March 2026.
         problems: Everything to fix, in document order.
     """
 
@@ -167,25 +172,54 @@ class HMRCRejection(BaseModel):
     errors: list[HMRCError]
 
 
+Document = Literal["accounts", "computations"]
+
+
 @dataclass(frozen=True)
 class IXBRLDocuments:
-    """The iXBRL accounts and computations filed with a return."""
+    """The iXBRL accounts and computations filed with a return.
 
-    accounts: str
-    computations: str
+    Attributes:
+        accounts: The accounts XHTML, if they could be produced.
+        computations: The computations XHTML, if they could be produced.
+        missing: Why each document that could not be produced is missing, such as
+            computations for a period HMRC has no computations taxonomy for yet.
+    """
+
+    accounts: str | None
+    computations: str | None
+    missing: dict[Document, str]
 
 
-type IXBRLRenderer = Callable[[CT600Return, ReturnComputation], IXBRLDocuments | None]
+type IXBRLRenderer = Callable[[CT600Return, ReturnComputation], IXBRLDocuments]
+
+_HMRC_CODES_FOR_MISSING: dict[Document, tuple[int, ...]] = {
+    "accounts": (9113, 9315),
+    "computations": (9965, 9316),
+}
+"""HMRC's rules that fire when a document is missing from the return."""
 
 
-def _render_ixbrl(ct600: CT600Return, computation: ReturnComputation) -> IXBRLDocuments | None:
-    """Render the return's iXBRL documents; ``None`` while the renderers are unavailable."""
-    return None
+def render_ixbrl(ct600: CT600Return, computation: ReturnComputation) -> IXBRLDocuments:
+    """Render the return's iXBRL accounts and computations, noting any that cannot be."""
+    missing: dict[Document, str] = {}
+    documents: dict[Document, str | None] = {}
+    renderers: dict[Document, Callable[[CT600Return, ReturnComputation], str]] = {
+        "accounts": render_accounts,
+        "computations": render_computations,
+    }
+    for name, render in renderers.items():
+        try:
+            documents[name] = render(ct600, computation)
+        except IxbrlRenderError as error:
+            documents[name] = None
+            missing[name] = str(error)
+    return IXBRLDocuments(documents["accounts"], documents["computations"], missing)
 
 
 def ixbrl_renderer() -> IXBRLRenderer:
     """Dependency: the function that renders a return's iXBRL documents."""
-    return _render_ixbrl
+    return render_ixbrl
 
 
 async def http_client() -> AsyncIterator[httpx2.AsyncClient]:
@@ -229,26 +263,40 @@ def check_return(
     computation = compute_return(request.ct600)
     documents = render(request.ct600, computation)
     envelope = _envelope(request.ct600, computation, _declaration(request), documents)
-    problems = [_located(problem) for problem in validate_return(envelope)]
+    reasons = {
+        code: reason
+        for name, reason in documents.missing.items()
+        for code in _HMRC_CODES_FOR_MISSING[name]
+    }
+    problems = [
+        _located(problem, message=reasons.get(problem.code))
+        for problem in validate_return(envelope)
+    ]
     return ValidationReport(
-        valid=not problems, documents_attached=documents is not None, problems=problems
+        valid=not problems, documents_attached=not documents.missing, problems=problems
     )
 
 
 def download_xml(
     request: ReturnRequest, render: Annotated[IXBRLRenderer, Depends(ixbrl_renderer)]
 ) -> Response:
-    """Download the return's CT600 XML (the ``IRenvelope``, with iXBRL when available)."""
+    """Download the return's CT600 XML (the ``IRenvelope`` with the iXBRL it can attach).
+
+    A document that cannot be produced is left out, and the response says so in
+    ``X-CT600-Missing-Attachments`` (``accounts``, ``computations``) and
+    ``X-CT600-Missing-Reason``.
+    """
     computation = compute_return(request.ct600)
     documents = render(request.ct600, computation)
     envelope = _envelope(request.ct600, computation, _declaration(request), documents)
     company, period = request.ct600.company, request.ct600.period
     filename = f"ct600-{company.utr}-{period.end.isoformat()}.xml"
-    return Response(
-        content=serialise(envelope),
-        media_type="application/xml",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    if documents.missing:
+        headers["X-CT600-Missing-Attachments"] = ", ".join(documents.missing)
+        reasons = "; ".join(documents.missing.values())
+        headers["X-CT600-Missing-Reason"] = reasons.encode("ascii", "replace").decode("ascii")
+    return Response(content=serialise(envelope), media_type="application/xml", headers=headers)
 
 
 async def _submit(
@@ -260,12 +308,12 @@ async def _submit(
     vendor = _vendor(settings)
     computation = compute_return(request.ct600)
     documents = render(request.ct600, computation)
-    if documents is None:
+    if documents.missing:
         raise _failure(
             status.HTTP_409_CONFLICT,
             "ixbrl_unavailable",
             "HMRC needs the company's accounts and tax computations in iXBRL with the return, "
-            "and this service cannot produce them yet, so the return cannot be submitted.",
+            f"so it cannot be submitted: {'; '.join(documents.missing.values())}.",
         )
     envelope = _envelope(request.ct600, computation, request.declaration, documents)
     problems = await run_in_threadpool(validate_return, envelope)
@@ -318,14 +366,14 @@ def _envelope(
     ct600: CT600Return,
     computation: ReturnComputation,
     declaration: Declaration,
-    documents: IXBRLDocuments | None,
+    documents: IXBRLDocuments,
 ) -> etree._Element:
     return build_return_xml(
         ct600,
         computation,
         declaration=declaration,
-        accounts_xhtml=documents.accounts if documents else None,
-        computations_xhtml=documents.computations if documents else None,
+        accounts_xhtml=documents.accounts,
+        computations_xhtml=documents.computations,
     )
 
 
@@ -341,10 +389,11 @@ def _receipt(receipt: Receipt, environment: Environment, irmark_base32: str) -> 
     )
 
 
-def _located(problem: Problem) -> ReturnProblem:
+def _located(problem: Problem, *, message: str | None = None) -> ReturnProblem:
+    """Place a problem on the form, optionally explaining it better than HMRC's message."""
     return ReturnProblem(
         code=problem.code,
-        message=problem.message,
+        message=message or problem.message,
         box=problem.box,
         page=_page(problem.path),
         path=problem.path,
