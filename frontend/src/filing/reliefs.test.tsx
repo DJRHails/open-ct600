@@ -9,7 +9,9 @@ import {
   validateLoanDates,
   validateResearch,
   validateSurrenderers,
+  withLoanDate,
 } from "@/filing/reliefs";
+import { getAt, type RawTree, setAt } from "@/filing/supplementary/answers";
 import { schemaPages } from "@/test-schema";
 import { bodySentTo, renderApp, type Reply, stubApi } from "@/test-utils";
 
@@ -133,6 +135,23 @@ describe("the R&D claim's checks", () => {
     });
   });
 
+  it("sends £0 of R&D workers' PAYE and NICs as 0, and a blank answer as not given", () => {
+    const oldRdec = {
+      ...MERGED,
+      scheme: "rdec" as const,
+      claimed_in_previous_three_years: "yes" as const,
+      additional_information_submitted: "yes" as const,
+    };
+    const paye = (given: string) => {
+      const result = validateResearch({ ...oldRdec, rd_workers_paye_and_nic: given }, "2023-04-01");
+      return result.ok ? result.value?.rd_workers_paye_and_nic : result.errors;
+    };
+
+    expect(paye("0")).toBe(0);
+    expect(paye("£1,200")).toBe(1200);
+    expect(paye("")).toBeNull();
+  });
+
   it("gives the service's reasons a claim cannot be made", () => {
     const claim = {
       ...MERGED,
@@ -169,21 +188,40 @@ describe("the other relief answers' checks", () => {
   });
 
   it("needs each loan's date within the period", () => {
-    const rows = { loans: ["Ada"], repaid_within_nine_months: [], repaid_later: [] };
     const period = { start: "2026-01-01", end: "2026-12-31" };
-    const date = (year: string) => ({
-      loans: [{ day: "6", month: "4", year }],
-      repaid_within_nine_months: [],
-      repaid_later: [],
-    });
+    const ada = { Name: "Ada", AmountOfLoan: "5000" };
+    const withAda = (year: string) =>
+      withLoanDate({ LoansByCloseCompanies: { LoansInformation: { Loan: [ada] } } }, "loans", 0, {
+        day: "6",
+        month: "4",
+        year,
+      });
 
-    expect(validateLoanDates(date("2026"), rows, period)).toEqual({
+    expect(validateLoanDates(withAda("2026"), period)).toEqual({
       ok: true,
       value: { loans: ["2026-04-06"], repaid_within_nine_months: [], repaid_later: [] },
     });
-    expect(validateLoanDates(date("2025"), rows, period)).toEqual({
+    expect(validateLoanDates(withAda("2025"), period)).toEqual({
       ok: false,
       errors: { "loans-0": "The date the loan to Ada was made must be in this accounting period" },
+    });
+  });
+
+  it("keeps each loan's date with its own row, so removing a loan cannot move dates", () => {
+    const period = { start: "2026-01-01", end: "2026-12-31" };
+    const loans = [
+      { Name: "Ada", AmountOfLoan: "5000" },
+      { Name: "Charles", AmountOfLoan: "2000" },
+    ];
+    let raw: RawTree = { LoansByCloseCompanies: { LoansInformation: { Loan: loans } } };
+    raw = withLoanDate(raw, "loans", 0, { day: "6", month: "4", year: "2026" });
+    raw = withLoanDate(raw, "loans", 1, { day: "1", month: "2", year: "2026" });
+    const list = ["LoansByCloseCompanies", "LoansInformation", "Loan"];
+    const withoutAda = setAt(raw, list, [getAt(raw, [...list, 1]) ?? {}]) as RawTree;
+
+    expect(validateLoanDates(withoutAda, period)).toEqual({
+      ok: true,
+      value: { loans: ["2026-02-01"], repaid_within_nine_months: [], repaid_later: [] },
     });
   });
 
@@ -322,6 +360,41 @@ describe("relief tasks", () => {
         repaid_later: [],
       },
     });
+
+    await user.click(screen.getByRole("link", { name: /^Change ct600a: loans/i }));
+    await user.click(screen.getByRole("link", { name: /^Change loans information/i }));
+    await user.click(screen.getByRole("button", { name: "Remove loan 1" }));
+    await save(user);
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText("1 February 2026")).toBeInTheDocument();
+    expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
+      participator_loan_dates: { loans: ["2026-02-01"] },
+    });
+  });
+
+  it("asks again for loan dates saved by position in an older draft", async () => {
+    stub();
+    seed({
+      ...SECTIONS,
+      period: CALENDAR_2026,
+      chosen_pages: ["A"],
+      supplementary_pages: { A: LOANS },
+      research_and_development: { ...EMPTY_RESEARCH, claiming: "no" },
+      participator_loan_dates: {
+        loans: [
+          { day: "6", month: "4", year: "2026" },
+          { day: "1", month: "2", year: "2026" },
+        ],
+        repaid_within_nine_months: [],
+        repaid_later: [],
+      },
+    });
+    renderApp("/file/tasks");
+
+    expect(
+      await screen.findByRole("link", { name: "CT600A: when the loans were made" }),
+    ).toHaveAccessibleDescription("Incomplete");
   });
 
   it("does not ask for loan dates when the rate is the same all period", async () => {

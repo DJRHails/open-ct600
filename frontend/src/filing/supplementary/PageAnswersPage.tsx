@@ -44,7 +44,8 @@ function ScreenCard({
         <ul className="govuk-summary-card__actions">
           <li className="govuk-summary-card__action">
             <Link className="govuk-link" to={`${screenPath(page.code, screen.id)}?change=1${from}`}>
-              Change<span className="govuk-visually-hidden"> {screen.title.toLowerCase()}</span>
+              {"Change "}
+              <span className="govuk-visually-hidden">{screen.title.toLowerCase()}</span>
             </Link>
           </li>
         </ul>

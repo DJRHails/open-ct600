@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 import { vi } from "vitest";
 
@@ -127,11 +127,14 @@ const ACCEPTED = {
 type Handler = (path: string, body: unknown) => Reply | undefined;
 
 /** The service's replies: ``handler`` answers first, then a clean return with no problems. */
+const SUBMISSION_ENABLED = { enabled: true, environments: ["test-in-live", "live"] };
+
 function stubService(handler: Handler = () => undefined) {
   return stubApi((path, body) => {
     const reply = handler(path, body);
     if (reply) return reply;
     if (path === "/schema/pages") return { status: 200, body: schemaPages() };
+    if (path === "/submission") return { status: 200, body: SUBMISSION_ENABLED };
     if (path === "/returns/compute") return { status: 200, body: COMPUTATION };
     if (path === "/returns/validate") {
       return { status: 200, body: { valid: true, documents_attached: true, problems: [] } };
@@ -196,7 +199,8 @@ describe("checking a return with supplementary pages", () => {
         name: "You must provide a set of iXBRL accounts (HMRC error 9113)",
       }),
     ).toHaveAttribute("href", "#ct600-boxes");
-    expect(document.title).toBe("Error: Check your answers – Open CT600");
+    // The title is set in an effect, which can run just after the summary appears.
+    await waitFor(() => expect(document.title).toBe("Error: Check your answers – Open CT600"));
     expect(bodySentTo(fetchMock, "/returns/validate")).toMatchObject({
       ct600: {
         supplementary_pages: {
@@ -308,6 +312,79 @@ describe("downloading the return's documents", () => {
     expect(
       screen.getByRole("button", { name: "Download the tax computations (iXBRL)" }),
     ).toHaveAccessibleDescription(/computations taxonomy/);
+  });
+});
+
+describe("a service that cannot submit to HMRC", () => {
+  const RECEIPT = {
+    reference: "sub_0000000000000000000042",
+    received_at: "2026-09-29T12:00:00Z",
+    fingerprint: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+    company: { ...DRAFT.company, company_type: 0 },
+    signatory: "Ada Lovelace",
+    computation: COMPUTATION,
+  };
+
+  /** Check nothing asks for Gateway sign in, submit, and give the paths the page requested. */
+  async function submitWithoutHmrc(user: UserEvent, fetchMock: ReturnType<typeof stubApi>) {
+    expect(await screen.findByText(/This service cannot send returns to HMRC/)).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /Test in Live/ })).toBeNull();
+    expect(screen.queryByRole("radio", { name: /^Submit to HMRC/ })).toBeNull();
+    expect(screen.queryByLabelText("Government Gateway user ID")).toBeNull();
+    expect(screen.queryByLabelText("Password")).toBeNull();
+
+    await user.type(screen.getByLabelText("Full name"), "Ada Lovelace");
+    await user.click(screen.getByRole("radio", { name: "Director" }));
+    await user.click(screen.getByLabelText(/correct and complete/));
+    await user.click(screen.getByRole("button", { name: "Submit return" }));
+
+    expect(await screen.findByRole("heading", { name: "Return submitted" })).toBeInTheDocument();
+    return fetchMock.mock.calls.map(([input]) => String(input));
+  }
+
+  it("offers only the demonstration receipt when submission is switched off", async () => {
+    const fetchMock = stubService((path) => {
+      if (path === "/submission")
+        return { status: 200, body: { enabled: false, environments: [] } };
+      if (path === "/returns/submit") return { status: 201, body: RECEIPT };
+      return undefined;
+    });
+    seedDraft();
+    const user = renderApp("/file/declaration");
+
+    const paths = await submitWithoutHmrc(user, fetchMock);
+
+    expect(paths).toContain("/api/returns/submit");
+    expect(paths).not.toContain("/api/returns/submit-to-hmrc");
+  });
+
+  it("treats submission as switched off when the service cannot say", async () => {
+    const fetchMock = stubService((path) => {
+      if (path === "/submission") return { status: 404, body: { detail: "Not Found" } };
+      if (path === "/returns/submit") return { status: 201, body: RECEIPT };
+      return undefined;
+    });
+    seedDraft();
+    const user = renderApp("/file/declaration");
+
+    const paths = await submitWithoutHmrc(user, fetchMock);
+
+    expect(paths).toContain("/api/returns/submit");
+    expect(paths).not.toContain("/api/returns/submit-to-hmrc");
+  });
+
+  it("offers only the HMRC services this deployment allows", async () => {
+    stubService((path) =>
+      path === "/submission"
+        ? { status: 200, body: { enabled: true, environments: ["test-in-live"] } }
+        : undefined,
+    );
+    seedDraft();
+    renderApp("/file/declaration");
+
+    expect(await screen.findByRole("radio", { name: /Test in Live/ })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /^Submit to HMRC/ })).toBeNull();
+    expect(screen.queryByText(/This service cannot send returns to HMRC/)).toBeNull();
   });
 });
 

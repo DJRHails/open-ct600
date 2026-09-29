@@ -15,12 +15,7 @@ import type {
   TradingStatus,
 } from "@/api";
 import type { DateParts } from "@/components/forms";
-import type {
-  CreativeAnswers,
-  LoanDatesAnswers,
-  ResearchAnswers,
-  SurrendererAnswers,
-} from "@/filing/reliefs";
+import type { CreativeAnswers, ResearchAnswers, SurrendererAnswers } from "@/filing/reliefs";
 import { convertPage, type RawTree } from "@/filing/supplementary/answers";
 import {
   formatDate,
@@ -69,8 +64,6 @@ export type Draft = {
   /** Each chosen page's answers as typed, saved screen by screen. */
   supplementary_pages?: Partial<Record<PageCode, RawTree>>;
   research_and_development?: ResearchAnswers;
-  /** When CT600A's loans were made, asked only if the s455 rate changes in the period. */
-  participator_loan_dates?: LoanDatesAnswers;
   /** Figures from CT600C's surrendering companies, by tax reference. */
   group_relief_surrenderers?: SurrendererAnswers;
   creative_industries?: CreativeAnswers;

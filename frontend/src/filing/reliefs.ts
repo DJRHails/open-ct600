@@ -15,6 +15,15 @@ import type {
 import type { DateParts } from "@/components/forms";
 import { type Parsed, parseDateParts, parseWholePounds } from "@/format";
 import type { FieldErrors, Validated, YesNo } from "@/filing/model";
+import {
+  getAt,
+  isBlank,
+  isDateParts,
+  isRecord,
+  type RawTree,
+  setAt,
+} from "@/filing/supplementary/answers";
+import type { TreePath } from "@/filing/supplementary/spec";
 
 export type Period = { start: string; end: string };
 
@@ -202,7 +211,11 @@ export function validateResearch(
       rdec_expenditure: rdec.value,
       intensity: intensity.value,
       claim_payable_credit: shown.payableCredit && values.claim_payable_credit === "yes",
-      rd_workers_paye_and_nic: shown.workersPayeAndNic && workers.value > 0 ? workers.value : null,
+      // £0 is an answer (all the work was subcontracted); only a blank answer is not given.
+      rd_workers_paye_and_nic:
+        shown.workersPayeAndNic && values.rd_workers_paye_and_nic.trim() !== ""
+          ? workers.value
+          : null,
       claimed_in_previous_three_years: values.claimed_in_previous_three_years === "yes",
       claim_notification_submitted: shown.notification,
       additional_information_submitted: true,
@@ -212,7 +225,6 @@ export function validateResearch(
 
 /** The three parts of CT600A whose rows each record a loan. */
 export type LoanTable = keyof ParticipatorLoanDates;
-export type LoanDatesAnswers = Record<LoanTable, DateParts[]>;
 
 export const LOAN_TABLES: { table: LoanTable; group: string; title: string }[] = [
   { table: "loans", group: "LoansInformation", title: "Loans made during the period" },
@@ -258,14 +270,62 @@ export function loanRows(ct600a: ElementTree): Record<LoanTable, string[]> {
   };
 }
 
+/**
+ * Each CT600A loan row keeps the date its loan was made under this key, beside the row's answers,
+ * so the date stays with its loan when rows are added or removed. The page's element tree
+ * leaves it out: only the schema's elements are converted.
+ */
+export const LOAN_MADE_KEY = "#made_on";
+
+const LOANS_ROOT = "LoansByCloseCompanies";
+const EMPTY_DATE: DateParts = { day: "", month: "", year: "" };
+
+/** An answered loan row of CT600A: where it is in the draft, who it is to, and its date. */
+export type DraftLoan = { index: number; name: string; made: DateParts };
+
+function loanListPath(table: LoanTable): TreePath {
+  const group = LOAN_TABLES.find((part) => part.table === table)?.group ?? "";
+  return [LOANS_ROOT, group, "Loan"];
+}
+
+/** The answered rows of each part of CT600A as typed, in order, with any date given. */
+export function draftLoans(ct600a: RawTree | undefined): Record<LoanTable, DraftLoan[]> {
+  const rows = (table: LoanTable): DraftLoan[] => {
+    const list = getAt(ct600a, loanListPath(table));
+    const items = Array.isArray(list) ? list : [];
+    return items.flatMap((item, index) => {
+      if (!isRecord(item)) return [];
+      const { [LOAN_MADE_KEY]: made, ...answers } = item;
+      if (isBlank(answers)) return [];
+      const name = typeof answers.Name === "string" ? answers.Name.trim() : "";
+      return [{ index, name, made: isDateParts(made) ? made : EMPTY_DATE }];
+    });
+  };
+  return {
+    loans: rows("loans"),
+    repaid_within_nine_months: rows("repaid_within_nine_months"),
+    repaid_later: rows("repaid_later"),
+  };
+}
+
+/** CT600A's answers with the date the loan in row ``index`` of ``table`` was made. */
+export function withLoanDate(
+  ct600a: RawTree,
+  table: LoanTable,
+  index: number,
+  made: DateParts,
+): RawTree {
+  return setAt(ct600a, [...loanListPath(table), index, LOAN_MADE_KEY], made) as RawTree;
+}
+
+/** The id of the date question for the loan in row ``index`` of ``table``. */
 export function loanDateId(table: LoanTable, index: number): string {
   return `${table}-${index}`;
 }
 
-/** Check a date for every row of CT600A, each within the accounting period. */
+/** Check that every loan row of CT600A has a date within the accounting period. */
 export function validateLoanDates(
-  values: LoanDatesAnswers | undefined,
-  rows: Record<LoanTable, string[]>,
+  ct600a: RawTree | undefined,
   period: Period,
 ): Validated<ParticipatorLoanDates> {
   const errors: FieldErrors = {};
@@ -274,16 +334,16 @@ export function validateLoanDates(
     repaid_within_nine_months: [],
     repaid_later: [],
   };
+  const loans = draftLoans(ct600a);
   for (const { table } of LOAN_TABLES) {
-    rows[table].forEach((name, index) => {
-      const parts = values?.[table][index] ?? { day: "", month: "", year: "" };
-      const parsed = parseDateParts(parts, `date the loan to ${name} was made`);
+    for (const { index, name, made } of loans[table]) {
+      const parsed = parseDateParts(made, `date the loan to ${name} was made`);
       const key = loanDateId(table, index);
       if (!parsed.ok) errors[key] = parsed.error;
       else if (parsed.value < period.start || parsed.value > period.end) {
         errors[key] = `The date the loan to ${name} was made must be in this accounting period`;
       } else dates[table].push(parsed.value);
-    });
+    }
   }
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, value: dates };
 }
