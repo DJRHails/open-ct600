@@ -1,8 +1,10 @@
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from lxml import etree
+from lxml import etree, isoschematron
 from pydantic import SecretStr
+from test_hmrc_xml import RELIEF_SHAPES, SHAPES, build, make_return
 
 from open_ct600.hmrc.govtalk import (
     Environment,
@@ -12,7 +14,14 @@ from open_ct600.hmrc.govtalk import (
     build_poll,
     build_submission,
 )
-from open_ct600.hmrc.validate import ARTEFACTS, Problem, _envelope_schema, validate_return
+from open_ct600.hmrc.validate import (
+    ARTEFACTS,
+    Problem,
+    _as_message,
+    _envelope_schema,
+    _rules,
+    validate_return,
+)
 from open_ct600.hmrc.xmldoc import CT_NS, GOVTALK_NS, parse_xml
 
 REPO = Path(__file__).resolve().parents[2]
@@ -181,3 +190,45 @@ def test_packaged_artefacts_match_the_published_specs():
     assert sorted(path.name for path in ARTEFACTS.iterdir()) == sorted(published)
     for packaged, spec in published.items():
         assert (ARTEFACTS / packaged).read_bytes() == (REPO / "specs/hmrc" / spec).read_bytes()
+
+
+def full_iso_schematron():
+    """HMRC's schematron compiled by the plain ISO skeleton, walking the whole document."""
+    schematron = etree.parse(str(ARTEFACTS / "CT-2014-v1-994.sch"))
+    namespace = "{http://purl.oclc.org/dsdl/schematron}"
+    for block in schematron.getroot().findall(f"{namespace}diagnostics"):
+        schematron.getroot().remove(block)
+    return etree.XSLT(isoschematron.iso_svrl_for_xslt1(schematron))
+
+
+def failed_asserts(stylesheet, message):
+    report = stylesheet(etree.ElementTree(message))
+    return sorted(
+        (failure.get("id"), failure.get("location"))
+        for failure in report.getroot().iter("{http://purl.oclc.org/dsdl/svrl}failed-assert")
+    )
+
+
+def scrambled(envelope):
+    """Every amount off by one, so HMRC's arithmetic rules fail all over the return."""
+    for element in envelope.iter():
+        if element.text and element.text.replace(".", "", 1).isdigit() and len(element) == 0:
+            element.text = str(Decimal(element.text) + 1)
+    return envelope
+
+
+def test_pruned_schematron_reports_exactly_what_the_full_schematron_reports():
+    full = full_iso_schematron()
+    envelopes = [
+        build(make_return(**overrides)) for overrides in [*SHAPES.values(), *RELIEF_SHAPES.values()]
+    ]
+    messages = [_as_message(scrambled(envelope)) for envelope in envelopes]
+    messages.append(sample(edits=[(GOVTALK_KEY, b'<Key Type="UTR">1111111111</Key>')]))
+    compared = 0
+
+    for message in messages:
+        expected = failed_asserts(full, message)
+        assert failed_asserts(_rules().stylesheet, message) == expected
+        compared += len(expected)
+
+    assert compared > 200
