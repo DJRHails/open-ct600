@@ -343,6 +343,73 @@ describe("filing a return", () => {
     });
   });
 
+  it("asks how much of the losses brought forward arose before 1 April 2017", async () => {
+    const pre2017 = /arose before 1 April 2017/;
+    const user = renderApp("/file/tax-adjustments");
+
+    expect(screen.queryByLabelText(pre2017)).toBeNull();
+    await user.type(screen.getByLabelText("Trading losses brought forward"), "10,000");
+    const question = screen.getByLabelText(pre2017);
+    expect(question).toHaveAccessibleDescription(/only be set against profits of the same trade/);
+    await user.type(question, "12,000");
+    await save(user);
+
+    expect(screen.getByRole("link", { name: /cannot be more than them$/ })).toHaveAttribute(
+      "href",
+      "#losses_brought_forward_before_april_2017",
+    );
+    await user.clear(question);
+    await user.type(question, "4,000");
+    await save(user);
+
+    const saved = JSON.parse(window.localStorage.getItem("open-ct600:draft:v1") ?? "{}");
+    expect(saved.tax_adjustments).toMatchObject({
+      losses_brought_forward: "10,000",
+      losses_brought_forward_before_april_2017: "4,000",
+    });
+  });
+
+  it("shows the losses from before 1 April 2017 in check your answers and sends them", async () => {
+    const fetchMock = stubApi(demoReplies);
+    window.localStorage.setItem(
+      "open-ct600:draft:v1",
+      JSON.stringify({
+        company: { ...COMPANY, company_type: "0" },
+        period: {
+          start: { day: "1", month: "4", year: "2024" },
+          end: { day: "31", month: "3", year: "2025" },
+        },
+        profit_and_loss: { turnover: "100000" },
+        tax_adjustments: {
+          losses_brought_forward: "10000",
+          losses_brought_forward_before_april_2017: "4000",
+        },
+        balance_sheet: {},
+        accounts: {
+          standard: "micro",
+          directors: ["Ada Lovelace"],
+          signing_director: "Ada Lovelace",
+          approval_date: { day: "30", month: "6", year: "2025" },
+          average_employees: "1",
+          trading_status: "trading",
+          dormant: "no",
+        },
+        chosen_pages: [],
+        research_and_development: { claiming: "no" },
+      }),
+    );
+    renderApp("/file/check-your-answers");
+
+    const row = (await screen.findByText(/arose before 1 April 2017/)).closest("div");
+    expect(row).toHaveTextContent("£4,000");
+    expect(bodySentTo(fetchMock, "/returns/compute")).toMatchObject({
+      tax_adjustments: {
+        losses_brought_forward: 10_000,
+        losses_brought_forward_before_april_2017: 4_000,
+      },
+    });
+  });
+
   it("does not show check your answers until every section is complete", () => {
     renderApp("/file/check-your-answers");
 

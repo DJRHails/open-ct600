@@ -16,7 +16,7 @@ import type {
 } from "@/api";
 import type { DateParts } from "@/components/forms";
 import type { CreativeAnswers, ResearchAnswers, SurrendererAnswers } from "@/filing/reliefs";
-import { convertPage, type RawTree } from "@/filing/supplementary/answers";
+import { convertPage, getAt, isBlank, type RawTree } from "@/filing/supplementary/answers";
 import {
   formatDate,
   formatPounds,
@@ -78,6 +78,10 @@ export type AmountField<K extends AmountSectionKey> = {
   errorLabel: string;
   hint?: string;
   kind?: "count";
+  /** The row's name in check your answers, when the label is a question. */
+  summaryLabel?: string;
+  /** Asked only when this holds for the answers; otherwise the amount is nil. */
+  askedWhen?: (values: Record<string, string>, draft: Draft) => boolean;
 };
 
 export type AmountSection<K extends AmountSectionKey> = {
@@ -86,6 +90,12 @@ export type AmountSection<K extends AmountSectionKey> = {
   title: string;
   intro: string;
   fields: AmountField<K>[];
+  /** Checks between the section's amounts, once each amount is valid on its own. */
+  check?: (
+    amounts: Record<string, number>,
+    values: Record<string, string>,
+    draft: Draft,
+  ) => FieldErrors;
 };
 
 export const PROFIT_AND_LOSS: AmountSection<"profit_and_loss"> = {
@@ -134,6 +144,46 @@ export const PROFIT_AND_LOSS: AmountSection<"profit_and_loss"> = {
   ],
 };
 
+const PRE_2017_LOSSES = "losses_brought_forward_before_april_2017";
+
+function positiveAmount(raw: string | undefined): boolean {
+  const parsed = parseWholePounds(raw ?? "", "amount");
+  return parsed.ok && parsed.value > 0;
+}
+
+/** Whether CT600C claims group relief for carried-forward losses (box C130). */
+export function claimsCarriedForwardGroupRelief(draft: Draft): boolean {
+  if (!draft.chosen_pages?.includes("C")) return false;
+  const path = ["GroupAndConsortium", "GroupReliefForCarriedForwardLosses", "CompanyInformation"];
+  const companies = getAt(draft.supplementary_pages?.C, [...path, "Company"]);
+  return Array.isArray(companies) && companies.some((company) => !isBlank(company));
+}
+
+/**
+ * Losses from before 1 April 2017 are part of those brought forward. They matter when the
+ * company claims group relief for carried-forward losses, which its own later losses must be
+ * used before (CTM82010), so the answer is needed then.
+ */
+function checkPre2017Losses(
+  amounts: Record<string, number>,
+  values: Record<string, string>,
+  draft: Draft,
+): FieldErrors {
+  if ((amounts[PRE_2017_LOSSES] ?? 0) > (amounts.losses_brought_forward ?? 0)) {
+    return {
+      [PRE_2017_LOSSES]:
+        "Losses from before 1 April 2017 are part of the trading losses brought forward, so cannot be more than them",
+    };
+  }
+  if (claimsCarriedForwardGroupRelief(draft) && !(values[PRE_2017_LOSSES] ?? "").trim()) {
+    return {
+      [PRE_2017_LOSSES]:
+        "Enter how much of the trading losses brought forward arose before 1 April 2017, or 0 if none",
+    };
+  }
+  return {};
+}
+
 export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
   key: "tax_adjustments",
   slug: "tax-adjustments",
@@ -161,6 +211,18 @@ export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
       hint: "Unused trading losses from earlier periods. We use as much as your trading profits allow.",
     },
     {
+      key: PRE_2017_LOSSES,
+      label: "How much of the trading losses brought forward arose before 1 April 2017?",
+      summaryLabel: "Trading losses brought forward that arose before 1 April 2017",
+      errorLabel: "losses brought forward from before 1 April 2017",
+      hint:
+        "Losses from before 1 April 2017 can only be set against profits of the same trade. " +
+        "Later losses can be set against the company's other profits too, and must be used " +
+        "before group relief for carried-forward losses. Enter 0 if none.",
+      askedWhen: (values, draft) =>
+        positiveAmount(values.losses_brought_forward) || claimsCarriedForwardGroupRelief(draft),
+    },
+    {
       key: "chargeable_gains",
       label: "Chargeable gains",
       errorLabel: "chargeable gains",
@@ -185,6 +247,7 @@ export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
       kind: "count",
     },
   ],
+  check: checkPre2017Losses,
 };
 
 export const BALANCE_SHEET: AmountSection<"balance_sheet"> = {
@@ -490,10 +553,15 @@ export function validatePeriod(
 export function validateAmounts<K extends AmountSectionKey>(
   section: AmountSection<K>,
   values: Record<string, string>,
+  draft: Draft = {},
 ): Validated<AmountSections[K]> {
   const errors: FieldErrors = {};
   const parsed: Record<string, number> = {};
   for (const field of section.fields) {
+    if (field.askedWhen && !field.askedWhen(values, draft)) {
+      parsed[field.key] = 0;
+      continue;
+    }
     const raw = values[field.key] ?? "";
     const result =
       field.kind === "count"
@@ -501,6 +569,9 @@ export function validateAmounts<K extends AmountSectionKey>(
         : parseWholePounds(raw, field.errorLabel);
     if (result.ok) parsed[field.key] = result.value;
     else errors[field.key] = result.error;
+  }
+  if (Object.keys(errors).length === 0 && section.check) {
+    Object.assign(errors, section.check(parsed, values, draft));
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true, value: parsed as AmountSections[K] };
@@ -538,7 +609,7 @@ function validateSection<K extends SectionKey>(
     profit_and_loss: () =>
       draft.profit_and_loss ? validateAmounts(PROFIT_AND_LOSS, draft.profit_and_loss) : null,
     tax_adjustments: () =>
-      draft.tax_adjustments ? validateAmounts(TAX_ADJUSTMENTS, draft.tax_adjustments) : null,
+      draft.tax_adjustments ? validateAmounts(TAX_ADJUSTMENTS, draft.tax_adjustments, draft) : null,
     balance_sheet: () =>
       draft.balance_sheet ? validateAmounts(BALANCE_SHEET, draft.balance_sheet) : null,
     accounts: () => (draft.accounts ? validateAccounts(draft.accounts, periodEnd(draft)) : null),
@@ -721,11 +792,18 @@ function amountRows<K extends AmountSectionKey>(
   section: AmountSection<K>,
   values: AmountSections[K],
 ): AnswerRow[] {
-  return section.fields.map((field) => {
+  const answers = Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, String(value)]),
+  );
+  // A conditional amount is shown when it was asked, or is not nil.
+  const shown = section.fields.filter(
+    (field) => !field.askedWhen || field.askedWhen(answers, {}) || Number(values[field.key]) !== 0,
+  );
+  return shown.map((field) => {
     const value = Number(values[field.key]);
     return {
       key: field.key,
-      label: field.label,
+      label: field.summaryLabel ?? field.label,
       value: field.kind === "count" ? String(value) : formatPounds(value),
     };
   });

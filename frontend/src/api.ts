@@ -273,6 +273,8 @@ export type CT600Return = {
     disallowable_expenses: number;
     capital_allowances: number;
     losses_brought_forward: number;
+    /** The part of ``losses_brought_forward`` that arose before 1 April 2017. */
+    losses_brought_forward_before_april_2017: number;
     chargeable_gains: number;
     qualifying_donations: number;
     exempt_distributions: number;
