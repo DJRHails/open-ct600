@@ -37,9 +37,9 @@ export function CT600BoxesTable({ boxes }: { boxes: CT600Box[] }) {
       </thead>
       <tbody className="govuk-table__body">
         {boxes.map((box) => (
-          <tr className="govuk-table__row" key={box.number}>
+          <tr className="govuk-table__row" key={box.box}>
             <th scope="row" className="govuk-table__header">
-              {box.number}
+              {box.box}
             </th>
             <td className="govuk-table__cell">{box.label}</td>
             <td className="govuk-table__cell govuk-table__cell--numeric app-numeric">
@@ -96,8 +96,16 @@ export function AccountsTables({ accounts }: { accounts: AccountsSummary }) {
       <StatementTable
         caption="Balance sheet"
         lines={[
+          {
+            label: "Called up share capital not paid",
+            value: formatPounds(accounts.called_up_share_capital_not_paid),
+          },
           { label: "Fixed assets", value: formatPounds(accounts.fixed_assets) },
           { label: "Current assets", value: formatPounds(accounts.current_assets) },
+          {
+            label: "Prepayments and accrued income",
+            value: formatPounds(accounts.prepayments_and_accrued_income),
+          },
           {
             label: "Creditors: amounts falling due within one year",
             value: formatPounds(-accounts.creditors_within_one_year),
@@ -110,6 +118,11 @@ export function AccountsTables({ accounts }: { accounts: AccountsSummary }) {
           {
             label: "Creditors: amounts falling due after more than one year",
             value: formatPounds(-accounts.creditors_after_one_year),
+          },
+          { label: "Provisions for liabilities", value: formatPounds(-accounts.provisions) },
+          {
+            label: "Accruals and deferred income",
+            value: formatPounds(-accounts.accruals_and_deferred_income),
           },
           { label: "Net assets", value: formatPounds(accounts.net_assets), total: true },
           {

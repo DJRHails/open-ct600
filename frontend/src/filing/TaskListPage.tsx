@@ -6,6 +6,7 @@ import { useDraft } from "@/filing/draft";
 import { CHECK_ANSWERS } from "@/filing/paths";
 import {
   completedCount,
+  sectionComplete,
   SECTION_ORDER,
   SECTION_SLUGS,
   SECTION_TITLES,
@@ -85,7 +86,7 @@ export function TaskListPage() {
       <h2 className="govuk-heading-m">Your company and its accounts</h2>
       <ul className="govuk-task-list">
         {SECTION_ORDER.map((section) => (
-          <TaskItem key={section} section={section} completed={draft[section] !== undefined} />
+          <TaskItem key={section} section={section} completed={sectionComplete(draft, section)} />
         ))}
       </ul>
 

@@ -19,7 +19,7 @@ old online filing service for small companies, which closed on 31 March 2026, an
 
 | Area | What you get |
 | --- | --- |
-| Filing service (`/file`) | Uses the GOV.UK start page, task list and one-topic-per-page patterns: company details, accounting period, profit and loss account, tax adjustments and micro-entity balance sheet. Check your answers shows every CT600 box, the tax computation and the accounts. After a declaration, it issues a demo receipt with a submission reference and a fingerprint of the return. |
+| Filing service (`/file`) | Uses the GOV.UK start page, task list and one-topic-per-page patterns: company details (including the type of company and its principal activity), accounting period, profit and loss account, tax adjustments, micro-entity balance sheet and accounts details (accounting standard, directors, approval date, employees, trading status). Check your answers shows every CT600 box, the tax computation and the accounts. After a declaration, it issues a demo receipt with a submission reference and a fingerprint of the return. |
 | Tax calculator (`/calculator`) | Corporation Tax for any period from 1 April 2017 to 31 March 2027, with marginal relief, associated companies, short periods and periods that span 1 April. |
 | Content | Home, pricing (free), HMRC free-filing closure explainer, guides, help/FAQ, privacy, cookies (none are used), accessibility statement and terms. |
 

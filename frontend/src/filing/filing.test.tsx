@@ -36,7 +36,7 @@ const TAX = {
 };
 
 const COMPUTATION: ReturnComputation = {
-  boxes: [{ number: 440, label: "Corporation Tax chargeable", value: "22750.00", kind: "money" }],
+  boxes: [{ box: "440", label: "Corporation Tax chargeable", value: "22750.00", kind: "money" }],
   tax: TAX,
   accounts: {
     turnover: 100_000,
@@ -45,25 +45,38 @@ const COMPUTATION: ReturnComputation = {
     profit_before_tax: 100_000,
     corporation_tax: "22750.00",
     profit_after_tax: "77250.00",
+    called_up_share_capital_not_paid: 0,
     fixed_assets: 0,
     current_assets: 0,
+    prepayments_and_accrued_income: 0,
     creditors_within_one_year: 0,
     net_current_assets: 0,
     total_assets_less_current_liabilities: 0,
     creditors_after_one_year: 0,
+    provisions: 0,
+    accruals_and_deferred_income: 0,
     net_assets: 0,
     called_up_share_capital: 0,
     profit_and_loss_reserve: 0,
   },
   trading_loss_arising: 0,
   losses_carried_forward: 0,
+  pages: {},
+};
+
+const COMPANY = {
+  name: "Acme Widgets Ltd",
+  registration_number: "01234567",
+  utr: "1234567890",
+  company_type: 0,
+  principal_activity: "Manufacture of widgets",
 };
 
 const RECEIPT: SubmissionReceipt = {
   reference: "sub_0000000000000000000042",
   received_at: "2026-09-28T12:00:00Z",
   fingerprint: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
-  company: { name: "Acme Widgets Ltd", registration_number: "01234567", utr: "1234567890" },
+  company: COMPANY,
   signatory: "Ada Lovelace",
   computation: COMPUTATION,
 };
@@ -84,6 +97,8 @@ async function completeEverySection(user: UserEvent) {
   await user.type(screen.getByLabelText("Company name"), "Acme Widgets Ltd");
   await user.type(screen.getByLabelText("Company registration number"), "01234567");
   await user.type(screen.getByLabelText(/Unique Taxpayer Reference/), "1234567890");
+  await user.type(screen.getByLabelText("What does the company do?"), "Manufacture of widgets");
+  expect(screen.getByLabelText("UK trading or professional company")).toBeChecked();
   await save(user);
 
   await user.click(screen.getByRole("link", { name: "Accounting period" }));
@@ -95,10 +110,26 @@ async function completeEverySection(user: UserEvent) {
   await user.type(screen.getByLabelText("Turnover"), "100,000");
   await save(user);
 
-  for (const section of ["Tax adjustments", "Balance sheet"]) {
-    await user.click(screen.getByRole("link", { name: section }));
-    await save(user);
-  }
+  await user.click(screen.getByRole("link", { name: "Tax adjustments" }));
+  await save(user);
+
+  await user.click(screen.getByRole("link", { name: "Balance sheet" }));
+  await user.type(screen.getByLabelText("Prepayments and accrued income"), "1,000");
+  await user.type(screen.getByLabelText("Provisions for liabilities"), "500");
+  await save(user);
+
+  await user.click(screen.getByRole("link", { name: "Accounts details" }));
+  await completeAccountsDetails(user);
+}
+
+async function completeAccountsDetails(user: UserEvent) {
+  await user.click(screen.getByLabelText(/Micro-entity accounts/));
+  await user.type(screen.getByLabelText("Director 1 full name"), "Ada Lovelace");
+  await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
+  await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
+  await user.type(screen.getByLabelText("Average number of employees during the period"), "1");
+  await user.click(screen.getByLabelText("It traded during the period"));
+  await save(user);
 }
 
 describe("filing a return", () => {
@@ -112,14 +143,24 @@ describe("filing a return", () => {
 
     expect(screen.getByText("Cannot start yet")).toBeInTheDocument();
     await completeEverySection(user);
-    expect(screen.getByText("You have completed 5 of 5 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 6 of 6 sections.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("link", { name: "Check your answers and submit" }));
     expect(await screen.findByText("£22,750.00", { selector: "strong" })).toBeInTheDocument();
+    expect(screen.getByText("Micro-entity accounts (FRS 105)")).toBeInTheDocument();
     expect(requestBody(fetchMock)).toMatchObject({
-      company: { registration_number: "01234567" },
+      company: COMPANY,
       period: { start: "2024-04-01", end: "2025-03-31" },
       profit_and_loss: { turnover: 100_000, staff_costs: 0 },
+      balance_sheet: { prepayments_and_accrued_income: 1_000, provisions: 500 },
+      accounts: {
+        standard: "micro",
+        directors: ["Ada Lovelace"],
+        signing_director: "Ada Lovelace",
+        approval_date: "2025-06-30",
+        average_employees: 1,
+        trading_status: "trading",
+      },
     });
 
     await user.click(screen.getByRole("link", { name: "Continue" }));
@@ -136,7 +177,7 @@ describe("filing a return", () => {
     expect(window.localStorage.getItem("open-ct600:draft:v1")).toBeNull();
 
     await user.click(screen.getByRole("link", { name: "Start another return" }));
-    expect(screen.getByText("You have completed 0 of 5 sections.")).toBeInTheDocument();
+    expect(screen.getByText("You have completed 0 of 6 sections.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete your answers" }));
     expect(window.sessionStorage.getItem("open-ct600:receipt:v1")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete your answers" })).toBeNull();
@@ -187,7 +228,7 @@ describe("filing a return", () => {
     window.localStorage.setItem(
       "open-ct600:draft:v1",
       JSON.stringify({
-        company: { name: "Acme", registration_number: "01234567", utr: "1234567890" },
+        company: { ...COMPANY, company_type: "0" },
         period: {
           start: { day: "1", month: "4", year: "2027" },
           end: { day: "31", month: "3", year: "2028" },
@@ -195,12 +236,68 @@ describe("filing a return", () => {
         profit_and_loss: {},
         tax_adjustments: {},
         balance_sheet: {},
+        accounts: {
+          standard: "micro",
+          directors: ["Ada Lovelace"],
+          signing_director: "Ada Lovelace",
+          approval_date: { day: "1", month: "6", year: "2028" },
+          average_employees: "1",
+          trading_status: "trading",
+        },
       }),
     );
     renderApp("/file/check-your-answers");
 
     const link = await screen.findByRole("link", { name: /have not been set yet/ });
     expect(link).toHaveAttribute("href", "/file/accounting-period?change=1");
+  });
+
+  it("collects accounts details with directors added and removed", async () => {
+    const user = renderApp("/file/accounts-details");
+
+    await save(user);
+    const summary = screen.getByRole("alert");
+    for (const message of [
+      "Select how the accounts were prepared",
+      "Enter the name of director 1",
+      "Select the director who signed the accounts",
+      "Enter the date the accounts were approved",
+      "Enter the average number of employees",
+      "Select whether the company traded",
+    ]) {
+      expect(within(summary).getByRole("link", { name: message })).toBeInTheDocument();
+    }
+    expect(within(summary).getByRole("link", { name: /date the accounts/ })).toHaveAttribute(
+      "href",
+      "#approval_date-day",
+    );
+    expect(screen.getByText("Enter the directors' names first.")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Director 1 full name"), "Ada Lovelace");
+    await user.click(screen.getByRole("button", { name: "Add another director" }));
+    await user.type(screen.getByLabelText("Director 2 full name"), "Charles Babbage");
+    await user.click(screen.getByRole("radio", { name: "Charles Babbage" }));
+    await user.click(screen.getByRole("button", { name: "Remove director 2" }));
+
+    expect(screen.queryByLabelText("Director 2 full name")).toBeNull();
+    expect(screen.queryByRole("radio", { name: "Charles Babbage" })).toBeNull();
+    expect(screen.getByRole("radio", { name: "Ada Lovelace" })).not.toBeChecked();
+
+    await user.click(screen.getByLabelText(/Small company accounts/));
+    await user.click(screen.getByRole("radio", { name: "Ada Lovelace" }));
+    await fillDate(user, "When did the board approve the accounts?", "30", "6", "2025");
+    await user.type(screen.getByLabelText("Average number of employees during the period"), "0");
+    await user.click(screen.getByLabelText("It has never traded"));
+    await save(user);
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Company Tax Return");
+    const saved = JSON.parse(window.localStorage.getItem("open-ct600:draft:v1") ?? "{}");
+    expect(saved.accounts).toMatchObject({
+      directors: ["Ada Lovelace"],
+      signing_director: "Ada Lovelace",
+      standard: "small",
+      trading_status: "never_traded",
+    });
   });
 
   it("does not show check your answers until every section is complete", () => {

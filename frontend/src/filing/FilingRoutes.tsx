@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router";
 
 import { AccountingPeriodPage } from "@/filing/AccountingPeriodPage";
+import { AccountsDetailsPage } from "@/filing/AccountsDetailsPage";
 import { AmountSectionPage } from "@/filing/AmountSectionPage";
 import { CheckAnswersPage } from "@/filing/CheckAnswersPage";
 import { CompanyDetailsPage } from "@/filing/CompanyDetailsPage";
@@ -32,6 +33,7 @@ export function FilingRoutes() {
           path={BALANCE_SHEET.slug}
           element={<AmountSectionPage key="balance" section={BALANCE_SHEET} />}
         />
+        <Route path="accounts-details" element={<AccountsDetailsPage />} />
         <Route path="check-your-answers" element={<CheckAnswersPage />} />
         <Route path="declaration" element={<DeclarationPage />} />
         <Route path="confirmation" element={<ConfirmationPage />} />

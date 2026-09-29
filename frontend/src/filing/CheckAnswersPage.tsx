@@ -93,7 +93,7 @@ function ComputationSection({ computation }: { computation: ReturnComputation })
         </div>
       ) : null}
       <CT600BoxesTable boxes={computation.boxes} />
-      <h2 className="govuk-heading-m">Your micro-entity accounts</h2>
+      <h2 className="govuk-heading-m">Your accounts</h2>
       <AccountsTables accounts={computation.accounts} />
       <h2 className="govuk-heading-m">Now send your return</h2>
       <p className="govuk-body">
