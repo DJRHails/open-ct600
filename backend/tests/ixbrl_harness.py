@@ -18,7 +18,7 @@ import tempfile
 import urllib.request
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -58,6 +58,8 @@ class Problem:
     level: str
     code: str
     message: str
+    arguments: Mapping[str, str] = field(default_factory=dict)
+    """The message's arguments, e.g. ``{"fact": "core:Equity", "contextID": "end"}``."""
 
 
 @dataclass(frozen=True)
@@ -133,7 +135,14 @@ def taxonomy_package(name: str) -> Path:
 
 def _problems(log: list[dict[str, Any]]) -> list[Problem]:
     return [
-        Problem(level=record["level"], code=record["code"], message=record["message"]["text"])
+        Problem(
+            level=record["level"],
+            code=record["code"],
+            message=record["message"]["text"],
+            arguments={
+                name: str(value) for name, value in record["message"].get("args", {}).items()
+            },
+        )
         for record in log
         if record["level"] in FAILING_LEVELS
     ]
