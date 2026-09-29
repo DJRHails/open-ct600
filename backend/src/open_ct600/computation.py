@@ -630,11 +630,18 @@ def _group_relief(run: _Evaluation, profits: _Profits) -> GroupRelief | None:
                 Problem(("group_relief_surrenderers",), "Add CT600C with the group relief claims")
             )
         return None
-    losses_available = run.ct600.tax_adjustments.losses_brought_forward - profits.losses_used
+    adjustments = run.ct600.tax_adjustments
+    losses_available = adjustments.losses_brought_forward - profits.losses_used
+    # Older losses can only relieve the trade (s45), so box 160 is taken to use them first;
+    # what is left of the April 2017 and later losses could relieve total profits (s45A).
+    older = adjustments.losses_brought_forward_before_april_2017
+    newer_used = max(profits.losses_used - older, 0)
+    newer_unused = adjustments.losses_brought_forward - older - newer_used
     position = ClaimantPosition(
         available=profits.available_for_group_relief,
         trading_loss=profits.loss_arising,
         losses_available=losses_available,
+        own_losses_against_total_profits=newer_unused,
     )
     outcome, problems = check_group_relief(
         page, _company_facts(run), position, run.ct600.group_relief_surrenderers

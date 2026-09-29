@@ -340,3 +340,47 @@ def test_consortium_share_applies_to_the_whole_loss_before_other_members_surrend
         group_relief_surrenderers=[tight], supplementary_pages={"C": claims(claim(35_000))}
     )
     assert "£30,000 or less" in next(iter(found.values()))
+
+
+NO_TRADE_PROFIT = {"turnover": 0, "interest_income": 50_000}
+
+
+def test_group_relief_for_carried_forward_losses_comes_after_the_companys_own():
+    # Review M3. CTM82010: "A company may also only claim ... group relief for carried-forward
+    # losses once it has used its own losses as far as possible"; the relevant maximum
+    # (CTA 2010 s188DB, s188ED) leaves out profits its own post-April-2017 losses can relieve.
+    # Interest 50,000 less 40,000 of the company's own losses leaves 10,000 for C130.
+    overrides = {
+        "profit_and_loss": NO_TRADE_PROFIT,
+        "tax_adjustments": {"losses_brought_forward": 40_000},
+    }
+
+    found = problems(
+        **overrides, supplementary_pages={"C": claims(carried_forward=(claim(50_000),))}
+    )
+    assert any("£10,000 or less" in message for message in found.values())
+    assert (
+        boxes(
+            compute(
+                **overrides, supplementary_pages={"C": claims(carried_forward=(claim(10_000),))}
+            )
+        )["312"]
+        == 10_000
+    )
+
+
+def test_losses_from_before_april_2017_do_not_hold_back_carried_forward_group_relief():
+    # Pre-April-2017 trading losses only relieve profits of the same trade (s45), so they
+    # cannot be set against interest and do not limit the claim.
+    overrides = {
+        "profit_and_loss": NO_TRADE_PROFIT,
+        "tax_adjustments": {
+            "losses_brought_forward": 40_000,
+            "losses_brought_forward_before_april_2017": 40_000,
+        },
+    }
+
+    computation = compute(
+        **overrides, supplementary_pages={"C": claims(carried_forward=(claim(50_000),))}
+    )
+    assert boxes(computation)["312"] == 50_000

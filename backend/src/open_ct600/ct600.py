@@ -180,15 +180,34 @@ class ProfitAndLoss(StrictModel):
 
 
 class TaxAdjustments(StrictModel):
-    """Adjustments that turn accounting profit into taxable profit."""
+    """Adjustments that turn accounting profit into taxable profit.
+
+    Attributes:
+        losses_brought_forward_before_april_2017: The part of ``losses_brought_forward`` that
+            arose before 1 April 2017. Those losses only relieve profits of the same trade
+            (CTA 2010 s45); later ones can also relieve total profits (s45A), so they come
+            before any group relief for carried-forward losses (CTM82010).
+    """
 
     disallowable_expenses: Pounds = 0
     capital_allowances: Pounds = 0
     losses_brought_forward: Pounds = 0
+    losses_brought_forward_before_april_2017: Pounds = 0
     chargeable_gains: Pounds = 0
     qualifying_donations: Pounds = 0
     exempt_distributions: Pounds = 0
     associated_companies: Annotated[int, Field(ge=0, le=999)] = 0
+
+    @model_validator(mode="after")
+    def _check_older_losses_are_part_of_the_total(self) -> Self:
+        if self.losses_brought_forward_before_april_2017 > self.losses_brought_forward:
+            raise _located_error(
+                "Losses from before 1 April 2017 are part of the trading losses brought "
+                "forward, so cannot be more than them",
+                ("losses_brought_forward_before_april_2017",),
+                self.losses_brought_forward_before_april_2017,
+            )
+        return self
 
 
 class BalanceSheet(StrictModel):
