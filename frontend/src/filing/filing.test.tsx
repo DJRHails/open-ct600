@@ -230,7 +230,8 @@ describe("filing a return", () => {
     await user.click(screen.getByRole("button", { name: "Delete your answers" }));
     expect(window.sessionStorage.getItem("open-ct600:receipt:v2")).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete your answers" })).toBeNull();
-  });
+    // Types through every section of a return, so it needs longer than the 5 s default.
+  }, 20_000);
 
   it("returns focus to the error summary when the same errors happen again", async () => {
     const user = renderApp("/file/company-details");
