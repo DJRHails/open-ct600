@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
 
 import type { CompanyRecord } from "@/api";
+import { draftShapeProblem } from "@/filing/returns/draftShape";
 import { RECORD, SEARCH_RESULT } from "@/test-companies-house";
 import { bodySentTo, openDraft, renderApp, type Reply, seedDraft, stubApi } from "@/test-utils";
 
@@ -288,6 +289,8 @@ describe("later sections from the Companies House record", () => {
       first_period: "no",
     });
     expect(openDraft().comparatives).toMatchObject({ average_employees: "3" });
+    // A return saved from these pages can be exported and imported again.
+    expect(draftShapeProblem(openDraft())).toBeNull();
   });
 
   it("types directors in when the record lists none", () => {
@@ -331,6 +334,7 @@ describe("the previous period's figures (comparatives)", () => {
       profit_and_loss: { turnover: "125,000", staff_costs: "30000" },
     });
     expect(openDraft().comparatives.profit_and_loss).not.toHaveProperty("tax");
+    expect(draftShapeProblem(openDraft())).toBeNull();
   });
 
   it("include last period's tax on profit, from the filed accounts", () => {
