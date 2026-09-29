@@ -256,4 +256,134 @@ export const ACCOUNTS_HELP: Record<keyof AccountsAnswers, QuestionHelp> = {
       },
     ],
   },
+  legal_form: {
+    topic: "the company's legal form",
+    plain: {
+      meaning: [
+        "This is the kind of company it was set up as. Most small businesses are private companies limited by shares: the owners hold shares, and can only lose what they paid for them.",
+        "A company limited by guarantee has members instead of shareholders, who each promise to pay a small fixed amount if it closes owing money. Clubs and charities are often set up this way. A community interest company is a limited company run for the benefit of a community.",
+        "It is on the certificate of incorporation, and on the company's page on the Companies House register.",
+      ],
+      example: [
+        "Alex set up a consultancy as Alex Smith Consulting Ltd and holds its 100 £1 shares. It is a private company limited by shares.",
+      ],
+      excludes: [
+        "Public limited companies (plc) and limited liability partnerships (LLPs). This service cannot prepare their accounts.",
+        "Sole traders and partnerships, which are not companies and do not file a Company Tax Return.",
+      ],
+      effect: [
+        "We record the legal form in the accounts. For a company limited by guarantee, the balance sheet shows members' funds instead of shareholders' funds.",
+      ],
+    },
+    hmrc: [
+      ACCOUNTS,
+      {
+        quote: {
+          guide: COMPANIES_HOUSE,
+          heading: "4.1 Private and public limited companies",
+          paragraphs: [
+            "All private and public limited companies must file their accounts at Companies House. Dormant subsidiaries may be able to apply for an exemption.",
+          ],
+        },
+      },
+    ],
+  },
+  first_period: {
+    topic: "the first period of account",
+    plain: {
+      meaning: [
+        "A company's first period of account starts on the day it was set up. After that, each period starts the day after the last one ended.",
+        "From the second period on, the accounts show last period's figures beside this period's so they can be compared. These are called comparatives.",
+      ],
+      example: [
+        "A company was set up on 10 May 2024 and made its first accounts up to 31 May 2025. For that period, answer yes. For the period from 1 June 2025 to 31 May 2026, answer no, and enter the first period's figures as the previous period.",
+      ],
+      excludes: [
+        "The company's first Corporation Tax accounting period, if that is shorter than its first period of account. Answer about the accounts.",
+      ],
+      effect: [
+        "If you answer no, we ask for the previous period's figures with the profit and loss account, balance sheet and number of employees, and show them in the accounts.",
+      ],
+    },
+    hmrc: [
+      ACCOUNTS,
+      {
+        quote: {
+          guide: COMPANIES_HOUSE,
+          heading: "1.1 A company’s financial year",
+          paragraphs: [
+            "For an existing company, your financial year starts on the day after the previous financial year ended.",
+            "For a new company, your financial year starts on the day of incorporation.",
+          ],
+        },
+      },
+    ],
+  },
+};
+
+/** Help for the previous period's figures (comparatives) asked after a first period. */
+export const COMPARATIVES_HELP: Record<
+  "previous_period" | "tax_on_profit" | "previous_employees",
+  QuestionHelp
+> = {
+  previous_period: {
+    topic: "the previous period of account",
+    plain: {
+      meaning: [
+        "The accounts show last period's figures beside this period's. Enter the dates of the period the company's last accounts covered.",
+        "They are on the last accounts, and on the company's filing history at Companies House.",
+      ],
+      example: [
+        "The company's last accounts were for 1 April 2024 to 31 March 2025. Enter 1 4 2024 and 31 3 2025.",
+      ],
+      excludes: ["This period's dates, which you entered as the accounting period."],
+      effect: [
+        "We label the previous period column in the accounts with these dates. They must end the day before this period starts.",
+      ],
+    },
+    hmrc: [
+      ACCOUNTS,
+      {
+        quote: {
+          guide: COMPANIES_HOUSE,
+          heading: "1.1 A company’s financial year",
+          paragraphs: [
+            "For an existing company, your financial year starts on the day after the previous financial year ended.",
+          ],
+        },
+      },
+    ],
+  },
+  tax_on_profit: {
+    topic: "last period's tax on profit",
+    plain: {
+      meaning: [
+        "The Corporation Tax charge shown in last period's profit and loss account, just above the profit for the period.",
+        "We work out this period's tax ourselves, so you only need last period's for the comparison.",
+      ],
+      example: [
+        "Last period's accounts show a profit before tax of £40,000, tax on profit of £7,600 and profit for the period of £32,400. Enter 7600.",
+        "If the accounts show a tax credit of £1,200, enter -1200.",
+      ],
+      excludes: ["This period's tax, which we work out.", "VAT, PAYE or National Insurance."],
+      effect: [
+        "We show it in the previous period column of the profit and loss account, so last period's profit for the period matches the accounts filed then.",
+      ],
+    },
+    hmrc: [ACCOUNTS],
+  },
+  previous_employees: {
+    topic: "last period's number of employees",
+    plain: {
+      meaning: [
+        "The average number of people employed in the previous period, including directors, as shown in last period's accounts.",
+      ],
+      example: ["Last period's accounts say the company had an average of 3 employees. Enter 3."],
+      excludes: ["This period's average, which you enter above."],
+      effect: [
+        "We show it beside this period's number in the notes to the accounts. You can leave it blank.",
+      ],
+    },
+    hmrc: [ACCOUNTS],
+  },
 };
