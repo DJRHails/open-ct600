@@ -213,7 +213,7 @@ def test_parses_acknowledgement():
 
     assert parse_reply(content) == Acknowledgement(
         correlation_id="46DCD4CC7E194088B99857931C185829",
-        poll_url="https://test-transaction-engine.tax.service.gov.uk/poll",
+        endpoint="https://test-transaction-engine.tax.service.gov.uk/poll",
         poll_interval=10,
     )
 
@@ -222,7 +222,7 @@ def test_acknowledgement_without_endpoint_url():
     reply = parse_reply(ACKNOWLEDGEMENT % b"")
 
     assert isinstance(reply, Acknowledgement)
-    assert reply.poll_url is None
+    assert reply.endpoint is None
 
 
 def test_parses_delete_response():

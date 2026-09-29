@@ -255,12 +255,12 @@ class Acknowledgement:
 
     Attributes:
         correlation_id: Identifies the submission in polls.
-        poll_url: Where to poll, if the Transaction Engine said.
+        endpoint: Where to poll (``ResponseEndPoint``), if the Transaction Engine said.
         poll_interval: Seconds to wait before polling.
     """
 
     correlation_id: str
-    poll_url: str | None
+    endpoint: str | None
     poll_interval: int
 
 
@@ -270,6 +270,7 @@ class Receipt:
 
     Attributes:
         correlation_id: The submission's Transaction Engine identifier (empty from TPVS).
+        endpoint: Where to send the delete request (``ResponseEndPoint``), if given.
         irmark: The IRmark HMRC computed (Base64 ``DigestValue`` of the signed receipt).
         accepted_time: When HMRC accepted the return, on HMRC's clock.
         messages: HMRC's receipt messages, including the one quoting the Base32 IRmark.
@@ -277,6 +278,7 @@ class Receipt:
     """
 
     correlation_id: str
+    endpoint: str | None
     irmark: str | None
     accepted_time: datetime | None
     messages: tuple[str, ...]
@@ -289,11 +291,13 @@ class ErrorReport:
 
     Attributes:
         correlation_id: The submission's identifier, if it got one.
+        endpoint: Where to send follow-up messages (``ResponseEndPoint``), if given.
         errors: The ``GovTalkErrors`` in the header (1046, 3001...).
         details: The errors in the body's ``ErrorResponse``: HMRC's itemised business errors.
     """
 
     correlation_id: str
+    endpoint: str | None
     errors: tuple[GovTalkError, ...]
     details: tuple[GovTalkError, ...]
 
@@ -331,13 +335,14 @@ def parse_reply(content: bytes) -> Reply:
     qualifier = _text(root, "Header/MessageDetails/Qualifier")
     function = _text(root, "Header/MessageDetails/Function")
     correlation_id = _text(root, "Header/MessageDetails/CorrelationID")
+    endpoint = _text(root, "Header/MessageDetails/ResponseEndPoint") or None
     match (qualifier, function):
         case ("acknowledgement", "submit"):
-            return _acknowledgement(root, correlation_id)
+            return _acknowledgement(root, correlation_id, endpoint)
         case ("response", "submit"):
-            return _receipt(root, correlation_id, content)
+            return _receipt(root, correlation_id, endpoint, content)
         case ("error", _):
-            return ErrorReport(correlation_id, _header_errors(root), _body_errors(root))
+            return ErrorReport(correlation_id, endpoint, _header_errors(root), _body_errors(root))
         case ("response", "delete"):
             return DeleteConfirmation(correlation_id)
         case _:
@@ -346,19 +351,22 @@ def parse_reply(content: bytes) -> Reply:
             )
 
 
-def _acknowledgement(root: etree._Element, correlation_id: str) -> Acknowledgement:
-    endpoint = root.find(_path("Header/MessageDetails/ResponseEndPoint"))
-    interval = endpoint.get("PollInterval") if endpoint is not None else None
-    if not correlation_id or interval is None or not interval.isdigit():
+def _acknowledgement(
+    root: etree._Element, correlation_id: str, endpoint: str | None
+) -> Acknowledgement:
+    element = root.find(_path("Header/MessageDetails/ResponseEndPoint"))
+    interval = "" if element is None else element.get("PollInterval", "")
+    if not correlation_id or not interval.isdigit():
         raise UnexpectedReplyError(
             "An acknowledgement must carry a CorrelationID and a numeric PollInterval, got "
             f"CorrelationID={correlation_id!r}, PollInterval={interval!r}."
         )
-    url = (endpoint.text or "").strip() if endpoint is not None else ""
-    return Acknowledgement(correlation_id, url or None, int(interval))
+    return Acknowledgement(correlation_id, endpoint, int(interval))
 
 
-def _receipt(root: etree._Element, correlation_id: str, content: bytes) -> Receipt:
+def _receipt(
+    root: etree._Element, correlation_id: str, endpoint: str | None, content: bytes
+) -> Receipt:
     success = root.find(f"{_path('Body')}/{{{SUCCESS_RESPONSE_NS}}}SuccessResponse")
     if success is None:
         raise UnexpectedReplyError("A submission response has no SuccessResponse in its Body.")
@@ -367,6 +375,7 @@ def _receipt(root: etree._Element, correlation_id: str, content: bytes) -> Recei
     messages = success.iterfind(f".//{{{SUCCESS_RESPONSE_NS}}}Message")
     return Receipt(
         correlation_id=correlation_id,
+        endpoint=endpoint,
         irmark=digest.text.strip() if digest is not None and digest.text else None,
         accepted_time=datetime.fromisoformat(accepted) if accepted else None,
         messages=tuple((message.text or "").strip() for message in messages),
