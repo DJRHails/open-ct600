@@ -215,6 +215,20 @@ def _small_lines() -> list[_Line]:
     ]
 
 
+def _tax_label(columns: Sequence[PeriodColumn]) -> str:
+    """The tax line's label: a charge, a credit, or a charge in one period and a credit in another.
+
+    ``core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities`` is labelled "Tax (tax credit) on
+    profit or loss on ordinary activities", so a charge is tagged positive and a credit
+    negative (FRC tagging guide 5.3.1 b).
+    """
+    has_credit = any(column.tax < 0 for column in columns)
+    has_charge = any(column.tax > 0 for column in columns)
+    if has_credit and has_charge:
+        return "Tax (charge) or credit on profit"
+    return "Tax credit on profit" if has_credit else "Tax on profit"
+
+
 def profit_and_loss_table(
     document: InlineDocument,
     standard: str,
@@ -244,7 +258,7 @@ def profit_and_loss_table(
                 total=True,
             ),
             _Line(
-                "Tax on profit",
+                _tax_label(columns),
                 "core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities",
                 lambda c: c.tax,
                 deduction=True,

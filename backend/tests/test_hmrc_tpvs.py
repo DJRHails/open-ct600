@@ -134,6 +134,10 @@ END_TO_END = {
         "profit_and_loss": {"turnover": 400_000},
     },
     "micro-entity with comparatives": {"accounts": {"comparatives": COMPARATIVES}},
+    # A negative core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities for last year
+    "micro-entity with a comparative tax credit": {
+        "accounts": {"comparatives": {**COMPARATIVES, "tax_on_profit": -3_000}}
+    },
     "small company limited by guarantee with comparatives": {
         "accounts": {
             "standard": "small",

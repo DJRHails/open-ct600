@@ -49,6 +49,13 @@ RETURNS = {
         accounts={"standard": "small", "comparatives": COMPARATIVES}
     ),
     "first-period": make_return(),
+    "previous-tax-credit": make_return(
+        accounts={"comparatives": {**COMPARATIVES, "tax_on_profit": -4_000}}
+    ),
+    "previous-tax-credit-and-no-tax-now": make_return(
+        profit_and_loss={"turnover": 10_000, "other_expenses": 30_000},
+        accounts={"comparatives": {**COMPARATIVES, "tax_on_profit": -4_000}},
+    ),
     "dormant-with-nil-comparatives": make_return(
         **DORMANT,
         accounts={
@@ -143,6 +150,36 @@ def test_unknown_previous_average_employees_are_left_out(validations):
     document = validations["dormant-with-nil-comparatives"]
 
     assert document.values("core:AverageNumberEmployeesDuringPeriod") == {"dur": "1"}
+
+
+def _tax_row(xhtml: str) -> str:
+    start = xhtml.index("<td>Tax")
+    return xhtml[start : xhtml.index("</tr>", start)]
+
+
+def test_a_previous_tax_credit_is_tagged_negative_and_increases_profit(validations):
+    previous = facts_in(validations["previous-tax-credit"], "prev-dur")
+    this_period = facts_in(validations["previous-tax-credit"], "dur")
+
+    # "Tax (tax credit) on profit or loss": a credit is entered as a negative value
+    assert previous["core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities"] == "-4000"
+    assert previous["core:ProfitLossOnOrdinaryActivitiesBeforeTax"] == "54650"
+    assert previous["core:ProfitLoss"] == "58650"
+    assert int(this_period["core:TaxTaxCreditOnProfitOrLossOnOrdinaryActivities"]) > 0
+
+
+def test_the_tax_line_is_labelled_and_bracketed_by_whether_it_is_a_charge_or_credit():
+    mixed = _tax_row(DOCUMENTS["previous-tax-credit"])
+    credit_only = _tax_row(DOCUMENTS["previous-tax-credit-and-no-tax-now"])
+    charge_only = _tax_row(DOCUMENTS["micro-with-comparatives"])
+
+    assert mixed.startswith("<td>Tax (charge) or credit on profit</td>")
+    assert credit_only.startswith("<td>Tax credit on profit</td>")
+    assert charge_only.startswith("<td>Tax on profit</td>")
+    # The charge is a deduction in brackets; the credit adds, so it has none
+    assert mixed.count('<td class="n">(<ix:nonFraction') == 1
+    assert 'sign="-" format="ixt:numdotdecimal">4,000</ix:nonFraction>\n        </td>' in mixed
+    assert "(" not in credit_only.split("</td>", 1)[1]
 
 
 def test_micro_previous_other_income_and_expenses(validations):

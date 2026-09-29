@@ -308,8 +308,9 @@ class Comparatives(StrictModel):
         period: The previous period of account; it ends the day before this one starts.
         profit_and_loss: The previous period's profit and loss account.
         balance_sheet: The balance sheet at the end of the previous period.
-        tax_on_profit: The previous period's tax charge in its profit and loss account, in
-            whole pounds.
+        tax_on_profit: The previous period's tax line in its profit and loss account, in
+            whole pounds: a charge, or a credit (for example from R&D tax credits) as a
+            negative amount, which increases the profit after tax.
         average_employees: The previous period's average number of employees (including
             directors); ``None`` only when it is not known.
     """
@@ -317,7 +318,7 @@ class Comparatives(StrictModel):
     period: PeriodOfAccount
     profit_and_loss: ProfitAndLoss
     balance_sheet: BalanceSheet
-    tax_on_profit: Pounds = 0
+    tax_on_profit: Annotated[int, Field(ge=-MAX_POUNDS, le=MAX_POUNDS)] = 0
     average_employees: Annotated[int, Field(ge=0, le=9_999_999)] | None = None
 
 

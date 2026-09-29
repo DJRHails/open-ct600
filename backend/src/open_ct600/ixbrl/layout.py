@@ -42,11 +42,13 @@ def period_ended(start: date, end: date) -> str:
 def amount_cell(fact: etree._Element, *, deduction: bool = False) -> etree._Element:
     """A right-aligned cell for a tagged amount.
 
-    Deductions and genuine negatives are shown in brackets; a nil amount is shown as a dash
+    Deductions and genuine negatives are shown in brackets, but a negative deduction (a tax
+    credit on the tax line) adds, so it is shown without them. A nil amount is shown as a dash
     without brackets.
     """
     is_nil = fact.text == "-"
-    bracketed = not is_nil and (deduction or fact.get("sign") == "-")
+    is_negative = fact.get("sign") == "-"
+    bracketed = not is_nil and deduction != is_negative
     content = ["(", fact, ")"] if bracketed else [fact]
     return html.td(*content, {"class": "n"})
 
