@@ -23,13 +23,13 @@ repos:
         name: oxlint
         entry: pnpm --dir frontend lint
         language: system
-        files: ^frontend/src/
+        files: ^frontend/(src|scripts)/
         pass_filenames: false
       - id: oxfmt
         name: oxfmt
         entry: pnpm --dir frontend format:check
         language: system
-        files: ^frontend/src/
+        files: ^frontend/(src|scripts)/
         pass_filenames: false
       - id: tsc
         name: tsc
