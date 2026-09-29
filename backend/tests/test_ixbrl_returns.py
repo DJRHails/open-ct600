@@ -352,7 +352,8 @@ def test_computations_carry_the_ct600_boxes(validations, name):
         _box(computation, "315")
     )
     assert Decimal(_only(document, "ct-comp:CorporationTaxChargeable")) == _box(computation, "440")
-    assert Decimal(_only(document, "ct-comp:TaxPayable")) == _box(computation, "510")
+    assert Decimal(_only(document, "ct-comp:TaxChargeable")) == _box(computation, "510")
+    assert Decimal(_only(document, "ct-comp:TaxPayable")) == _box(computation, "528")
 
 
 def test_straddling_period_has_a_row_per_financial_year(validations):

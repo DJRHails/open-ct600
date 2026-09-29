@@ -1,6 +1,7 @@
 """Presentation shared by the iXBRL accounts and computations: styles, tables and wording."""
 
 from datetime import date
+from decimal import Decimal
 from importlib.metadata import version
 
 from lxml import etree
@@ -55,6 +56,36 @@ def amount_row(
 ) -> etree._Element:
     """A table row: a label and a tagged amount."""
     row = html.tr(html.td(label), amount_cell(fact, deduction=deduction))
+    if total:
+        row.set("class", "total")
+    return row
+
+
+def untagged_row(
+    label: str,
+    amount: int | Decimal,
+    *,
+    decimals: int | None = None,
+    deduction: bool = False,
+    total: bool = False,
+) -> etree._Element:
+    """A table row for an amount no taxonomy element describes, formatted like tagged ones.
+
+    Args:
+        label: The row's label.
+        amount: The amount.
+        decimals: Decimal places to show; by default none for whole pounds, else two.
+        deduction: Show the amount in brackets.
+        total: Style the row as a total.
+    """
+    value = Decimal(amount)
+    places = decimals if decimals is not None else (0 if value == value.to_integral_value() else 2)
+    shown = f"{abs(value):,.{places}f}"
+    if value == 0:
+        shown = "-"
+    elif deduction or value < 0:
+        shown = f"({shown})"
+    row = html.tr(html.td(label), html.td(shown, {"class": "n"}))
     if total:
         row.set("class", "total")
     return row

@@ -4,7 +4,9 @@ The company has one UK trade, named by its principal activity. Trade-level facts
 ``ct-comp:BusinessTypeDimension=Trade``, ``TerritoryDimension=UK`` and the typed
 ``BusinessNameDimension``; company-level facts carry ``BusinessTypeDimension=Company``.
 
-Marginal relief has no element in ct-comp 2024, so its row is shown untagged.
+Marginal relief has no element in ct-comp 2024, so its row is shown untagged. Reliefs (R&D,
+group relief, loans to participators) follow ``computation_reliefs``, which documents which
+of them ct-comp 2024 can tag.
 """
 
 from dataclasses import dataclass
@@ -14,6 +16,12 @@ from decimal import Decimal
 from lxml import etree
 
 from open_ct600.ct600 import CT600Return, ReturnComputation
+from open_ct600.ixbrl.computation_reliefs import (
+    loans_to_participators,
+    losses_surrendered_rows,
+    tax_and_credit_rows,
+    taxable_credit_rows,
+)
 from open_ct600.ixbrl.layout import (
     SOFTWARE_NAME,
     SOFTWARE_VERSION,
@@ -23,6 +31,7 @@ from open_ct600.ixbrl.layout import (
     period_ended,
     table,
     text_row,
+    untagged_row,
 )
 from open_ct600.ixbrl.taxonomies import computations_taxonomy_for
 from open_ct600.ixbrl.xhtml import (
@@ -122,10 +131,13 @@ def render_computations(ct600: CT600Return, computation: ReturnComputation) -> s
         document.append(*_trade(document, ct600, computation, contexts))
     document.append(*_profits(document, boxes, contexts))
     document.append(*_tax(document, computation, contexts))
+    document.append(*loans_to_participators(document, ct600, computation, contexts.company))
     return document.serialise()
 
 
 def _has_trade(ct600: CT600Return) -> bool:
+    if ct600.accounts.dormant:
+        return False
     adjustments = ct600.tax_adjustments
     trade_figures = (
         *ct600.profit_and_loss.model_dump().values(),
@@ -276,6 +288,7 @@ def _trade(
                 document.money("ct-comp:TotalCapitalAllowances", trade, result.capital_allowances),
                 deduction=True,
             ),
+            *taxable_credit_rows(document, computation, trade),
             *_relief_rows(document, trade, result),
             adjusted,
         ),
@@ -283,27 +296,16 @@ def _trade(
     ]
 
 
-def _untagged_row(label: str, amount: int, *, deduction: bool = False) -> etree._Element:
-    shown = f"({amount:,})" if deduction else f"{amount:,}"
-    return html.tr(html.td(label), html.td(shown, {"class": "n"}))
-
-
 def _relief_rows(
     document: InlineDocument, trade: Context, result: _TradeResult
 ) -> list[etree._Element]:
-    """Rows for the trade adjustments reliefs make; shown only when they apply.
+    """Rows for the deductions reliefs make from trading profits; shown only when they apply.
 
-    The R&D additional deduction has a ct-comp element; the others (taxable RDEC and
-    expenditure credits, creative additional deductions, exempt charitable profits) are shown
-    untagged, like marginal relief.
+    The SME and ERIS additional deduction has a ct-comp element; creative additional
+    deductions and exempt charitable profits have none and are shown untagged, like marginal
+    relief. Taxable credits are in ``taxable_credit_rows``.
     """
     rows = []
-    if result.taxable_credits:
-        rows.append(
-            _untagged_row(
-                "Add: R&D and creative expenditure credits (taxable)", result.taxable_credits
-            )
-        )
     if result.research_and_development_deduction:
         rows.append(
             amount_row(
@@ -318,7 +320,7 @@ def _relief_rows(
         )
     if result.creative_deduction:
         rows.append(
-            _untagged_row(
+            untagged_row(
                 "Less: creative industries additional deduction",
                 result.creative_deduction,
                 deduction=True,
@@ -326,7 +328,7 @@ def _relief_rows(
         )
     if result.exempt_charitable_result:
         rows.append(
-            _untagged_row(
+            untagged_row(
                 "Less: trading result exempt as a charity",
                 result.exempt_charitable_result,
                 deduction=True,
@@ -368,17 +370,7 @@ def _trade_losses(
                     computation.trading_loss_arising,
                 ),
             ),
-            *(
-                [
-                    _untagged_row(
-                        "Less: surrendered for tax credits or as group relief",
-                        computation.trading_adjustments.losses_surrendered,
-                        deduction=True,
-                    )
-                ]
-                if computation.trading_adjustments.losses_surrendered
-                else []
-            ),
+            *losses_surrendered_rows(document, computation, contexts.trade),
             amount_row(
                 "Losses carried forward",
                 document.money(
@@ -472,21 +464,9 @@ def _tax(
         rows += _financial_year_rows(document, number, part, company)
     if tax.marginal_relief:
         rows.append(
-            html.tr(
-                html.td("Less: marginal relief"),
-                html.td(f"({tax.marginal_relief:,.2f})", {"class": "n"}),
-            )
+            untagged_row("Less: marginal relief", tax.marginal_relief, decimals=2, deduction=True)
         )
-    for label, concept in (
-        ("Corporation Tax chargeable", "ct-comp:CorporationTaxChargeable"),
-        ("Tax chargeable", "ct-comp:TaxChargeable"),
-        ("Tax payable", "ct-comp:TaxPayable"),
-    ):
-        rows.append(
-            amount_row(
-                label, document.money(concept, company, tax.tax_chargeable, decimals=2), total=True
-            )
-        )
+    rows += tax_and_credit_rows(document, computation, company)
     return [html.h2("Corporation Tax"), table(*rows)]
 
 
