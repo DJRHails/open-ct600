@@ -2,7 +2,7 @@
  * Help under a question: a GOV.UK details component holding two tabs, "In plain English"
  * (written for this service) and HMRC's own guidance, quoted word for word with its source.
  */
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import { Tabs } from "@/components/Tabs";
 import { ExternalLink } from "@/content/guides";
@@ -16,13 +16,15 @@ import { formatDate } from "@/format";
 export const OGL_URL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
 const HMRC = "HM Revenue and Customs";
 
+/** A GOV.UK details component, whose content is only built once it is opened. */
 function Details({ summary, children }: { summary: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
   return (
-    <details className="govuk-details">
+    <details className="govuk-details" onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary className="govuk-details__summary">
         <span className="govuk-details__summary-text">{summary}</span>
       </summary>
-      <div className="govuk-details__text">{children}</div>
+      <div className="govuk-details__text">{open ? children : null}</div>
     </details>
   );
 }

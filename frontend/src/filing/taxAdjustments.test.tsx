@@ -113,9 +113,7 @@ describe("tax adjustments", () => {
     await user.click(screen.getByText("Help with associated companies"));
     const help = document.getElementById("associated_companies-help-plain") as HTMLElement;
     expect(within(help).getByRole("heading", { name: "Example" })).toBeInTheDocument();
-    await user.click(
-      screen.getAllByRole("tab", { name: "HMRC's guidance" })[gated.length - 1] as HTMLElement,
-    );
+    await user.click(screen.getByRole("tab", { name: "HMRC's guidance" }));
     expect(
       await screen.findByRole("heading", {
         name: "326 Number of associated companies in this period",

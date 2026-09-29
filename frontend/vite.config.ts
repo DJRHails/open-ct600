@@ -22,6 +22,13 @@ export default defineConfig({
   resolve: {
     alias: { "@": new URL("./src", import.meta.url).pathname },
   },
+  build: {
+    // Libraries change less often than the service, so they are cached separately, and
+    // neither chunk goes over the 500 kB warning limit.
+    rolldownOptions: {
+      output: { codeSplitting: { groups: [{ name: "vendor", test: /[\\/]node_modules[\\/]/ }] } },
+    },
+  },
   css: {
     lightningcss: { errorRecovery: true },
     preprocessorOptions: {

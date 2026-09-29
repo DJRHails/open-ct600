@@ -92,10 +92,20 @@ describe("tabs", () => {
 });
 
 describe("question help", () => {
-  it("explains the question in plain English, in a fixed order", () => {
+  it("is built when it is opened", async () => {
+    const user = userEvent.setup();
     render(<QuestionHelp id="capital" help={TAX_ADJUSTMENTS_HELP.capital_allowances} />);
 
-    expect(screen.getByText("Help with capital allowances")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    await user.click(screen.getByText("Help with capital allowances"));
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+  });
+
+  it("explains the question in plain English, in a fixed order", async () => {
+    const user = userEvent.setup();
+    render(<QuestionHelp id="capital" help={TAX_ADJUSTMENTS_HELP.capital_allowances} />);
+
+    await user.click(screen.getByText("Help with capital allowances"));
     const plain = within(panel("capital-plain"));
     expect(plain.getAllByRole("heading").map((heading) => heading.textContent)).toEqual([
       "What it means",
@@ -136,9 +146,10 @@ describe("question help", () => {
 
 describe("box help", () => {
   it("has plain English and HMRC's guidance for a box we have written about", async () => {
+    const user = userEvent.setup();
     render(<BoxHelp id="loan-name" box="A10A" />);
 
-    expect(await screen.findByText("Help with box A10")).toBeInTheDocument();
+    await user.click(await screen.findByText("Help with box A10"));
     expect(screen.getByRole("tab", { name: "In plain English" })).toBeInTheDocument();
     expect(
       await within(panel("loan-name-official")).findByRole("heading", {
@@ -148,9 +159,10 @@ describe("box help", () => {
   });
 
   it("says when it only has HMRC's guidance", async () => {
+    const user = userEvent.setup();
     render(<BoxHelp id="royalty" box="H5Ea" />);
 
-    expect(await screen.findByText("HMRC's guidance for box H5Ea")).toBeInTheDocument();
+    await user.click(await screen.findByText("HMRC's guidance for box H5Ea"));
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.getByText(/We have not written a plain English explanation/)).toBeInTheDocument();
     expect(
