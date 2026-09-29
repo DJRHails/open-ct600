@@ -208,6 +208,60 @@ export type Comparatives = {
   average_employees: number | null;
 };
 
+/** One company found by ``GET /api/companies-house/search``, named as Companies House does. */
+export type CompanySearchResult = {
+  number: string;
+  name: string;
+  status: string | null;
+  address: string | null;
+  incorporated_on: string | null;
+};
+
+/** The accounts the company last filed at Companies House, read from their iXBRL. */
+export type PreviousAccounts = {
+  period: { start: string; end: string };
+  filed_on: string;
+  standard: "micro" | "small" | null;
+  dormant: boolean | null;
+  /**
+   * ``ProfitAndLoss`` fields, plus ``tax`` (negative for a tax credit) and ``profit_after_tax``.
+   * ``null`` when the accounts were filed without one, as most small companies' are.
+   */
+  profit_and_loss: Record<string, number> | null;
+  /** ``BalanceSheet`` fields, plus ``net_assets`` for reference. */
+  balance_sheet: Record<string, number>;
+  average_employees: number | null;
+  directors: string[];
+  principal_activity: string | null;
+};
+
+/** A company's public record from ``GET /api/companies-house/companies/{number}``. */
+export type CompanyRecord = {
+  number: string;
+  name: string;
+  status: string | null;
+  incorporated_on: string | null;
+  /** ``null`` for a company these accounts cannot be prepared for, like a PLC or an LLP. */
+  legal_form: LegalForm | null;
+  registered_office: { lines: string[]; postcode: string | null } | null;
+  /** ``description`` is ``null`` for a code missing from Companies House's list. */
+  sic_codes: { code: string; description: string | null }[];
+  /** The first SIC code's description, if it has one. */
+  principal_activity: string | null;
+  /** Current directors, in Companies House's display order. */
+  directors: { name: string; appointed_on: string | null }[];
+  accounts: {
+    reference_date: string | null;
+    last_made_up_to: string | null;
+    next_period: { start: string; end: string } | null;
+  };
+  /** The return's period: the first 12 months of the next period of account. */
+  suggested_period: { start: string; end: string; note: string | null } | null;
+  previous_accounts: PreviousAccounts | null;
+  /** Why no previous figures could be read, such as accounts filed on paper. */
+  previous_accounts_unavailable: string | null;
+};
+
 /** ``sme`` and ``rdec`` (large companies) before 1 April 2024; ``rdec`` (merged) and ``eris`` after. */
 export type ResearchAndDevelopmentClaimScheme = "sme" | "rdec" | "eris";
 
@@ -603,7 +657,25 @@ async function submitToHmrc(submission: HmrcSubmission): Promise<HmrcOutcome> {
   };
 }
 
+/** Whether Companies House lookup is switched on; off if the service cannot say. */
+async function companiesHouseEnabled(): Promise<boolean> {
+  const reply = await send<unknown>("/companies-house/status");
+  return (
+    typeof reply === "object" && reply !== null && (reply as { enabled?: unknown }).enabled === true
+  );
+}
+
+async function searchCompanies(query: string): Promise<CompanySearchResult[]> {
+  const params = new URLSearchParams({ q: query });
+  const reply = await send<{ items: CompanySearchResult[] }>(`/companies-house/search?${params}`);
+  return reply.items;
+}
+
 export const api = {
+  companiesHouseEnabled,
+  searchCompanies,
+  company: (number: string) =>
+    send<CompanyRecord>(`/companies-house/companies/${encodeURIComponent(number)}`),
   calculate: (body: CalculatorRequest) => post<TaxComputation>("/calculator", body),
   computeReturn: (ct600: CT600Return) => post<ReturnComputation>("/returns/compute", ct600),
   validateReturn: (ct600: CT600Return) => post<ValidationResult>("/returns/validate", { ct600 }),

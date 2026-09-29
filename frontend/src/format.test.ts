@@ -4,6 +4,7 @@ import {
   formatPercent,
   formatPounds,
   parseDateParts,
+  parseSignedWholePounds,
   parseWholePounds,
   twelveMonthPeriodEnd,
 } from "@/format";
@@ -26,6 +27,28 @@ describe("parseWholePounds", () => {
     ["100000000000", "Turnover must be £99,999,999,999 or less", false],
   ])("rejects %j", (raw, error, required) => {
     expect(parseWholePounds(raw, "turnover", required)).toEqual({ ok: false, error });
+  });
+});
+
+describe("parseSignedWholePounds", () => {
+  it.each([
+    ["10825", 10_825],
+    ["-1,200", -1_200],
+    ["£-1200", -1_200],
+    ["-£1200", -1_200],
+    ["−1200", -1_200],
+    ["-0", 0],
+    ["", 0],
+  ])("reads %j as %d", (raw, expected) => {
+    expect(parseSignedWholePounds(raw, "tax")).toEqual({ ok: true, value: expected });
+  });
+
+  it.each([
+    ["-", "Tax must be a number, like -1200"],
+    ["-12.50", "Enter tax in whole pounds, without pence"],
+    ["-twelve", "Tax must be a number, like 12500"],
+  ])("rejects %j", (raw, error) => {
+    expect(parseSignedWholePounds(raw, "tax")).toEqual({ ok: false, error });
   });
 });
 

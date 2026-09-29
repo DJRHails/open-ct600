@@ -366,7 +366,9 @@ type CheckboxesProps<T extends string> = {
   legend: ReactNode;
   options: { value: T; label: string; hint?: string | undefined }[];
   /** An answer that excludes every other option, like "None of these", shown after "or". */
-  exclusive: { value: T; label: string };
+  exclusive?: { value: T; label: string };
+  /** The legend's size: ``m`` for a page's main question, ``s`` for one of several. */
+  legendSize?: "m" | "s";
   value: T[];
   onChange: (value: T[]) => void;
   hint?: ReactNode;
@@ -378,9 +380,9 @@ export function Checkboxes<T extends string>(props: CheckboxesProps<T>) {
   const { name, legend, options, exclusive, value, onChange, hint, error } = props;
 
   function toggle(option: T, checked: boolean) {
-    if (option === exclusive.value) onChange(checked ? [option] : []);
+    if (option === exclusive?.value) onChange(checked ? [option] : []);
     else {
-      const others = value.filter((chosen) => chosen !== option && chosen !== exclusive.value);
+      const others = value.filter((chosen) => chosen !== option && chosen !== exclusive?.value);
       onChange(checked ? [...others, option] : others);
     }
   }
@@ -414,13 +416,21 @@ export function Checkboxes<T extends string>(props: CheckboxesProps<T>) {
   return (
     <div className={groupClass(error)}>
       <fieldset className="govuk-fieldset" aria-describedby={describedBy(name, hint, error)}>
-        <legend className="govuk-fieldset__legend govuk-fieldset__legend--m">{legend}</legend>
+        <legend
+          className={`govuk-fieldset__legend govuk-fieldset__legend--${props.legendSize ?? "m"}`}
+        >
+          {legend}
+        </legend>
         {hint ? <Hint id={`${name}-hint`}>{hint}</Hint> : null}
         {error ? <ErrorMessage id={`${name}-error`}>{error}</ErrorMessage> : null}
         <div className="govuk-checkboxes">
           {options.map(item)}
-          <div className="govuk-checkboxes__divider">or</div>
-          {item(exclusive, options.length)}
+          {exclusive ? (
+            <>
+              <div className="govuk-checkboxes__divider">or</div>
+              {item(exclusive, options.length)}
+            </>
+          ) : null}
         </div>
       </fieldset>
     </div>

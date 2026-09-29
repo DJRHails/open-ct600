@@ -16,6 +16,8 @@ type SectionFrameProps = {
   summary?: ErrorItem[];
   onSubmit: () => void;
   intro?: ReactNode;
+  /** A notification banner above the heading, such as one saying answers were prefilled. */
+  banner?: ReactNode;
   caption?: string;
   backTo?: string;
   children: ReactNode;
@@ -46,6 +48,7 @@ export function SectionFrame(props: SectionFrameProps) {
       <BackLink to={props.backTo ?? next} />
       <TwoThirds>
         <ErrorSummary key={attempt} errors={summary} />
+        {props.banner}
         <span className="govuk-caption-l">{props.caption ?? "Company Tax Return"}</span>
         <h1 className="govuk-heading-l">{title}</h1>
         {intro ? <p className="govuk-body">{intro}</p> : null}

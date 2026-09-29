@@ -8,7 +8,9 @@
 import type {
   AccountsDetails,
   CompanyDetails,
+  CompanyRecord,
   CT600Return,
+  LegalForm,
   ElementTree,
   PageCode,
   SchemaPage,
@@ -16,6 +18,12 @@ import type {
 } from "@/api";
 import type { DateParts } from "@/components/forms";
 import type { CreativeAnswers, ResearchAnswers, SurrendererAnswers } from "@/filing/reliefs";
+import { LEGAL_FORMS } from "@/filing/companiesHouse";
+import {
+  type ComparativesAnswers,
+  comparativesFor,
+  comparativesProblems,
+} from "@/filing/comparatives";
 import { convertPage, getAt, isBlank, type RawTree } from "@/filing/supplementary/answers";
 import {
   formatDate,
@@ -47,12 +55,17 @@ export type AccountsAnswers = {
   average_employees: string;
   trading_status: TradingStatus | "";
   dormant: YesNo;
+  legal_form: LegalForm | "";
+  /** Whether this is the company's first period of account, when there are no comparatives. */
+  first_period: YesNo;
 };
 
 /** A yes or no question's answer; blank until answered. */
 export type YesNo = "yes" | "no" | "";
 
 export type Draft = {
+  /** The company's public record, from the company chosen in the Companies House search. */
+  companies_house?: CompanyRecord;
   company?: CompanyAnswers;
   period?: { start: DateParts; end: DateParts };
   profit_and_loss?: Record<string, string>;
@@ -67,6 +80,8 @@ export type Draft = {
   /** Figures from CT600C's surrendering companies, by tax reference. */
   group_relief_surrenderers?: SurrendererAnswers;
   creative_industries?: CreativeAnswers;
+  /** Last period's figures and dates, typed on the profit and loss and balance sheet pages. */
+  comparatives?: ComparativesAnswers;
 };
 
 export type FieldErrors = Record<string, string>;
@@ -446,6 +461,8 @@ export const EMPTY_ACCOUNTS: AccountsAnswers = {
   average_employees: "",
   trading_status: "",
   dormant: "",
+  legal_form: "",
+  first_period: "",
 };
 
 /** The director fields' ids, so errors can link to the right input. */
@@ -482,9 +499,9 @@ function parseEmployees(raw: string) {
 export function validateAccounts(
   values: AccountsAnswers,
   endOfPeriod?: string,
-): Validated<AccountsDetails> {
+): Validated<AccountsDetailsAnswered> {
   const directors = values.directors.map((director) => director.trim());
-  const errors: FieldErrors = directorErrors(directors);
+  const errors: FieldErrors = { ...directorErrors(directors), ...companyFormErrors(values) };
   const approval = parseDateParts(values.approval_date, "date the accounts were approved");
   const employees = parseEmployees(values.average_employees);
   const { standard, trading_status: tradingStatus } = values;
@@ -499,7 +516,10 @@ export function validateAccounts(
   }
   if (!employees.ok) errors.average_employees = employees.error;
   Object.assign(errors, activityErrors(values));
-  if (!standard || !tradingStatus || !approval.ok || !employees.ok) return { ok: false, errors };
+  const { legal_form: legalForm } = values;
+  if (!standard || !tradingStatus || !approval.ok || !employees.ok || !legalForm) {
+    return { ok: false, errors };
+  }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
     ok: true,
@@ -511,8 +531,27 @@ export function validateAccounts(
       average_employees: employees.value,
       trading_status: tradingStatus,
       dormant: values.dormant === "yes",
+      legal_form: legalForm,
     },
   };
+}
+
+/** The accounts details the user answers; comparatives come from the amount sections. */
+export type AccountsDetailsAnswered = Omit<AccountsDetails, "comparatives" | "legal_form"> & {
+  legal_form: LegalForm;
+};
+
+/** The directors listed, the legal form, and whether this is the first period of account. */
+function companyFormErrors(values: AccountsAnswers): FieldErrors {
+  const errors: FieldErrors = {};
+  if (values.directors.length === 0) {
+    errors.directors = "Select the company’s directors, or add a person";
+  }
+  if (!values.legal_form) errors.legal_form = "Select the company’s legal form";
+  if (!values.first_period) {
+    errors.first_period = "Select yes if this is the company’s first period of account";
+  }
+  return errors;
 }
 
 /** Whether the company was dormant, and whether it traded: a dormant company cannot trade. */
@@ -595,7 +634,7 @@ type SectionValues = {
   profit_and_loss: CT600Return["profit_and_loss"];
   tax_adjustments: CT600Return["tax_adjustments"];
   balance_sheet: CT600Return["balance_sheet"];
-  accounts: AccountsDetails;
+  accounts: AccountsDetailsAnswered;
 };
 
 /** Validate one saved section; ``null`` if it has not been saved. */
@@ -607,14 +646,42 @@ function validateSection<K extends SectionKey>(
     company: () => (draft.company ? validateCompany(draft.company) : null),
     period: () => (draft.period ? validatePeriod(draft.period) : null),
     profit_and_loss: () =>
-      draft.profit_and_loss ? validateAmounts(PROFIT_AND_LOSS, draft.profit_and_loss) : null,
+      draft.profit_and_loss
+        ? withComparatives(
+            draft,
+            PROFIT_AND_LOSS,
+            validateAmounts(PROFIT_AND_LOSS, draft.profit_and_loss),
+          )
+        : null,
     tax_adjustments: () =>
       draft.tax_adjustments ? validateAmounts(TAX_ADJUSTMENTS, draft.tax_adjustments, draft) : null,
     balance_sheet: () =>
-      draft.balance_sheet ? validateAmounts(BALANCE_SHEET, draft.balance_sheet) : null,
+      draft.balance_sheet
+        ? withComparatives(
+            draft,
+            BALANCE_SHEET,
+            validateAmounts(BALANCE_SHEET, draft.balance_sheet),
+          )
+        : null,
     accounts: () => (draft.accounts ? validateAccounts(draft.accounts, periodEnd(draft)) : null),
   };
   return validators[key]();
+}
+
+/** A section's amounts, which also need valid comparatives unless it is the first period. */
+function withComparatives<K extends "profit_and_loss" | "balance_sheet">(
+  draft: Draft,
+  section: AmountSection<K>,
+  amounts: Validated<AmountSections[K]>,
+): Validated<AmountSections[K]> {
+  const problems = comparativesProblems(
+    draft,
+    section.key,
+    section.fields,
+    savedPeriod(draft)?.start,
+  );
+  if (Object.keys(problems).length === 0) return amounts;
+  return { ok: false, errors: { ...(amounts.ok ? {} : amounts.errors), ...problems } };
 }
 
 /** Whether a section has been saved and its answers are still valid. */
@@ -675,13 +742,19 @@ export function sectionsReturn(draft: Draft, pages?: SchemaPage[]): CT600Return 
   ) {
     return null;
   }
+  const comparatives = comparativesFor(
+    draft,
+    { profit_and_loss: PROFIT_AND_LOSS.fields, balance_sheet: BALANCE_SHEET.fields },
+    period.value.start,
+  );
+  if (comparatives === undefined) return null;
   return {
     company: company.value,
     period: period.value,
     profit_and_loss: profitAndLoss.value,
     tax_adjustments: adjustments.value,
     balance_sheet: balanceSheet.value,
-    accounts: accounts.value,
+    accounts: { ...accounts.value, comparatives },
     supplementary_pages: supplementary,
   };
 }
@@ -761,6 +834,8 @@ export function answerRows(ct600: CT600Return, section: SectionKey): AnswerRow[]
 }
 
 function accountsRows(accounts: AccountsDetails): AnswerRow[] {
+  // The backend's default when a return leaves the legal form out.
+  const legalForm = accounts.legal_form ?? "private-limited-company";
   return [
     { key: "standard", label: "Accounts prepared as", value: STANDARD_LABELS[accounts.standard] },
     { key: "directors", label: "Directors", value: accounts.directors.join(", ") },
@@ -778,6 +853,16 @@ function accountsRows(accounts: AccountsDetails): AnswerRow[] {
       key: "average_employees",
       label: "Average number of employees",
       value: String(accounts.average_employees),
+    },
+    {
+      key: "legal_form",
+      label: "Legal form",
+      value: LEGAL_FORMS.find((form) => form.value === legalForm)?.label ?? legalForm,
+    },
+    {
+      key: "first_period",
+      label: "First period of account",
+      value: accounts.comparatives === null ? "Yes" : "No",
     },
     { key: "dormant", label: "Dormant during the period", value: accounts.dormant ? "Yes" : "No" },
     {
