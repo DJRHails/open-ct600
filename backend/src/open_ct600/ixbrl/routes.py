@@ -1,4 +1,9 @@
-"""API routes that download a return's iXBRL accounts and computations."""
+"""API routes that download a return's iXBRL accounts and computations.
+
+They take the same body as the HMRC routes (``ReturnRequest``: ``{"ct600", "declaration"?}``),
+so a client sends one shape to every route that works on a return. The declaration does not
+appear in the iXBRL documents.
+"""
 
 from collections.abc import Callable
 
@@ -6,6 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
 
 from open_ct600.ct600 import CT600Return, ReturnComputation, compute_return
+from open_ct600.hmrc.routes import ReturnRequest
 from open_ct600.ixbrl.accounts import render_accounts
 from open_ct600.ixbrl.computations import render_computations
 from open_ct600.ixbrl.layout import IxbrlRenderError
@@ -31,15 +37,15 @@ def _download(ct600: CT600Return, render: Renderer, document: str) -> Response:
 
 
 @router.post("/accounts.xhtml", response_class=Response)
-def accounts_xhtml(ct600: CT600Return) -> Response:
+def accounts_xhtml(request: ReturnRequest) -> Response:
     """Download the return's statutory accounts as Inline XBRL (FRC 2026 taxonomy)."""
-    return _download(ct600, render_accounts, "accounts")
+    return _download(request.ct600, render_accounts, "accounts")
 
 
 @router.post("/computations.xhtml", response_class=Response)
-def computations_xhtml(ct600: CT600Return) -> Response:
+def computations_xhtml(request: ReturnRequest) -> Response:
     """Download the Corporation Tax computation as Inline XBRL (HMRC ct-comp taxonomy).
 
     Answers 422 when HMRC accepts no published computations taxonomy for the period.
     """
-    return _download(ct600, render_computations, "computations")
+    return _download(request.ct600, render_computations, "computations")
