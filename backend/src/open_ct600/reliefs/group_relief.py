@@ -150,10 +150,13 @@ def _claim_limit(
     )
     facts = surrenderers.get((row.text(reference_box) or "").strip())
     if facts is not None:
-        surrenderable = Fraction(facts.surrenderable_amount * shared_days, days_between(*theirs))
-        surrenderable -= facts.surrendered_to_others
+        overlap_amount = Fraction(facts.surrenderable_amount * shared_days, days_between(*theirs))
+        surrenderable = overlap_amount - facts.surrendered_to_others
         if facts.consortium_share is not None:
-            surrenderable *= Fraction(facts.consortium_share) / 100
+            # CTA 2010 s143 (review M2): the member's ownership proportion applies to the
+            # whole loss for the overlap; other members' surrenders only cap what is left.
+            share = overlap_amount * Fraction(facts.consortium_share) / 100
+            surrenderable = min(share, surrenderable)
         if whole_pounds_down(max(surrenderable, Fraction(0))) < limit:
             limit = whole_pounds_down(max(surrenderable, Fraction(0)))
             reason = "the amount the surrendering company can surrender for the overlapping period"
@@ -228,11 +231,15 @@ class ClaimantPosition:
         available: Box 300 less box 305, less tonnage tax profits.
         trading_loss: This period's trading loss (the most that C45 can surrender).
         losses_available: Trading losses brought forward and not used (the most C160 can be).
+        own_losses_against_total_profits: The claimant's own trading losses from April 2017
+            or later still unused; they come first, so group relief for carried-forward losses
+            only gets the profits beyond them (CTA 2010 s188DB and s188ED, CTM82010).
     """
 
     available: int
     trading_loss: int
     losses_available: int
+    own_losses_against_total_profits: int
 
 
 def check_group_relief(
@@ -268,14 +275,17 @@ def check_group_relief(
             "after qualifying donations (box 300 minus box 305), not counting tonnage tax profits",
         )
     remaining = max(available - claimed, 0)
-    _check_claims(page, carried, company, remaining, by_reference)
+    relevant_maximum = max(remaining - position.own_losses_against_total_profits, 0)
+    _check_claims(page, carried, company, relevant_maximum, by_reference)
     claimed_carried = int(page.amount("C130"))
-    if claimed_carried > remaining:
+    if claimed_carried > relevant_maximum:
+        own = position.own_losses_against_total_profits
         page.problem(
             "C130",
-            f"Group relief for carried-forward losses must be £{remaining:,} or less: the "
-            "profits left after qualifying donations and group relief (box 300 minus boxes 305 "
-            "and 310)",
+            f"Group relief for carried-forward losses must be £{relevant_maximum:,} or less: "
+            "the profits left after qualifying donations and group relief (box 300 minus boxes "
+            f"305 and 310), less the company's own £{own:,} of trading losses from April 2017 "
+            "or later, which must be used first",
         )
     _check_surrenders(page, position.trading_loss, position.losses_available)
     outcome = GroupRelief(

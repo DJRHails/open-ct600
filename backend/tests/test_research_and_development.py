@@ -404,3 +404,49 @@ def test_income_tax_deducted_cannot_be_given():
     ((location, message),) = found.items()
     assert location[-1] == "IncomeTaxDeductedFromProfitsApplicableToCorporationTaxLiability"
     assert "box 515" in message
+
+
+def test_eris_is_refused_for_a_profitable_trade_even_without_a_payable_credit():
+    # Review M1. CIRD121000: enhanced support under ERIS is only for R&D intensive SMEs that
+    # make a trading loss before the additional deduction; a profitable company claims
+    # merged-scheme RDEC.
+    found = problems(
+        profit_and_loss={"turnover": 500_000},
+        research_and_development=rd("eris", 100_000, intensity="35"),
+    )
+
+    assert (
+        "only for companies whose trade makes a loss"
+        in found[("research_and_development", "scheme")]
+    )
+
+
+def test_accounts_include_the_rdec_income_the_tax_charge_is_on():
+    # Review L3. The RDEC is left out of the profit and loss answers and added by the service;
+    # the accounts show it as other income (FRS 102 grant income, above the line), so the tax
+    # charge of 25% x 1,100,000 = 275,000 is on the profit the accounts show.
+    computation = compute(
+        profit_and_loss={"turnover": 1_000_000},
+        research_and_development=rd("rdec", 500_000),
+        supplementary_pages={"L": {}},
+    )
+
+    accounts = computation.accounts
+    assert (accounts.other_income, accounts.profit_before_tax) == (100_000, 1_100_000)
+    assert (accounts.corporation_tax, accounts.profit_after_tax) == (
+        Decimal("275000.00"),
+        Decimal("825000.00"),
+    )
+
+
+def test_a_payable_rd_tax_credit_is_a_credit_in_the_accounts_tax_line():
+    # ERIS: no Corporation Tax, and a 19,720 payable credit, shown as a tax credit.
+    computation = compute(
+        profit_and_loss={"turnover": 50_000, "other_expenses": 100_000},
+        research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
+        supplementary_pages={"L": paye(10_000)},
+    )
+
+    accounts = computation.accounts
+    assert accounts.corporation_tax == Decimal("-19720.00")
+    assert accounts.profit_after_tax == Decimal(-50_000) + Decimal("19720.00")

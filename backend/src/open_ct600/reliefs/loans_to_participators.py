@@ -16,7 +16,7 @@ the tax at the statutory rates, so the company can see the amendment it will nee
 """
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -141,8 +141,27 @@ def _loan_dates(
     return found if len(found) == len(_TABLES) else None
 
 
+def today() -> date:
+    """The day the return is prepared, which the repayment dates are checked against."""
+    return date.today()
+
+
+def later_relief_due(period_end: date, repaid: date) -> date:
+    """When relief for a repayment more than nine months after the period end falls due.
+
+    CTA 2010 s458(5) (CTM61610): nine months and a day after the end of the accounting period
+    in which the repayment, release or write-off happened. The company's later accounting
+    periods are taken to run for 12 months each, as the return does not know them.
+    """
+    end = period_end
+    while end < repaid:
+        end = add_months_to_month_end(end, 12)
+    return nine_months_after(end) + timedelta(days=1)
+
+
 def _check_relief_rows(page: PageTree, period_end: date) -> None:
     limit = nine_months_after(period_end)
+    filed = today()
     for row in page.rows("A25"):
         _check_amounts(row, "A25B", "A25C")
         made = row.day("A25D")
@@ -152,6 +171,8 @@ def _check_relief_rows(page: PageTree, period_end: date) -> None:
                 f"The date of repayment, release or write-off must be after {period_end:%-d %B %Y} "
                 f"and no later than {limit:%-d %B %Y}; enter later ones in part 3",
             )
+        elif made is not None and made > filed:
+            row.problem("A25D", _FUTURE)
     for row in page.rows("A50"):
         _check_amounts(row, "A50B", "A50C")
         made = row.day("A50D")
@@ -161,6 +182,18 @@ def _check_relief_rows(page: PageTree, period_end: date) -> None:
                 f"The date of repayment, release or write-off must be after "
                 f"{limit:%-d %B %Y}; enter earlier ones in part 2",
             )
+        elif made is not None and later_relief_due(period_end, made) > filed:
+            # Review M5: part 3 is only for relief already due when the return is filed.
+            due = later_relief_due(period_end, made)
+            row.problem(
+                "A50D",
+                f"Relief for this repayment is not due until {due:%-d %B %Y} (nine months and "
+                "a day after the end of the accounting period it was made in, CTA 2010 "
+                "s458(5)): leave it out of this return and claim it once it is due",
+            )
+
+
+_FUTURE = "The date of repayment, release or write-off cannot be in the future"
 
 
 def _check_amounts(row: Row, repaid: str, released: str) -> None:

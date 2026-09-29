@@ -1,4 +1,5 @@
 import {
+  COMPANY_TYPES,
   completedCount,
   EMPTY_ACCOUNTS,
   sectionComplete,
@@ -41,6 +42,22 @@ const COMPLETE = {
   chosen_pages: [],
   research_and_development: { ...EMPTY_RESEARCH, claiming: "no" },
 } satisfies Draft;
+
+describe("COMPANY_TYPES", () => {
+  it("uses HMRC's box 4 codes and offers only the types the service can tax", () => {
+    const labels = Object.fromEntries(COMPANY_TYPES.map((type) => [type.value, type.label]));
+
+    expect(labels["2"]).toBe("Close investment-holding company");
+    expect(Object.keys(labels)).toEqual(["0", "1", "2", "3", "4", "6", "7", "8", "9", "11"]);
+    expect(COMPANY_TYPES[0]?.hint).toMatch(/community interest companies/);
+  });
+
+  it.each(["5", "10"])("refuses unsupported type %s", (code) => {
+    const result = validateCompany({ ...COMPANY, company_type: code });
+
+    expect(!result.ok && result.errors.company_type).toBe("Select the type of company");
+  });
+});
 
 describe("validateCompany", () => {
   it("normalises identifiers and reads the company type code", () => {
@@ -88,6 +105,7 @@ describe("validatePeriod", () => {
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors.end).toMatch(/within 12 months/);
+    expect(!result.ok && result.errors.end).not.toMatch(/Split/);
   });
 
   it("rejects an end date before the start date", () => {

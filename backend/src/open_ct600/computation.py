@@ -36,7 +36,7 @@ from open_ct600.pages.freeports import Freeports, compute_freeports
 from open_ct600.pages.information import compute_royalties
 from open_ct600.pages.residential_property import compute_residential_property_developer_tax
 from open_ct600.pages.restitution import compute_restitution_tax
-from open_ct600.pages.ring_fence import RingFence, compute_ring_fence
+from open_ct600.pages.ring_fence import RingFence, compute_ring_fence, fill_net_ring_fence_trade
 from open_ct600.pages.tonnage_tax import TonnageTax, compute_tonnage_tax
 from open_ct600.pages.tree import PageTree
 from open_ct600.problems import Problem
@@ -59,19 +59,27 @@ from open_ct600.reliefs.research_and_development import (
     StepInputs,
     TradingPosition,
     assess_claim,
+    eris_needs_a_loss,
     notional_tax_rate,
     payable_credit,
     redeem,
 )
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import TaxComputation, average_main_rate, compute_corporation_tax
+from open_ct600.tax import (
+    COMPANY_TYPE_RATES,
+    TaxComputation,
+    average_main_rate,
+    compute_corporation_tax,
+)
 
 if TYPE_CHECKING:
     from open_ct600.ct600 import CT600Return
 
 BoxKind = Literal["pounds", "money", "count", "rate", "year", "flag"]
 
+RING_FENCE_RATES_FROM = date(2023, 4, 1)
+"""Ring fence profits are taxed for periods starting on or after this date (FY2023)."""
 ASSOCIATED_COMPANIES_FROM = date(2023, 4, 1)
 """Box 326 is only given for periods ending on or after this date (rule 9389)."""
 
@@ -102,6 +110,16 @@ class AccountsSummary:
     plus prepayments less creditors due within a year; total assets less current liabilities
     add fixed assets and share capital not paid; net assets then deduct creditors due after a
     year, provisions, and accruals and deferred income.
+
+    Attributes:
+        other_income: The RDEC and AVEC/VGEC credits, which the profit and loss answers leave
+            out and the service adds: they are income in the accounts (above the line) and
+            taxable trading income, so profit before tax includes them.
+        corporation_tax: The tax on profit in the accounts: the Corporation Tax after reliefs
+            in terms of tax (box 475), CFC tax and RPDT (500), the supplementary charge (505)
+            and restitution tax (527), less payable tax credits (SME/ERIS R&D, L170, and
+            predecessor and cultural creative credits, P320), which are tax credits. s455 tax
+            (box 480) is not a tax on profit and is left out (review finding L3).
     """
 
     turnover: int
@@ -110,6 +128,7 @@ class AccountsSummary:
     profit_before_tax: int
     corporation_tax: Decimal
     profit_after_tax: Decimal
+    other_income: int
     called_up_share_capital_not_paid: int
     fixed_assets: int
     current_assets: int
@@ -295,14 +314,27 @@ BOX_LABELS: dict[int, str] = {
     315: "Profits chargeable to Corporation Tax",
     326: "Number of associated companies in this period",
     329: "Small profits rate or marginal relief entitlement",
+    320: "Ring fence profits included",
     330: "Financial year",
     335: "Amount of profit",
     340: "Rate of tax",
     345: "Tax",
+    350: "Amount of profit",
+    355: "Rate of tax",
+    360: "Tax",
+    365: "Amount of profit",
+    370: "Rate of tax",
+    375: "Tax",
     380: "Financial year",
     385: "Amount of profit",
     390: "Rate of tax",
     395: "Tax",
+    400: "Amount of profit",
+    405: "Rate of tax",
+    410: "Tax",
+    415: "Amount of profit",
+    420: "Rate of tax",
+    425: "Tax",
     430: "Corporation Tax",
     435: "Marginal relief",
     440: "Corporation Tax chargeable",
@@ -343,6 +375,8 @@ BOX_LABELS: dict[int, str] = {
     711: "Structures and buildings allowances",
     760: "Machinery and plant on which first year allowance is claimed",
     771: "Structures and buildings qualifying expenditure",
+    780: "Losses of trades carried on wholly or partly in the UK",
+    785: "Losses of UK trades: maximum available for surrender as group relief",
     875: "Payable R&D tax credit",
     880: "Payable R&D expenditure credit",
     885: "Payable creatives tax credit",
@@ -368,7 +402,21 @@ _PAGE_TICKS: dict[PageCode, int] = {
 }
 _TICKED_BY_PAGE: dict[PageCode, int] = {"H": 645, "J": 65}
 """Tick boxes that filing a page implies: royalty payments (rule 9130), schemes (9134)."""
-_FINANCIAL_YEAR_BOXES = ((330, 335, 340, 345), (380, 385, 390, 395))
+_FINANCIAL_YEAR_BOXES = (
+    (330, (335, 340, 345), (350, 355, 360), (365, 370, 375)),
+    (380, (385, 390, 395), (400, 405, 410), (415, 420, 425)),
+)
+"""Each financial year's box, then its rows of profit, rate and tax (up to three rates)."""
+
+TAX_DETAIL_ROWS: dict[str, tuple[str, int]] = {
+    str(box): (str(first), row)
+    for _, first_row, *later_rows in _FINANCIAL_YEAR_BOXES
+    for row, boxes in enumerate(later_rows, start=1)
+    for box, first in zip(boxes, first_row, strict=True)
+}
+"""The second and third rate rows' boxes (350 to 375, 400 to 425): the first row's box in the
+same column, and the row. The schema's ``Details`` element repeats; HMRC's box map only names
+the first row's boxes."""
 
 
 def main_return_boxes() -> frozenset[str]:
@@ -382,8 +430,9 @@ def main_return_boxes() -> frozenset[str]:
             continue
         if node.box is not None:
             found.add(node.box)
+        found |= set(node.box_parts())
         stack.extend(node.children)
-    return frozenset(found)
+    return frozenset(found | set(TAX_DETAIL_ROWS))
 
 
 @dataclass
@@ -401,6 +450,16 @@ class _Profits:
     donations: int
     group_relief: int
     group_relief_carried_forward: int
+    ring_fence_profits: int
+
+    @property
+    def ring_fenced(self) -> int:
+        """Profits no donation or group relief can be set against.
+
+        Tonnage tax profits (box 200, FA 2000 Sch 22 para 55) and ring fence profits (box 320:
+        CTA 2010 s304 bars relief for amounts from outside the ring fence against them).
+        """
+        return self.tonnage_tax + self.ring_fence_profits
 
     @property
     def chargeable(self) -> int:
@@ -410,8 +469,14 @@ class _Profits:
 
     @property
     def available_for_group_relief(self) -> int:
-        """Box 300 less box 305 and the ring-fenced tonnage tax profits."""
-        return max(self.before_deductions - self.tonnage_tax - self.donations, 0)
+        """Box 300 less box 305, ring-fenced profits, and the company's own trading loss.
+
+        CTA 2010 s137(4)-(5) (CTM80145): the claimant's total profits available for group
+        relief are reduced by its own current-period trading loss (s37(3)(a)) whether or not
+        it claims that relief, so a loss is never relieved twice (review finding H2).
+        """
+        reduced = self.before_deductions - self.ring_fenced - self.donations - self.loss_arising
+        return max(reduced, 0)
 
 
 @dataclass
@@ -530,7 +595,11 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
     tonnage = standalone.tonnage_tax.profits if standalone.tonnage_tax else 0
     before = trading_profits - losses_used + interest + gains + tonnage
     group_relief = run.pages.get("C")
+    # A company filing CT600I carries on its (single) trade as a ring fence trade (CTA 2010
+    # s277), so its net trading profits are ring fence profits (box 320).
+    ring_fence = trading_profits - losses_used if standalone.ring_fence else 0
     return _Profits(
+        ring_fence_profits=ring_fence,
         trading_result=trading_result,
         trading_profits=trading_profits,
         losses_used=losses_used,
@@ -539,7 +608,7 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
         tonnage_tax=tonnage,
         gains=gains,
         before_deductions=before,
-        donations=min(adjustments.qualifying_donations, max(before - tonnage, 0)),
+        donations=min(adjustments.qualifying_donations, max(before - tonnage - ring_fence, 0)),
         group_relief=int(group_relief.amount("C10")) if group_relief else 0,
         group_relief_carried_forward=int(group_relief.amount("C130")) if group_relief else 0,
     )
@@ -563,6 +632,22 @@ def _profit_boxes(run: _Evaluation, profits: _Profits) -> None:
         run.box(310, profits.group_relief)
         run.box(312, profits.group_relief_carried_forward)
     run.box(315, profits.chargeable)
+    if "I" in run.pages:
+        run.box(320, min(profits.ring_fence_profits, profits.chargeable))
+
+
+def _loss_boxes(run: _Evaluation, loss: int, surrendered: tuple[int, int, int]) -> None:
+    """Boxes 780 and 785: the trading loss arising and the most available as group relief.
+
+    CT600 guide boxes 780/785 (review M4): the loss of the period (CTA 2010 s99(1)(a),
+    s100), less what was surrendered for R&D or creative payable credits, which cannot also be
+    surrendered as group relief. Group relief actually surrendered (C45) stays in 785.
+    """
+    if loss <= 0:
+        return
+    research_and_development, creative, _ = surrendered
+    run.box(780, loss)
+    run.box(785, max(loss - research_and_development - creative, 0))
 
 
 def _tax_boxes(run: _Evaluation, tax: TaxComputation) -> None:
@@ -570,13 +655,12 @@ def _tax_boxes(run: _Evaluation, tax: TaxComputation) -> None:
     if run.period[1] >= ASSOCIATED_COMPANIES_FROM:
         run.box(326, tax.associated_companies, "count")
     run.box(329, int(claims_relief), "flag")
-    for (year_box, profit_box, rate_box, tax_box), part in zip(
-        _FINANCIAL_YEAR_BOXES, tax.slices, strict=False
-    ):
+    for (year_box, *rows), part in zip(_FINANCIAL_YEAR_BOXES, tax.slices, strict=False):
         run.box(year_box, part.financial_year, "year")
-        run.box(profit_box, part.profits)
-        run.box(rate_box, part.rate * 100, "rate")
-        run.box(tax_box, part.tax, "money")
+        for (profit_box, rate_box, tax_box), row in zip(rows, part.rows, strict=False):
+            run.box(profit_box, row.profits)
+            run.box(rate_box, row.rate * 100, "rate")
+            run.box(tax_box, row.tax, "money")
     run.box(430, tax.tax_before_relief, "money")
     run.box(435, tax.marginal_relief, "money")
     run.box(440, tax.tax_chargeable, "money")
@@ -618,11 +702,18 @@ def _group_relief(run: _Evaluation, profits: _Profits) -> GroupRelief | None:
                 Problem(("group_relief_surrenderers",), "Add CT600C with the group relief claims")
             )
         return None
-    losses_available = run.ct600.tax_adjustments.losses_brought_forward - profits.losses_used
+    adjustments = run.ct600.tax_adjustments
+    losses_available = adjustments.losses_brought_forward - profits.losses_used
+    # Older losses can only relieve the trade (s45), so box 160 is taken to use them first;
+    # what is left of the April 2017 and later losses could relieve total profits (s45A).
+    older = adjustments.losses_brought_forward_before_april_2017
+    newer_used = max(profits.losses_used - older, 0)
+    newer_unused = adjustments.losses_brought_forward - older - newer_used
     position = ClaimantPosition(
         available=profits.available_for_group_relief,
         trading_loss=profits.loss_arising,
         losses_available=losses_available,
+        own_losses_against_total_profits=newer_unused,
     )
     outcome, problems = check_group_relief(
         page, _company_facts(run), position, run.ct600.group_relief_surrenderers
@@ -638,8 +729,7 @@ def _company_facts(run: _Evaluation) -> CompanyFacts:
 def _payable_credit(
     run: _Evaluation, claim: Claim | None, profits: _Profits, group: GroupRelief | None
 ) -> PayableCredit | None:
-    page = run.pages.get("L")
-    if claim is None or page is None:
+    if claim is None:
         return None
     before_deduction = profits.trading_result + claim.additional_deduction
     position = TradingPosition(
@@ -648,6 +738,13 @@ def _payable_credit(
         other_profits=profits.interest + profits.gains,
         group_relief_surrendered=group.trading_losses_surrendered if group else 0,
     )
+    refused = eris_needs_a_loss(claim, position)
+    if refused is not None:
+        run.problems.append(refused)
+        return None
+    page = run.pages.get("L")
+    if page is None:
+        return None
     credit, problems = payable_credit(claim, page, position, run.period)
     run.problems += problems
     return credit
@@ -693,14 +790,40 @@ def _main_rate_company(
 ) -> bool:
     """Whether profits before the RDEC are taxed at the main rate or with marginal relief."""
     profits = _profits(run, _trading_result(run, claim, creative, rdec=False), standalone)
+    tax = _corporation_tax(run, profits)
+    return any(part.band in {"main", "marginal"} for part in tax.slices)
+
+
+def _corporation_tax(run: _Evaluation, profits: _Profits) -> TaxComputation:
+    """Tax box 315 at the rates the company's type allows (box 4, review finding H1)."""
     adjustments = run.ct600.tax_adjustments
-    tax = compute_corporation_tax(
+    ring_fence = min(profits.ring_fence_profits, profits.chargeable)
+    if run.period[0] < RING_FENCE_RATES_FROM:
+        ring_fence = 0  # refused by _check_ring_fence_period
+    return compute_corporation_tax(
         *run.period,
         taxable_profits=profits.chargeable,
         associated_companies=adjustments.associated_companies,
         exempt_distributions=adjustments.exempt_distributions,
+        basis=COMPANY_TYPE_RATES[run.ct600.company.company_type],
+        ring_fence_profits=ring_fence,
     )
-    return any(part.band in {"main", "marginal"} for part in tax.slices)
+
+
+def _check_ring_fence_period(run: _Evaluation) -> None:
+    """Ring fence Corporation Tax is only worked out for periods from 1 April 2023.
+
+    Before FY2023 small ring fence profits had their own limits (£300,000 and £1.5 million),
+    which this service does not apply (review finding M6).
+    """
+    if "I" in run.pages and run.period[0] < RING_FENCE_RATES_FROM:
+        run.problems.append(
+            Problem(
+                ("supplementary_pages", "I"),
+                "This service only works out ring fence Corporation Tax for accounting periods "
+                "starting on or after 1 April 2023",
+            )
+        )
 
 
 def _scheme_name(claim: Claim) -> str:
@@ -811,7 +934,10 @@ def _redeem_creative(run: _Evaluation, claims: CreativeClaims | None) -> Decimal
 
 
 def _other_tax(
-    run: _Evaluation, standalone: _StandalonePages, loans: LoansToParticipators | None
+    run: _Evaluation,
+    standalone: _StandalonePages,
+    loans: LoansToParticipators | None,
+    tax: TaxComputation,
 ) -> None:
     """Boxes 480 to 528."""
     if loans is not None:
@@ -832,26 +958,17 @@ def _other_tax(
         run.money(527, compute_restitution_tax(restitution, *run.period, chargeable))
     run.money(528, chargeable + run.value(527))
     if ring_fence is not None:
-        _ring_fence_included(run, ring_fence)
+        _ring_fence_included(run, ring_fence, tax)
 
 
-def _ring_fence_included(run: _Evaluation, ring_fence: RingFence) -> None:
-    """Boxes 585 and 590, the ring fence tax included in the totals."""
+def _ring_fence_included(run: _Evaluation, ring_fence: RingFence, tax: TaxComputation) -> None:
+    """I80/I85 and boxes 585 and 590, the ring fence tax included in the totals (review M6)."""
+    parts = [part.ring_fence for part in tax.slices if part.ring_fence is not None]
+    corporation_tax = sum((part.tax - part.marginal_relief for part in parts), ZERO)
     page = run.pages["I"]
-    included = ring_fence.corporation_tax_included
-    if included is not None and included > run.value(525):
-        page.problem(
-            "I80", "Ring fence Corporation Tax must be no more than the tax payable (box 525)"
-        )
-    charge = ring_fence.supplementary_charge_included
-    if charge is not None and charge > run.value(505):
-        page.problem(
-            "I85",
-            "The supplementary charge included must be no more than the "
-            "supplementary charge payable (I70)",
-        )
-    run.money(585, included)
-    run.money(590, charge)
+    fill_net_ring_fence_trade(page, corporation_tax, ring_fence.supplementary_charge)
+    run.money(585, corporation_tax if corporation_tax else None)
+    run.money(590, ring_fence.supplementary_charge)
 
 
 def _reconciliation(run: _Evaluation) -> None:
@@ -949,9 +1066,19 @@ def _check_completed_pages(run: _Evaluation) -> None:
             )
 
 
-def _accounts(ct600: "CT600Return", corporation_tax: Decimal) -> AccountsSummary:
+def _tax_on_profit(run: _Evaluation) -> Decimal:
+    """The accounts' tax charge (see ``AccountsSummary.corporation_tax``)."""
+    taxes = sum((run.value(box) for box in (475, 500, 505, 527)), ZERO)
+    research = run.research_and_development
+    creative = run.creative_industries
+    credits = (research.credit_claimed or ZERO) if research else ZERO
+    credits += creative.tax_credit if creative else ZERO
+    return taxes - credits
+
+
+def _accounts(ct600: "CT600Return", corporation_tax: Decimal, other_income: int) -> AccountsSummary:
     pnl, sheet = ct600.profit_and_loss, ct600.balance_sheet
-    profit_before_tax = pnl.turnover + pnl.interest_income - pnl.total_expenses
+    profit_before_tax = pnl.turnover + pnl.interest_income + other_income - pnl.total_expenses
     net_current_assets = (
         sheet.current_assets
         + sheet.prepayments_and_accrued_income
@@ -973,6 +1100,7 @@ def _accounts(ct600: "CT600Return", corporation_tax: Decimal) -> AccountsSummary
         profit_before_tax=profit_before_tax,
         corporation_tax=corporation_tax,
         profit_after_tax=profit_before_tax - corporation_tax,
+        other_income=other_income,
         called_up_share_capital_not_paid=sheet.called_up_share_capital_not_paid,
         fixed_assets=sheet.fixed_assets,
         current_assets=sheet.current_assets,
@@ -1053,6 +1181,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
         ct600, {code: PageTree(code, tree) for code, tree in ct600.supplementary_pages.items()}
     )
     stages = _before_tax(run)
+    _check_ring_fence_period(run)
     surrendered = (
         stages.credit.loss_surrendered if stages.credit else 0,
         stages.standalone.creative.losses_surrendered if stages.standalone.creative else 0,
@@ -1060,13 +1189,8 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     )
     _check_losses_surrendered(run, stages.profits, surrendered)
     _profit_boxes(run, stages.profits)
-    adjustments = ct600.tax_adjustments
-    tax = compute_corporation_tax(
-        *run.period,
-        taxable_profits=stages.profits.chargeable,
-        associated_companies=adjustments.associated_companies,
-        exempt_distributions=adjustments.exempt_distributions,
-    )
+    _loss_boxes(run, stages.profits.loss_arising, surrendered)
+    tax = _corporation_tax(run, stages.profits)
     _tax_boxes(run, tax)
     _reliefs_in_terms_of_tax(run, stages.standalone.tonnage_tax)
     redemption = _redeem_research_and_development(
@@ -1074,7 +1198,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     )
     _claim_without_page(run, stages.claim)
     creative_used = _redeem_creative(run, stages.standalone.creative)
-    _other_tax(run, stages.standalone, stages.loans)
+    _other_tax(run, stages.standalone, stages.loans, tax)
     _reconciliation(run)
     _enhanced_expenditure(run, stages.claim)
     _freeport_allowances(run, stages.standalone.freeports)
@@ -1100,7 +1224,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     computation = ReturnComputation(
         boxes=tuple(run.boxes[number] for number in sorted(run.boxes)),
         tax=tax,
-        accounts=_accounts(ct600, tax.tax_chargeable),
+        accounts=_accounts(ct600, _tax_on_profit(run), trading_adjustments.taxable_credits),
         trading_loss_arising=stages.profits.loss_arising,
         losses_carried_forward=_losses_carried_forward(run, stages.profits, trading_adjustments),
         pages={str(code): page.tree for code, page in run.pages.items()},

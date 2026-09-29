@@ -252,6 +252,31 @@ RELIEFS = {
         "//ct:ReturnInfoSummary/ct:RegisteredAvoidanceScheme",
         "yes",
     ),
+    "close investment-holding company at the main rate (box 4)": (
+        {"company": {"company_type": 2}},
+        "//ct:CorporationTaxChargeable/ct:FinancialYearOne/ct:Details/ct:TaxRate",
+        "25.00",
+    ),
+    # 10,000 - 60,000 expenses + 2,000 depreciation - 5,000 capital allowances
+    "trading loss in boxes 780/785": (
+        LOSS_MAKING,
+        "//ct:LossesDeficitsAndExcess/ct:AmountArising/ct:LossesOfTradesUK/ct:Arising",
+        "53000.00",
+    ),
+    # Net trading profits 58,000 - 3,000 brought forward are ring fence profits
+    "ring fence profits at 30% (CT600I)": (
+        {
+            "supplementary_pages": {
+                "I": {
+                    "CalculationOfSupplementaryCharge": {
+                        "Trade": {"Amount": "55000", "Profits": "yes"}
+                    }
+                }
+            }
+        },
+        "//ct:CompanyTaxCalculation/ct:RingFenceProfitsIncluded",
+        "55000.00",
+    ),
 }
 
 

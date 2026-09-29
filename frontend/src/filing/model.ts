@@ -280,32 +280,48 @@ export const SECTION_ORDER: SectionKey[] = [
   "accounts",
 ];
 
-/** CT600 box 4, type of company, as the Company Tax Return guide lists the codes. */
+/**
+ * CT600 box 4, type of company, with the codes and names in HMRC's Company Tax Return guide.
+ * Only the types the service can tax are offered: insurance companies (5) and REIT C tax-exempt
+ * companies (10) need treatment it does not provide, and the backend refuses them.
+ */
 export const COMPANY_TYPES: { value: string; label: string; hint?: string }[] = [
   {
     value: "0",
-    label: "UK trading or professional company",
-    hint: "Most companies. Choose this unless one of the other types applies.",
+    label: "None of these",
+    hint:
+      "Most companies, including community interest companies and companies in their first " +
+      "year of liquidation.",
   },
-  { value: "1", label: "Unit trust or open-ended investment company" },
-  { value: "2", label: "Community interest company" },
+  {
+    value: "1",
+    label: "Unit trust or open-ended investment company",
+    hint: "Authorised funds pay Corporation Tax at 20%.",
+  },
+  {
+    value: "2",
+    label: "Close investment-holding company",
+    hint: "Pays the main rate on all profits, with no small profits rate or marginal relief.",
+  },
   {
     value: "3",
-    label: "Company in liquidation",
-    hint: "For the second and later accounting periods of the liquidation.",
+    label: "Company in liquidation, second or later year",
+    hint: "Pays the main rate on all profits.",
   },
   { value: "4", label: "Qualifying asset holding company" },
-  {
-    value: "5",
-    label: "Insurance company",
-    hint: "Where the policyholders' share of profits is charged at the basic rate.",
-  },
   { value: "6", label: "Members' club or voluntary association" },
   { value: "7", label: "Property management company" },
   { value: "8", label: "Charity, or a company owned by a charity" },
-  { value: "9", label: "Real Estate Investment Trust (REIT) group: residual business" },
-  { value: "10", label: "Real Estate Investment Trust (REIT): tax-exempt business" },
-  { value: "11", label: "Non-resident company" },
+  {
+    value: "9",
+    label: "Real Estate Investment Trust C: residual company",
+    hint: "Pays the main rate on all profits.",
+  },
+  {
+    value: "11",
+    label: "Non-resident company",
+    hint: "Pays the main rate on all profits.",
+  },
 ];
 
 export const EMPTY_COMPANY: CompanyAnswers = {
@@ -462,8 +478,9 @@ export function validatePeriod(
       errors.end = "End date must be the same as or after the start date";
     } else if (end.value > twelveMonthPeriodEnd(start.value)) {
       errors.end =
-        "End date must be within 12 months of the start date. " +
-        "Split a longer period of account into two returns.";
+        "End date must be within 12 months of the start date. This service prepares the " +
+        "accounts for the same period as the return, so it cannot file for a period of " +
+        "account longer than 12 months.";
     }
   }
   if (!start.ok || !end.ok || Object.keys(errors).length > 0) return { ok: false, errors };

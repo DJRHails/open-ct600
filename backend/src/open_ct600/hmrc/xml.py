@@ -14,6 +14,7 @@ from functools import cache
 
 from lxml import etree
 
+from open_ct600.computation import TAX_DETAIL_ROWS
 from open_ct600.ct600 import (
     CT600Box,
     CT600Return,
@@ -172,7 +173,8 @@ def _place_box(tree: Tree, box: CT600Box, given: set[str]) -> None:
     elements only accept amounts above zero (box 435, for one), and an unticked tick box has no
     XML form at all. HMRC's rules need a few nil boxes written (``_WRITTEN_WHEN_NIL``).
     """
-    node = _main_return_boxes().get(box.box)
+    column, row = TAX_DETAIL_ROWS.get(box.box, (box.box, 0))
+    node = _main_return_boxes().get(column)
     if node is None:
         raise ReturnXMLError(f"Box {box.box} ({box.label}) is not a main-return box in v1.994.")
     if not box.value and node.min == 0:
@@ -181,11 +183,15 @@ def _place_box(tree: Tree, box: CT600Box, given: set[str]) -> None:
         needed = _WRITTEN_WHEN_NIL[box.box]
         if needed is not None and needed not in given:
             return
-    _put(tree, node, _box_value(node, box))
+    _put(tree, node, _box_value(node, box), row)
 
 
-def _put(tree: Tree, node: SpecNode, value: str) -> None:
-    """Set ``node``'s value in the tree, creating its groups (the first of repeating ones)."""
+def _put(tree: Tree, node: SpecNode, value: str, row: int = 0) -> None:
+    """Set ``node``'s value in the tree, creating its groups.
+
+    ``row`` picks which occurrence of a repeating group to use: the rate rows of a financial
+    year (boxes 335, 350, 365) are the first, second and third ``Details`` elements.
+    """
     steps = node.path.removeprefix(f"{RETURN_PATH}/").split("/")
     group: SpecNode | None = load_spec().node(RETURN_PATH)
     current = tree
@@ -194,10 +200,13 @@ def _put(tree: Tree, node: SpecNode, value: str) -> None:
         if group is None:
             raise ReturnXMLError(f"No group {step!r} on the way to {node.path}.")
         child = current.setdefault(step, [{}] if group.repeats else {})
-        first = child[0] if isinstance(child, list) else child
-        if not isinstance(first, dict):
+        if isinstance(child, list):
+            while len(child) <= row:
+                child.append({})
+            child = child[row]
+        if not isinstance(child, dict):
             raise ReturnXMLError(f"{node.path}: {step} already holds a value, not a group.")
-        current = first
+        current = child
     current[steps[-1]] = value
 
 
@@ -231,7 +240,10 @@ def _main_return_boxes() -> dict[str, SpecNode]:
     for node in load_spec().node(RETURN_PATH).children:
         if node.name in _PAGE_ELEMENT_BY_CODE.values() or node.name == "AttachedFiles":
             continue
-        boxes |= {each.box: each for each in node.walk() if each.box is not None}
+        for each in node.walk():
+            if each.box is not None:
+                boxes[each.box] = each
+            boxes |= each.box_parts()
     return boxes
 
 

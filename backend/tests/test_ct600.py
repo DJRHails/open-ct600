@@ -335,3 +335,41 @@ def test_the_dormant_northern_ireland_page_cannot_be_filed():
 
     assert error_locations(caught) == [("supplementary_pages", "G")]
     assert "Northern Ireland" in caught.value.errors()[0]["msg"]
+
+
+def test_a_trading_loss_is_recorded_in_boxes_780_and_785():
+    # Review M4. CT600 guide: losses of trades carried on in the UK go in box 780, and the
+    # maximum available for surrender as group relief (CTA 2010 s99-s100) in box 785.
+    computation = compute_return(
+        make_return(profit_and_loss={"turnover": 20_000, "other_expenses": 60_000})
+    )
+
+    result = boxes_of(computation)
+    # 20,000 - (20,000 + 30,000 + 2,000 + 60,000) + 2,000 depreciation + 1,000 disallowable
+    # - 5,000 capital allowances = -94,000
+    assert (result["155"], result["780"], result["785"]) == (0, 94_000, 94_000)
+
+
+def test_boxes_780_and_785_are_not_given_without_a_loss():
+    assert "780" not in boxes_of(compute_return(make_return()))
+
+
+def boxes_of(computation) -> dict[str, Decimal]:
+    return {box.box: box.value for box in computation.boxes}
+
+
+def test_a_period_of_account_over_12_months_is_refused_without_suggesting_a_split():
+    # Review L4: the service prepares the accounts for the return's own period, so splitting
+    # a longer period of account into two returns would file two sets of accounts that do not
+    # exist. Refuse it plainly instead.
+    with pytest.raises(ValidationError) as caught:
+        make_return(
+            period={"start": "2024-01-01", "end": "2025-06-30"},
+            accounts={"approval_date": "2025-09-01"},
+        )
+
+    (error,) = caught.value.errors()
+    assert error["loc"] == ("period",)
+    assert "Split" not in error["msg"]
+    assert "period of account" in error["msg"]
+    assert "cannot prepare" in error["msg"]

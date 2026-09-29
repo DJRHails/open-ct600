@@ -43,7 +43,12 @@ from open_ct600.reliefs.loans_to_participators import ParticipatorLoanDates
 from open_ct600.reliefs.research_and_development import ResearchAndDevelopment
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
-from open_ct600.tax import PeriodError, validate_period
+from open_ct600.tax import (
+    COMPANY_TYPE_RATES,
+    PeriodError,
+    twelve_month_period_end,
+    validate_period,
+)
 
 __all__ = [
     "MAX_POUNDS",
@@ -105,18 +110,29 @@ def _located_error(message: str, location: tuple[str | int, ...], value: object)
     return ValidationError.from_exception_data("CT600Return", details)
 
 
+UNSUPPORTED_COMPANY_TYPES = {
+    5: "Insurance companies (type 5) tax the policyholders' share of profits at a separate "
+    "rate, which this service does not work out: use other software",
+    10: "A REIT's tax-exempt company (type 10) has profits exempt under the REIT rules, which "
+    "this service does not work out: use other software",
+}
+
+
 class CompanyDetails(StrictModel):
     """Who the return is for.
 
     Attributes:
-        company_type: CT600 box 4, the type of company. ``0`` is a UK trading company (or any
-            company not listed); ``1`` a unit trust or open-ended investment company; ``2`` a
-            community interest company; ``3`` a company in liquidation, for its second or later
-            accounting period; ``4`` a qualifying asset holding company; ``5`` an insurance
-            company whose policyholders' share of profits is charged at the basic rate; ``6`` a
-            members' club or voluntary association; ``7`` a property management company; ``8``
-            a charity or company owned by a charity; ``9`` a REIT group company's residual
-            business; ``10`` a REIT's tax-exempt business; ``11`` a non-resident company.
+        company_type: CT600 box 4, the type of company, with HMRC's codes (Company Tax Return
+            guide, box 4): ``0`` none of the others (most companies, including community
+            interest companies and companies in their first year of liquidation); ``1`` a unit
+            trust or open-ended investment company; ``2`` a close investment-holding company;
+            ``3`` a company in the second or later year of liquidation; ``4`` a qualifying
+            asset holding company; ``5`` insurance (policyholders' share at the basic rate);
+            ``6`` a members' club or voluntary association; ``7`` a property management
+            company; ``8`` a charity or company owned by a charity; ``9`` a REIT C residual
+            company; ``10`` a REIT C tax-exempt company; ``11`` a non-resident company. The
+            type decides the rates (``COMPANY_TYPE_RATES``); 5 and 10 need treatment the
+            service does not provide, so are refused.
         principal_activity: What the company does, as stated in its accounts.
     """
 
@@ -125,6 +141,13 @@ class CompanyDetails(StrictModel):
     utr: str
     company_type: Annotated[int, Field(ge=0, le=11)] = 0
     principal_activity: Annotated[str, Field(min_length=1, max_length=200)]
+
+    @field_validator("company_type")
+    @classmethod
+    def _check_company_type_is_supported(cls, value: int) -> int:
+        if value not in COMPANY_TYPE_RATES:
+            raise ValueError(UNSUPPORTED_COMPANY_TYPES[value])
+        return value
 
     @field_validator("registration_number")
     @classmethod
@@ -149,13 +172,25 @@ class CompanyDetails(StrictModel):
 
 
 class ReturnPeriod(StrictModel):
-    """The accounting period the return covers."""
+    """The accounting period the return covers, which is also the accounts' period of account.
+
+    The service prepares the statutory accounts for this same period, so it cannot file for a
+    period of account longer than 12 months: HMRC needs two returns for it, each with the
+    accounts for the whole period of account (review finding L4).
+    """
 
     start: date
     end: date
 
     @model_validator(mode="after")
     def _check_period(self) -> Self:
+        if self.end > twelve_month_period_end(self.start):
+            raise ValueError(
+                "The period cannot be longer than 12 months. This service prepares the accounts "
+                "for the same period as the return, so it cannot prepare a return for a period "
+                "of account longer than 12 months: that needs two returns, each with the "
+                "accounts for the whole period of account"
+            )
         try:
             validate_period(self.start, self.end)
         except PeriodError as error:
@@ -180,15 +215,34 @@ class ProfitAndLoss(StrictModel):
 
 
 class TaxAdjustments(StrictModel):
-    """Adjustments that turn accounting profit into taxable profit."""
+    """Adjustments that turn accounting profit into taxable profit.
+
+    Attributes:
+        losses_brought_forward_before_april_2017: The part of ``losses_brought_forward`` that
+            arose before 1 April 2017. Those losses only relieve profits of the same trade
+            (CTA 2010 s45); later ones can also relieve total profits (s45A), so they come
+            before any group relief for carried-forward losses (CTM82010).
+    """
 
     disallowable_expenses: Pounds = 0
     capital_allowances: Pounds = 0
     losses_brought_forward: Pounds = 0
+    losses_brought_forward_before_april_2017: Pounds = 0
     chargeable_gains: Pounds = 0
     qualifying_donations: Pounds = 0
     exempt_distributions: Pounds = 0
     associated_companies: Annotated[int, Field(ge=0, le=999)] = 0
+
+    @model_validator(mode="after")
+    def _check_older_losses_are_part_of_the_total(self) -> Self:
+        if self.losses_brought_forward_before_april_2017 > self.losses_brought_forward:
+            raise _located_error(
+                "Losses from before 1 April 2017 are part of the trading losses brought "
+                "forward, so cannot be more than them",
+                ("losses_brought_forward_before_april_2017",),
+                self.losses_brought_forward_before_april_2017,
+            )
+        return self
 
 
 class BalanceSheet(StrictModel):

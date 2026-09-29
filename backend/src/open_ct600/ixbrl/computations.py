@@ -189,7 +189,6 @@ class _TradeResult:
     disallowable: int
     non_trading_credits: int
     capital_allowances: int
-    taxable_credits: int
     research_and_development_deduction: int
     creative_deduction: int
     exempt_charitable_result: int
@@ -202,7 +201,6 @@ class _TradeResult:
             + self.disallowable
             - self.non_trading_credits
             - self.capital_allowances
-            + self.taxable_credits
             - self.research_and_development_deduction
             - self.creative_deduction
             - self.exempt_charitable_result
@@ -218,7 +216,6 @@ def _trade_result(ct600: CT600Return, computation: ReturnComputation) -> _TradeR
         disallowable=adjustments.disallowable_expenses,
         non_trading_credits=pnl.interest_income,
         capital_allowances=adjustments.capital_allowances,
-        taxable_credits=reliefs.taxable_credits,
         research_and_development_deduction=reliefs.research_and_development_deduction,
         creative_deduction=reliefs.creative_deduction,
         exempt_charitable_result=reliefs.exempt_charitable_result,
@@ -474,7 +471,7 @@ def _financial_year_rows(
     document: InlineDocument, number: int, part: FinancialYearSlice, company: Context
 ) -> list[etree._Element]:
     prefix = f"ct-comp:FY{number}"
-    return [
+    rows = [
         text_row(
             "Financial year",
             document.non_numeric(
@@ -483,21 +480,28 @@ def _financial_year_rows(
                 str(part.financial_year),
             ),
             f" ({_describe_slice(part.start, part.end)})",
-        ),
-        amount_row(
-            "Profits chargeable",
-            document.money(f"{prefix}AmountOfProfitChargeableAtFirstRate", company, part.profits),
-        ),
-        text_row(
-            "Rate of tax",
-            document.percentage(f"{prefix}FirstRateOfTax", company, part.rate),
-            "%",
-        ),
-        amount_row(
-            "Tax at this rate",
-            document.money(f"{prefix}TaxAtFirstRate", company, part.tax, decimals=2),
-        ),
+        )
     ]
+    # One set of rows per rate, as boxes 335 to 375 (ring fence profits at their own rate).
+    for ordinal, row in zip(("First", "Second", "Third"), part.rows, strict=False):
+        rows += [
+            amount_row(
+                "Profits chargeable",
+                document.money(
+                    f"{prefix}AmountOfProfitChargeableAt{ordinal}Rate", company, row.profits
+                ),
+            ),
+            text_row(
+                "Rate of tax",
+                document.percentage(f"{prefix}{ordinal}RateOfTax", company, row.rate),
+                "%",
+            ),
+            amount_row(
+                "Tax at this rate",
+                document.money(f"{prefix}TaxAt{ordinal}Rate", company, row.tax, decimals=2),
+            ),
+        ]
+    return rows
 
 
 def _describe_slice(start: date, end: date) -> str:

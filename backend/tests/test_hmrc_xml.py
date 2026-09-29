@@ -378,9 +378,45 @@ RELIEF_SHAPES = {
                     "MinusLosses": "10000",
                     "FieldAllowance": "6000",
                 },
-                "NetRingFenceTrade": {"SupplementaryChargeTax": "3800.00"},
             }
         }
+    },
+    "ring fence profits taxed at 30% (CT600I)": {
+        "profit_and_loss": {"turnover": 100_000},
+        "supplementary_pages": {
+            "I": {
+                "CalculationOfSupplementaryCharge": {
+                    "Trade": {"Amount": "100000", "Profits": "yes"}
+                }
+            }
+        },
+    },
+    "ring fence and other profits, two rates (CT600I)": {
+        "profit_and_loss": {"turnover": 400_000, "interest_income": 60_000},
+        "period": {"start": "2024-10-01", "end": "2025-09-30"},
+        "accounts": {"approval_date": "2025-12-01"},
+        "supplementary_pages": {
+            "I": {
+                "CalculationOfSupplementaryCharge": {
+                    "Trade": {"Amount": "100000", "Profits": "yes"}
+                }
+            }
+        },
+    },
+    "close investment-holding company": {
+        "company": {"company_type": 2},
+        "profit_and_loss": {"turnover": 60_000},
+    },
+    "trading loss with surrender for ERIS credit": {
+        **LOSS_MAKING,
+        "research_and_development": {
+            **RD_FORMS,
+            "scheme": "eris",
+            "qualifying_expenditure": 50_000,
+            "intensity": "35",
+            "claim_payable_credit": True,
+        },
+        "supplementary_pages": {"L": SME_PAYE},
     },
     "restitution tax straddling 1 April (CT600K)": {
         "period": {"start": "2025-01-01", "end": "2025-12-31"},
@@ -635,3 +671,13 @@ def test_fractional_whole_pounds_are_refused():
         build_return_xml(
             ct600, broken, declaration=DECLARATION, accounts_xhtml=None, computations_xhtml=None
         )
+
+
+def test_a_loss_return_records_the_loss_and_is_accepted():
+    ct600 = make_return(profit_and_loss={"turnover": 20_000})
+    envelope = build(ct600)
+
+    losses = "//ct:LossesDeficitsAndExcess/ct:AmountArising/ct:LossesOfTradesUK"
+    assert text(envelope, f"{losses}/ct:Arising") == text(envelope, f"{losses}/ct:SurrenderMaximum")
+    assert text(envelope, f"{losses}/ct:Arising") != ""
+    assert validate_return(envelope) == []
