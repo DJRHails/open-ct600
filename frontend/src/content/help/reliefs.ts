@@ -124,6 +124,8 @@ export const RESEARCH_HELP: Record<keyof ResearchAnswers, QuestionHelp> = {
       },
       { box: "650" },
       { box: "655" },
+      { box: "659" },
+      { box: "660" },
     ],
   },
   company_is_sme: {
@@ -184,6 +186,7 @@ export const RESEARCH_HELP: Record<keyof ResearchAnswers, QuestionHelp> = {
     },
     hmrc: [
       { box: "659" },
+      { box: "660" },
       { box: "L10" },
       {
         quote: {

@@ -1,4 +1,4 @@
-import { ACCOUNTS_HELP } from "@/content/help/accounts";
+import { ACCOUNTS_HELP, COMPARATIVES_HELP } from "@/content/help/accounts";
 import { BALANCE_SHEET_HELP } from "@/content/help/balanceSheet";
 import { COMPANY_HELP } from "@/content/help/company";
 import { SAVED_GUIDES, words } from "@/content/help/guides.test-utils";
@@ -47,7 +47,31 @@ const QUESTIONS: [section: string, help: Record<string, QuestionHelp>, asked: st
   ],
   ["loan dates", { loan_date: LOAN_DATE_HELP }, ["loan_date"]],
   ["supplementary pages", { pages: CHOOSE_PAGES_HELP }, ["pages"]],
+  [
+    "previous period",
+    COMPARATIVES_HELP,
+    ["previous_period", "tax_on_profit", "previous_employees"],
+  ],
 ];
+
+/** A box named in plain text: "box 160", "boxes 210 and 220", "boxes L185 and L190". */
+const BOX_MENTION =
+  /\b[Bb]ox(?:es)? (?<first>[A-P]?\d+[A-Z]?)(?: (?:and|or) (?<second>[A-P]?\d+[A-Z]?))?/g;
+
+function mentionedBoxes(texts: string[]): string[] {
+  return texts.flatMap((text) =>
+    [...text.matchAll(BOX_MENTION)].flatMap((match) =>
+      [match.groups?.first, match.groups?.second].filter((box): box is string => !!box),
+    ),
+  );
+}
+
+/** The boxes a question's HMRC tab explains: each box it cites and the others in its entries. */
+function explainedBoxes(question: QuestionHelp): Set<string> {
+  const cited = question.hmrc.flatMap((ref) => ("box" in ref ? [ref.box] : []));
+  const entries = cited.flatMap((box) => INDEX.forBox(box).flatMap(({ entry }) => entry.boxes));
+  return new Set([...cited, ...entries]);
+}
 
 const EVERY_HELP = QUESTIONS.flatMap(([section, help]) =>
   Object.entries(help).map(([key, question]) => [`${section}: ${key}`, question] as const),
@@ -92,6 +116,21 @@ describe("help content", () => {
       const missing = quote.paragraphs.filter((text) => !words(guide).includes(words(text)));
       expect(missing).toEqual([]);
     }
+  });
+
+  it.each(EVERY_HELP)("for %s only names boxes its HMRC tab explains", (_, question) => {
+    const explained = explainedBoxes(question);
+    const unexplained = mentionedBoxes(plainTexts(question.plain)).filter(
+      (box) => !explained.has(box),
+    );
+    expect(unexplained).toEqual([]);
+  });
+
+  it("takes indexation allowance up to December 2017 off chargeable gains", () => {
+    const text = plainTexts(TAX_ADJUSTMENTS_HELP.chargeable_gains.plain).join(" ");
+    expect(text).toMatch(/indexation allowance/);
+    expect(text).toMatch(/December 2017/);
+    expect(text).toMatch(/cannot create or increase a loss/);
   });
 
   it("is written in GOV.UK style", () => {

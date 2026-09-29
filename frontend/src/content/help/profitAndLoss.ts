@@ -29,7 +29,7 @@ export const PROFIT_AND_LOSS_HELP: Record<Key, QuestionHelp> = {
         "We show it in box 145 and in the company's profit and loss account. We use it to work out the company's trading profits, in box 155.",
       ],
     },
-    hmrc: [{ box: "145" }],
+    hmrc: [{ box: "145" }, { box: "155" }],
   },
   interest_income: {
     topic: "bank and building society interest",

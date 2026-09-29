@@ -79,10 +79,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Losses the company has already used or given to another company in its group.",
       ],
       effect: [
-        "We use as much of the loss as the company's trading profits allow, and show it in box 160. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward.",
+        "We use as much of the loss as the company's trading profits allow, and show the amount used in box 160, against trading profits. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward.",
+        "HMRC's guide puts losses from periods ending on or after 1 April 2017 in box 285 when they are set against total profits. This service only sets losses against trading profits, so it shows every loss it uses in box 160. The tax is the same. If the company wants to set later losses against its other profits, such as interest or gains, ask an accountant.",
       ],
     },
-    hmrc: [{ box: "160" }],
+    hmrc: [{ box: "160" }, { box: "285" }],
   },
   losses_brought_forward_before_april_2017: {
     topic: "losses from before 1 April 2017",
