@@ -24,7 +24,12 @@ a balancing figure:
   reproduce the filed profit before tax. If the tagged staff costs and depreciation exceed
   that (they were also counted in cost of sales), they are folded back into
   ``other_expenses``; if cost of sales alone exceeds it, the excess counts as other income.
-- ``tax`` and ``profit_after_tax``: as filed (a tax credit is negative).
+- ``tax`` and ``profit_after_tax``: as filed (a tax credit is negative). When profit before
+  and after tax are both tagged, they decide: an untagged tax line is their difference, and a
+  tax line whose sign disagrees with them (a charge tagged ``sign="-"``) takes their sign.
+  Otherwise an untagged tax line is unknown (``None``), and so is profit after tax if that
+  isn't tagged either. With only profit after tax tagged, the lines balance to it, so
+  ``other_expenses`` includes any tax.
 
 Filleted accounts, which leave the profit and loss account out, give no profit and loss: a
 profit figure alone (as in a tax note) is not enough, one of its face lines must be tagged.
@@ -96,7 +101,11 @@ class Period(BaseModel):
 
 
 class FiledProfitAndLoss(BaseModel):
-    """A filed profit and loss account, in ``ProfitAndLoss`` terms (whole pounds)."""
+    """A filed profit and loss account, in ``ProfitAndLoss`` terms (whole pounds).
+
+    ``tax`` (negative for a credit) and ``profit_after_tax`` are ``None`` when the filing
+    doesn't show them; see the module docstring.
+    """
 
     turnover: int
     interest_income: int
@@ -104,8 +113,8 @@ class FiledProfitAndLoss(BaseModel):
     staff_costs: int
     depreciation: int
     other_expenses: int
-    tax: int
-    profit_after_tax: int
+    tax: int | None
+    profit_after_tax: int | None
 
 
 class FiledBalanceSheet(BaseModel):
@@ -300,12 +309,27 @@ _OTHER_CHARGES = (
 """Expenses outside our named lines, used only when turnover itself was not tagged."""
 
 
+def _tax(tagged: Decimal | None, before: Decimal | None, after: Decimal | None) -> Decimal | None:
+    """The tax line, checked against the profits before and after tax (module docstring)."""
+    if before is None or after is None:
+        return tagged
+    if tagged is None:
+        return before - after
+    if before - tagged != after and before + tagged == after:
+        return -tagged
+    return tagged
+
+
 def _profit_and_loss(filing: _Filing) -> FiledProfitAndLoss | None:
-    tax = filing.number("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities") or Decimal(0)
     after_tax = filing.number("ProfitLoss")
     before_tax = filing.number("ProfitLossOnOrdinaryActivitiesBeforeTax", "ProfitLossBeforeTax")
+    tax = _tax(
+        filing.number("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities"), before_tax, after_tax
+    )
     if before_tax is None and after_tax is not None:
-        before_tax = after_tax + tax
+        before_tax = after_tax + (tax or Decimal(0))
+    if after_tax is None and tax is not None and before_tax is not None:
+        after_tax = before_tax - tax
     if before_tax is None or all(filing.number(line) is None for line in _FACE_LINES):
         return None
     cost_of_sales = _amount(filing, "CostSales", "RawMaterialsConsumablesUsed")
@@ -334,8 +358,8 @@ def _profit_and_loss(filing: _Filing) -> FiledProfitAndLoss | None:
         staff_costs=_pounds(lines.staff),
         depreciation=_pounds(lines.depreciation),
         other_expenses=_pounds(lines.other),
-        tax=_pounds(tax),
-        profit_after_tax=_pounds(after_tax if after_tax is not None else before_tax - tax),
+        tax=_whole(tax),
+        profit_after_tax=_whole(after_tax),
     )
 
 

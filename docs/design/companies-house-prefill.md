@@ -45,7 +45,7 @@ GET /api/companies-house/companies/{number}
           "standard": "micro" | "small" | null,
           "dormant": bool | null,
           "profit_and_loss": {"turnover": 120000, "interest_income": 0, "cost_of_sales": 0, "staff_costs": 30000,
-                              "depreciation": 2000, "other_expenses": 8000, "tax": 10825, "profit_after_tax": 49675},
+                              "depreciation": 2000, "other_expenses": 8000, "tax": 10825 | null, "profit_after_tax": 49675 | null},  # null: not shown
           "balance_sheet": {"fixed_assets": 10000, "current_assets": 70000, "called_up_share_capital_not_paid": 0,
                             "prepayments_and_accrued_income": 0, "creditors_within_one_year": 15000,
                             "creditors_after_one_year": 5000, "provisions": 0, "accruals_and_deferred_income": 0,

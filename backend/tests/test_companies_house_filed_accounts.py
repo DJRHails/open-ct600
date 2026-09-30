@@ -38,7 +38,7 @@ def sheet(**lines: int) -> dict[str, int]:
     return {field: lines.get(field, 0) for field in fields}
 
 
-def pnl(**lines: int) -> dict[str, int]:
+def pnl(**lines: int | None) -> dict[str, int | None]:
     fields = [
         "turnover",
         "interest_income",
@@ -91,7 +91,15 @@ FILINGS = {
     # 46.00 / Share capital 1.00". FRC 2024.
     "Prod223_4316_11579512_20260919.html": (
         ("2025-09-20", "2026-09-19", "micro", False, 2),
-        pnl(turnover=33461, cost_of_sales=2815, other_expenses=46162, profit_after_tax=-15516),
+        # Only the profit before tax is shown: without a tax line, tax and profit after tax
+        # are unknown.
+        pnl(
+            turnover=33461,
+            cost_of_sales=2815,
+            other_expenses=46162,
+            tax=None,
+            profit_after_tax=None,
+        ),
         sheet(current_assets=46, called_up_share_capital=1, net_assets=46),
         ["Georgi Chukovski"],
     ),
@@ -297,11 +305,15 @@ def test_reads_the_filings_own_period(name, expected):
     assert accounts.directors == directors
 
 
-@pytest.mark.parametrize("name", [n for n, e in FILINGS.items() if e[1] is not None])
+@pytest.mark.parametrize(
+    "name", [n for n, e in FILINGS.items() if e[1] is not None and e[1]["tax"] is not None]
+)
 def test_profit_and_loss_reproduces_the_filed_profit(name):
     accounts = read_filed_accounts((FIXTURES / name).read_bytes())
     lines = accounts.profit_and_loss
     assert lines is not None
+    assert lines.tax is not None
+    assert lines.profit_after_tax is not None
 
     before_tax = (
         lines.turnover
@@ -456,6 +468,97 @@ def test_a_filings_period_must_be_a_period_of_account(start, readable):
     else:
         with pytest.raises(AccountsNotReadableError, match="isn't a period of account"):
             read_filed_accounts(document)
+
+
+def duration_fact(concept: str, value: int, sign: str = "") -> str:
+    signed = ' sign="-"' if sign else ""
+    return (
+        f'<ix:nonFraction name="core:{concept}" contextRef="d" unitRef="u" decimals="0"'
+        f"{signed}>{value}</ix:nonFraction>"
+    )
+
+
+TURNOVER = duration_fact("TurnoverRevenue", 1000)
+
+
+@pytest.mark.parametrize(
+    ("facts", "tax", "profit_after_tax"),
+    [
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", 20),
+                duration_fact("ProfitLoss", 80),
+            ],
+            20,
+            80,
+        ),
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("ProfitLoss", 80),
+            ],
+            20,
+            80,
+        ),
+        ([duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100)], None, None),
+        ([duration_fact("ProfitLoss", 80)], None, 80),
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", 20, sign="-"),
+                duration_fact("ProfitLoss", 80),
+            ],
+            20,
+            80,
+        ),
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", 20),
+                duration_fact("ProfitLoss", 120),
+            ],
+            -20,
+            120,
+        ),
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", 20, sign="-"),
+                duration_fact("ProfitLoss", 120),
+            ],
+            -20,
+            120,
+        ),
+        (
+            [
+                duration_fact("ProfitLossOnOrdinaryActivitiesBeforeTax", 100),
+                duration_fact("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities", 30),
+                duration_fact("ProfitLoss", 80),
+            ],
+            30,
+            80,
+        ),
+    ],
+    ids=[
+        "tagged",
+        "untagged, from before and after tax",
+        "untagged, only before tax",
+        "untagged, only after tax",
+        "charge tagged with a minus sign",
+        "credit tagged without a sign",
+        "credit tagged with a minus sign",
+        "inconsistent either way: as tagged",
+    ],
+)
+def test_tax_is_unknown_when_untagged_and_its_sign_follows_the_profits(
+    facts, tax, profit_after_tax
+):
+    accounts = read_filed_accounts(minimal_filing(TURNOVER + "".join(facts)))
+
+    assert accounts.profit_and_loss is not None
+    assert accounts.profit_and_loss.tax == tax
+    assert accounts.profit_and_loss.profit_after_tax == profit_after_tax
 
 
 def test_balance_sheets_add_up_where_the_filer_tagged_consistently():
