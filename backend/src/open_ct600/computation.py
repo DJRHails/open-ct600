@@ -307,6 +307,8 @@ BOX_LABELS: dict[int, str] = {
     210: "Gross chargeable gains",
     220: "Net chargeable gains",
     235: "Profits before other deductions and reliefs",
+    285: "Trading losses carried forward and claimed against total profits",
+    295: "Total of deductions and reliefs",
     300: "Profits before qualifying donations and group relief",
     305: "Qualifying donations",
     310: "Group relief",
@@ -441,7 +443,8 @@ class _Profits:
 
     trading_result: int
     trading_profits: int
-    losses_used: int
+    losses_against_trade: int
+    losses_against_total_profits: int
     loss_arising: int
     interest: int
     tonnage_tax: int
@@ -451,6 +454,16 @@ class _Profits:
     group_relief: int
     group_relief_carried_forward: int
     ring_fence_profits: int
+
+    @property
+    def losses_used(self) -> int:
+        """Trading losses brought forward used this period: boxes 160 and 285."""
+        return self.losses_against_trade + self.losses_against_total_profits
+
+    @property
+    def before_donations(self) -> int:
+        """Box 300: box 235 less the deductions and reliefs of box 295 (here only box 285)."""
+        return self.before_deductions - self.losses_against_total_profits
 
     @property
     def ring_fenced(self) -> int:
@@ -465,7 +478,7 @@ class _Profits:
     def chargeable(self) -> int:
         """Box 315."""
         deductions = self.donations + self.group_relief + self.group_relief_carried_forward
-        return max(self.before_deductions - deductions, 0)
+        return max(self.before_donations - deductions, 0)
 
     @property
     def available_for_group_relief(self) -> int:
@@ -475,7 +488,7 @@ class _Profits:
         relief are reduced by its own current-period trading loss (s37(3)(a)) whether or not
         it claims that relief, so a loss is never relieved twice (review finding H2).
         """
-        reduced = self.before_deductions - self.ring_fenced - self.donations - self.loss_arising
+        reduced = self.before_donations - self.ring_fenced - self.donations - self.loss_arising
         return max(reduced, 0)
 
 
@@ -589,26 +602,38 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
     adjustments, pnl = run.ct600.tax_adjustments, run.ct600.profit_and_loss
     exempt = standalone.exempt_charity
     trading_profits = 0 if exempt else max(trading_result, 0)
-    losses_used = min(adjustments.losses_brought_forward, trading_profits)
+    # CT600 guide boxes 160 and 285: losses from before 1 April 2017 only relieve profits of
+    # the same trade (CTA 2010 s45, box 160); later ones relieve total profits (s45A, box
+    # 285), after box 235 and before box 300. Tonnage tax profits are ring-fenced from both.
+    older = adjustments.losses_brought_forward_before_april_2017
+    newer = adjustments.losses_brought_forward - older
+    against_trade = min(older, trading_profits)
     interest = 0 if exempt else pnl.interest_income
     gains = 0 if exempt else adjustments.chargeable_gains
     tonnage = standalone.tonnage_tax.profits if standalone.tonnage_tax else 0
-    before = trading_profits - losses_used + interest + gains + tonnage
+    before = trading_profits - against_trade + interest + gains + tonnage
+    against_total = min(newer, max(before - tonnage, 0))
     group_relief = run.pages.get("C")
     # A company filing CT600I carries on its (single) trade as a ring fence trade (CTA 2010
-    # s277), so its net trading profits are ring fence profits (box 320).
-    ring_fence = trading_profits - losses_used if standalone.ring_fence else 0
+    # s277), so its net trading profits are ring fence profits (box 320); its losses are ring
+    # fence losses, taken against them first.
+    net_trade = trading_profits - against_trade
+    ring_fence = max(net_trade - against_total, 0) if standalone.ring_fence else 0
     return _Profits(
         ring_fence_profits=ring_fence,
         trading_result=trading_result,
         trading_profits=trading_profits,
-        losses_used=losses_used,
+        losses_against_trade=against_trade,
+        losses_against_total_profits=against_total,
         loss_arising=0 if exempt else max(-trading_result, 0),
         interest=interest,
         tonnage_tax=tonnage,
         gains=gains,
         before_deductions=before,
-        donations=min(adjustments.qualifying_donations, max(before - tonnage - ring_fence, 0)),
+        donations=min(
+            adjustments.qualifying_donations,
+            max(before - against_total - tonnage - ring_fence, 0),
+        ),
         group_relief=int(group_relief.amount("C10")) if group_relief else 0,
         group_relief_carried_forward=int(group_relief.amount("C130")) if group_relief else 0,
     )
@@ -617,8 +642,8 @@ def _profits(run: _Evaluation, trading_result: int, standalone: _StandalonePages
 def _profit_boxes(run: _Evaluation, profits: _Profits) -> None:
     run.box(145, run.ct600.profit_and_loss.turnover)
     run.box(155, profits.trading_profits)
-    run.box(160, profits.losses_used)
-    run.box(165, profits.trading_profits - profits.losses_used)
+    run.box(160, profits.losses_against_trade)
+    run.box(165, profits.trading_profits - profits.losses_against_trade)
     run.box(170, profits.interest)
     if profits.tonnage_tax or "F" in run.pages:
         run.box(200, profits.tonnage_tax)
@@ -626,7 +651,10 @@ def _profit_boxes(run: _Evaluation, profits: _Profits) -> None:
         run.box(210, profits.gains)
         run.box(220, profits.gains)
     run.box(235, profits.before_deductions)
-    run.box(300, profits.before_deductions)
+    if profits.losses_against_total_profits:
+        run.box(285, profits.losses_against_total_profits)
+        run.box(295, profits.losses_against_total_profits)
+    run.box(300, profits.before_donations)
     run.box(305, profits.donations)
     if "C" in run.pages:
         run.box(310, profits.group_relief)
@@ -704,11 +732,11 @@ def _group_relief(run: _Evaluation, profits: _Profits) -> GroupRelief | None:
         return None
     adjustments = run.ct600.tax_adjustments
     losses_available = adjustments.losses_brought_forward - profits.losses_used
-    # Older losses can only relieve the trade (s45), so box 160 is taken to use them first;
-    # what is left of the April 2017 and later losses could relieve total profits (s45A).
+    # April 2017 and later losses relieve total profits in box 285 before any group relief
+    # for carried-forward losses (CTM82010); any left over mean no profits remain for it.
     older = adjustments.losses_brought_forward_before_april_2017
-    newer_used = max(profits.losses_used - older, 0)
-    newer_unused = adjustments.losses_brought_forward - older - newer_used
+    newer = adjustments.losses_brought_forward - older
+    newer_unused = newer - profits.losses_against_total_profits
     position = ClaimantPosition(
         available=profits.available_for_group_relief,
         trading_loss=profits.loss_arising,

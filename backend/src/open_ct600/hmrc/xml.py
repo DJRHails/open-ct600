@@ -41,6 +41,7 @@ _TWO_PLACES = Decimal("0.01")
 _WRITTEN_WHEN_NIL: dict[str, str | None] = {
     "326": "329",  # 9240: an associated companies section (329 ticked) must give box 326.
     "430": None,  # 9146: box 430 must be completed when box 345 or 395 is, even at 0.00.
+    "300": "235",  # 9320: box 300 must be given when box 235 is above nil (losses in 285).
     # Boxes a supplementary page's box is copied to must be given even at nil; CORE only
     # computes them when the page is filed.
     "200": None,  # 9127: CT600F (box 120) needs box 200.

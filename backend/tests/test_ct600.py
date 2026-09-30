@@ -64,10 +64,12 @@ def test_profit_boxes_follow_the_ct600_arithmetic():
 
     # 120,000 - 60,000 expenses + 2,000 depreciation + 1,000 disallowable - 5,000 allowances
     assert result["155"] == 58_000
-    assert result["160"] == 3_000
-    assert result["165"] == 55_000
+    # The 3,000 of losses brought forward are from April 2017 or later: box 285 (s45A)
+    assert result["160"] == 0
+    assert result["165"] == 58_000
     assert result["170"] == 500
-    assert result["235"] == 55_500
+    assert result["235"] == 58_500
+    assert (result["285"], result["295"], result["300"]) == (3_000, 3_000, 55_500)
     assert result["305"] == 500
     assert result["315"] == 55_000
 
@@ -148,15 +150,17 @@ def test_trading_loss_is_carried_forward():
     # 50,000 - 60,000 + 2,000 + 1,000 - 5,000
     assert computation.trading_loss_arising == 12_000
     assert by_box["155"] == by_box["160"] == 0
-    assert computation.losses_carried_forward == 15_000
-    assert by_box["315"] == 500
+    # 500 of the 3,000 brought forward relieve the interest (box 285): 2,500 + 12,000 remain
+    assert by_box["285"] == 500
+    assert computation.losses_carried_forward == 14_500
+    assert by_box["315"] == 0
 
 
 def test_donations_cannot_exceed_profits():
     result = boxes(
         make_return(
             profit_and_loss={"turnover": 0, "interest_income": 100},
-            tax_adjustments={"qualifying_donations": 5_000},
+            tax_adjustments={"qualifying_donations": 5_000, "losses_brought_forward": 0},
         )
     )
 
