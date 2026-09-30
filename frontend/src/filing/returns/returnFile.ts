@@ -95,5 +95,13 @@ export async function readReturnFile(file: File | undefined): Promise<Imported> 
   if (file.size > MAX_FILE_BYTES) {
     return { ok: false, error: "The selected file must be smaller than 1MB" };
   }
-  return parseReturnFile(await file.text());
+  let text: string;
+  try {
+    text = await file.text();
+  } catch (error) {
+    // Moved, deleted or locked since it was chosen: the user can choose it again.
+    console.error("The chosen return file could not be read", error);
+    return { ok: false, error: "The selected file could not be read. Choose the file again" };
+  }
+  return parseReturnFile(text);
 }

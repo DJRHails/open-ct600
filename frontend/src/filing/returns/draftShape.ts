@@ -1,7 +1,8 @@
 /**
  * Whether something read from outside this browser, like an imported file, has the shape of a
- * draft. It checks types, not answers: a section whose answers no longer validate just shows as
- * incomplete, as it would for a draft saved here.
+ * draft. It checks types and that each choice is one the question offers, not whether the
+ * answers are right: a section whose answers no longer validate just shows as incomplete, as it
+ * would for a draft saved here.
  */
 import type { CompanyRecord, PageCode, PreviousAccounts } from "@/api";
 import type { DateParts } from "@/components/forms";
@@ -10,15 +11,20 @@ import type { ComparativesAnswers } from "@/filing/comparatives";
 import {
   ACCOUNTS_ANSWERS_ADDED_LATER,
   type AccountsAnswers,
+  COMPANY_TYPES,
   type CompanyAnswers,
   type Draft,
   EMPTY_ACCOUNTS,
   EMPTY_COMPANY,
+  STANDARD_OPTIONS,
+  TRADING_STATUS_OPTIONS,
+  YES_NO,
 } from "@/filing/model";
 import {
   type CreativeAnswers,
   EMPTY_RESEARCH,
   type ResearchAnswers,
+  schemesFor,
   type SurrendererFigures,
 } from "@/filing/reliefs";
 import { isRecord } from "@/filing/returns/savedReturns";
@@ -69,12 +75,25 @@ const isTextList: Check = (value, path) =>
 const textByKey: Check = (value, path) =>
   isRecord(value) ? firstProblem(value, path, isText) : path;
 
+type FieldRules = {
+  /** Questions added after answers could be saved: answers saved before then do not have them. */
+  addedLater?: readonly string[];
+  /** The answers a choice question can have, with ``""`` for not yet answered. */
+  choices?: Record<string, readonly string[]>;
+};
+
+/** One of ``options`` offered as a choice, or ``""`` for not yet answered. */
+function choiceOf(options: readonly { value: string }[]): readonly string[] {
+  return ["", ...options.map((option) => option.value)];
+}
+
 /**
  * Exactly the fields of ``template``, each of the same kind as the template's: text, a list of
- * text, or answers of their own. The question pages always save every field, except that
- * answers saved before a question was added (``addedLater``) do not have it.
+ * text, or answers of their own; a choice question's answer must be one of its ``choices``. The
+ * question pages always save every field, except those ``addedLater``.
  */
-function fieldsLike(template: object, addedLater: readonly string[] = []): Check {
+function fieldsLike(template: object, rules: FieldRules = {}): Check {
+  const { addedLater = [], choices = {} } = rules;
   const fields = new Map(Object.entries(template));
   const check: Check = (value, path) => {
     if (!isRecord(value)) return path;
@@ -87,6 +106,8 @@ function fieldsLike(template: object, addedLater: readonly string[] = []): Check
       const example = fields.get(key);
       if (Array.isArray(example)) return isTextList(field, fieldPath);
       if (isRecord(example)) return fieldsLike(example)(field, fieldPath);
+      const allowed = choices[key];
+      if (allowed) return typeof field === "string" && allowed.includes(field) ? null : fieldPath;
       return isText(field, fieldPath);
     });
   };
@@ -187,12 +208,23 @@ const COMPANY_RECORD = shape<CompanyRecord>({
   previous_accounts_unavailable: orNull(isText),
 });
 
-/** A supplementary page's answers as typed: text, nested answers and lists of them. */
-const isRawValue: Check = (value, path) => {
+/**
+ * How deep a supplementary page's answers can nest. The whole CT600 schema (ct600-v1.994.json,
+ * metadata and all) nests 18 levels, so no page's answers come near this. A file nested deeper
+ * is refused rather than checked, so it cannot overflow the stack.
+ */
+const MAX_ANSWER_DEPTH = 32;
+
+function rawValueProblem(value: unknown, path: string, depth: number): string | null {
   if (typeof value === "string") return null;
-  if (Array.isArray(value) || isRecord(value)) return firstProblem(value, path, isRawValue);
-  return path;
-};
+  if (depth >= MAX_ANSWER_DEPTH || !(Array.isArray(value) || isRecord(value))) return path;
+  return firstProblem(value, path, (item, itemPath) => rawValueProblem(item, itemPath, depth + 1));
+}
+
+/** A supplementary page's answers as typed: text, nested answers and lists of them. */
+const isRawValue: Check = (value, path) => rawValueProblem(value, path, 0);
+
+const YES_NO_CHOICES = choiceOf(YES_NO);
 
 const EMPTY_DATE: DateParts = { day: "", month: "", year: "" };
 const PERIOD = fieldsLike({ start: EMPTY_DATE, end: EMPTY_DATE });
@@ -209,12 +241,21 @@ const SURRENDERER: SurrendererFigures = {
 /** One check for every part of a draft, so a new part cannot be added without one. */
 const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
   companies_house: COMPANY_RECORD,
-  company: fieldsLike(COMPANY),
+  company: fieldsLike(COMPANY, { choices: { company_type: choiceOf(COMPANY_TYPES) } }),
   period: PERIOD,
   profit_and_loss: textByKey,
   tax_adjustments: textByKey,
   balance_sheet: textByKey,
-  accounts: fieldsLike(ACCOUNTS, ACCOUNTS_ANSWERS_ADDED_LATER),
+  accounts: fieldsLike(ACCOUNTS, {
+    addedLater: ACCOUNTS_ANSWERS_ADDED_LATER,
+    choices: {
+      standard: choiceOf(STANDARD_OPTIONS),
+      trading_status: choiceOf(TRADING_STATUS_OPTIONS),
+      dormant: YES_NO_CHOICES,
+      legal_form: choiceOf(LEGAL_FORMS),
+      first_period: YES_NO_CHOICES,
+    },
+  }),
   chosen_pages: (value, path) => {
     if (!Array.isArray(value)) return path;
     return firstProblem(value, path, (code, codePath) => (isPageCode(code) ? null : codePath));
@@ -225,10 +266,23 @@ const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
       isPageCode(code) && isRecord(page) ? isRawValue(page, pagePath) : pagePath,
     );
   },
-  research_and_development: fieldsLike(RESEARCH),
+  research_and_development: fieldsLike(RESEARCH, {
+    choices: {
+      claiming: YES_NO_CHOICES,
+      // Every scheme: which ones a period can use is checked with the answers.
+      scheme: ["", ...schemesFor(undefined)],
+      company_is_sme: YES_NO_CHOICES,
+      claim_payable_credit: YES_NO_CHOICES,
+      claimed_in_previous_three_years: YES_NO_CHOICES,
+      claim_notification_submitted: YES_NO_CHOICES,
+      additional_information_submitted: YES_NO_CHOICES,
+    },
+  }),
   group_relief_surrenderers: (value, path) =>
     isRecord(value) ? firstProblem(value, path, fieldsLike(SURRENDERER)) : path,
-  creative_industries: fieldsLike(CREATIVE),
+  creative_industries: fieldsLike(CREATIVE, {
+    choices: { additional_information_submitted: YES_NO_CHOICES },
+  }),
   comparatives: shape<ComparativesAnswers>({
     period: optional(PERIOD),
     profit_and_loss: optional(textByKey),

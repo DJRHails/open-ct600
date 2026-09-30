@@ -578,6 +578,14 @@ function parseEmployees(raw: string) {
 }
 
 /**
+ * ``value`` if it is one of the ``options`` offered. An imported file can hold anything, so an
+ * answer that is not a choice offered counts as not answered.
+ */
+function chosen<T extends string>(value: string, options: readonly { value: T }[]): T | undefined {
+  return options.find((option) => option.value === value)?.value;
+}
+
+/**
  * Validate the accounts details. ``endOfPeriod`` (an ISO date), when known, is checked against
  * the approval date: accounts are approved after the period ends.
  */
@@ -589,7 +597,8 @@ export function validateAccounts(
   const errors: FieldErrors = { ...directorErrors(directors), ...companyFormErrors(values) };
   const approval = parseDateParts(values.approval_date, "date the accounts were approved");
   const employees = parseEmployees(values.average_employees);
-  const { standard, trading_status: tradingStatus } = values;
+  const standard = chosen(values.standard, STANDARD_OPTIONS);
+  const tradingStatus = chosen(values.trading_status, TRADING_STATUS_OPTIONS);
   if (!standard) errors.standard = "Select how the accounts were prepared";
   if (!values.signing_director || !directors.includes(values.signing_director)) {
     errors.signing_director = "Select the director who signed the accounts";
@@ -601,7 +610,7 @@ export function validateAccounts(
   }
   if (!employees.ok) errors.average_employees = employees.error;
   Object.assign(errors, activityErrors(values));
-  const { legal_form: legalForm } = values;
+  const legalForm = chosen(values.legal_form, LEGAL_FORMS);
   if (!standard || !tradingStatus || !approval.ok || !employees.ok || !legalForm) {
     return { ok: false, errors };
   }
@@ -632,8 +641,9 @@ function companyFormErrors(values: AccountsAnswers): FieldErrors {
   if (values.directors.length === 0) {
     errors.directors = "Select the company’s directors, or add a person";
   }
-  if (!values.legal_form) errors.legal_form = "Select the company’s legal form";
-  if (!values.first_period) {
+  if (!chosen(values.legal_form, LEGAL_FORMS))
+    errors.legal_form = "Select the company’s legal form";
+  if (!chosen(values.first_period, YES_NO)) {
     errors.first_period = "Select yes if this is the company’s first period of account";
   }
   return errors;
@@ -642,8 +652,10 @@ function companyFormErrors(values: AccountsAnswers): FieldErrors {
 /** Whether the company was dormant, and whether it traded: a dormant company cannot trade. */
 function activityErrors(values: AccountsAnswers): FieldErrors {
   const errors: FieldErrors = {};
-  if (!values.dormant) errors.dormant = "Select yes if the company was dormant during this period";
-  if (!values.trading_status) errors.trading_status = "Select whether the company traded";
+  if (!chosen(values.dormant, YES_NO))
+    errors.dormant = "Select yes if the company was dormant during this period";
+  if (!chosen(values.trading_status, TRADING_STATUS_OPTIONS))
+    errors.trading_status = "Select whether the company traded";
   else if (values.dormant === "yes" && values.trading_status === "trading") {
     errors.trading_status =
       "A dormant company cannot be trading: select whether it has never traded or has " +
