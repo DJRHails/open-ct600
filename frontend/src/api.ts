@@ -224,10 +224,11 @@ export type PreviousAccounts = {
   standard: "micro" | "small" | null;
   dormant: boolean | null;
   /**
-   * ``ProfitAndLoss`` fields, plus ``tax`` (negative for a tax credit) and ``profit_after_tax``.
+   * ``ProfitAndLoss`` fields, plus ``tax`` (negative for a tax credit) and ``profit_after_tax``,
+   * which are ``null`` when the filed accounts don't show them (so the user is asked).
    * ``null`` when the accounts were filed without one, as most small companies' are.
    */
-  profit_and_loss: Record<string, number> | null;
+  profit_and_loss: Record<string, number | null> | null;
   /** ``BalanceSheet`` fields, plus ``net_assets`` for reference. */
   balance_sheet: Record<string, number>;
   average_employees: number | null;

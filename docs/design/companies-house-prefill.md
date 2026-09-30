@@ -11,7 +11,8 @@ Status: agreed 2026-09-29.
 | Use the official [Companies House public data API](https://developer-specs.company-information.service.gov.uk/) and Document API, proxied by our backend with the key in `COMPANIES_HOUSE_API_KEY` | It is the supported route; scraping the website is brittle and discouraged. The key stays server-side. |
 | Without a key, lookup is switched off and the forms work exactly as today (manual entry) | The same "off unless configured" stance as HMRC submission. `GET /api/companies-house/status` says which. |
 | Public company data may be cached in memory for up to 10 minutes; nothing is written to disk | Stays within Companies House's rate limit (600 requests per 5 minutes per key) while keeping "the API stores nothing about you". |
-| "Previous filings" means the **latest accounts filed at Companies House** (electronic iXBRL filings via the Document API) | They are public and machine-readable. CT600 returns are not public. Paper/PDF-only filings give no figures, and we say so. |
+| "Previous filings" means the **accounts filed at Companies House for the period before the suggested return** (electronic iXBRL filings via the Document API), found by the made-up date in the filing history | They are public and machine-readable. CT600 returns are not public. Paper/PDF-only filings give no figures, and we say so. |
+| The suggested return is for a period that **has ended**: the period Companies House expects accounts for next once it has ended, otherwise the period of the accounts last filed | Accounts are usually filed at Companies House (9 months) before the return (12 months), so the return is often for the period the filed accounts cover. The rules and edge cases (first period, overdue accounts, changed reference date) are in `companies_house/periods.py`. |
 | Last year's figures become **comparatives** (a new, compliance-required part of the accounts) | The Companies Act requires comparatives after the first period. Our accounts currently have none. |
 | A Companies House period of account can be up to 18 months; a Corporation Tax period cannot exceed 12 | The suggested return period is the first 12 months, with a note that the rest needs a second return. |
 
@@ -44,7 +45,7 @@ GET /api/companies-house/companies/{number}
           "standard": "micro" | "small" | null,
           "dormant": bool | null,
           "profit_and_loss": {"turnover": 120000, "interest_income": 0, "cost_of_sales": 0, "staff_costs": 30000,
-                              "depreciation": 2000, "other_expenses": 8000, "tax": 10825, "profit_after_tax": 49675},
+                              "depreciation": 2000, "other_expenses": 8000, "tax": 10825 | null, "profit_after_tax": 49675 | null},  # null: not shown
           "balance_sheet": {"fixed_assets": 10000, "current_assets": 70000, "called_up_share_capital_not_paid": 0,
                             "prepayments_and_accrued_income": 0, "creditors_within_one_year": 15000,
                             "creditors_after_one_year": 5000, "provisions": 0, "accruals_and_deferred_income": 0,
@@ -53,7 +54,7 @@ GET /api/companies-house/companies/{number}
           "directors": ["Ada Lovelace"],
           "principal_activity": "…" | null
       },
-      "previous_accounts_unavailable": null | "The latest accounts were filed on paper, so their figures can't be read."
+      "previous_accounts_unavailable": null | "The previous period's accounts were filed on paper, so their figures can't be read."
     }
   404 when Companies House has no such company; 503 with a clear message when Companies House is unavailable.
 ```

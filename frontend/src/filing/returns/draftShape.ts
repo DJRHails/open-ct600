@@ -138,6 +138,9 @@ const listOf =
 const numberByKey: Check = (value, path) =>
   isRecord(value) ? firstProblem(value, path, isNumber) : path;
 
+const numberOrNullByKey: Check = (value, path) =>
+  isRecord(value) ? firstProblem(value, path, orNull(isNumber)) : path;
+
 /** Exactly the fields of ``T``, each passing its own check. */
 function shape<T>(fields: { [K in keyof Required<T>]: Check }): Check {
   const checks = new Map<string, Check>(Object.entries(fields));
@@ -198,7 +201,7 @@ const COMPANY_RECORD = shape<CompanyRecord>({
       filed_on: isText,
       standard: orNull((value, path) => (value === "micro" || value === "small" ? null : path)),
       dormant: orNull(isBoolean),
-      profit_and_loss: orNull(numberByKey),
+      profit_and_loss: orNull(numberOrNullByKey),
       balance_sheet: numberByKey,
       average_employees: orNull(isNumber),
       directors: isTextList,

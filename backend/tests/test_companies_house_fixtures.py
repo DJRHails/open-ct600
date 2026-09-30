@@ -15,6 +15,11 @@ from companies_house_stub import API
 from open_ct600.companies_house.sic import SIC_LIST, sic_description
 
 SPECS = Path(__file__).resolve().parents[2] / "specs/companies-house"
+UNDOCUMENTED = {("filingHistory.json", "filingHistoryItem"): {"description_values"}}
+"""Members the API sends but its spec leaves out. ``description_values`` fills the placeholders
+of a filing's ``description`` (``{made_up_date}`` in "accounts made up to {made_up_date}", see
+Companies House's ``api-enumerations/filing_history_descriptions.yml``), which is how its own
+register pages show each filing."""
 
 
 def definitions(spec: str) -> dict[str, Any]:
@@ -36,7 +41,7 @@ def schema_of(spec: str, name: str) -> tuple[set[str], set[str], dict[str, Any]]
         parent_required, _, parent_properties = schema_of(*resolve(spec, parent["$ref"]))
         required |= parent_required
         properties |= parent_properties
-    return required, set(properties), properties
+    return required, set(properties) | UNDOCUMENTED.get((spec, name), set()), properties
 
 
 def problems(spec: str, name: str, value: Any, path: str = "") -> list[str]:
@@ -50,7 +55,7 @@ def problems(spec: str, name: str, value: Any, path: str = "") -> list[str]:
     found = [f"{path}: missing {member}" for member in sorted(required - set(value))]
     # documentMetadata requires company_number without defining it; required means allowed.
     found += [f"{path}: undefined {member}" for member in sorted(set(value) - allowed - required)]
-    for member in set(value) & allowed:
+    for member in set(value) & properties.keys():
         found += member_problems(spec, properties[member], value[member], f"{path}.{member}")
     return found
 

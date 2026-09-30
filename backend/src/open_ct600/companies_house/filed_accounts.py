@@ -24,7 +24,12 @@ a balancing figure:
   reproduce the filed profit before tax. If the tagged staff costs and depreciation exceed
   that (they were also counted in cost of sales), they are folded back into
   ``other_expenses``; if cost of sales alone exceeds it, the excess counts as other income.
-- ``tax`` and ``profit_after_tax``: as filed (a tax credit is negative).
+- ``tax`` and ``profit_after_tax``: as filed (a tax credit is negative). When profit before
+  and after tax are both tagged, they decide: an untagged tax line is their difference, and a
+  tax line whose sign disagrees with them (a charge tagged ``sign="-"``) takes their sign.
+  Otherwise an untagged tax line is unknown (``None``), and so is profit after tax if that
+  isn't tagged either. With only profit after tax tagged, the lines balance to it, so
+  ``other_expenses`` includes any tax.
 
 Filleted accounts, which leave the profit and loss account out, give no profit and loss: a
 profit figure alone (as in a tax note) is not enough, one of its face lines must be tagged.
@@ -47,7 +52,7 @@ sign.
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
@@ -56,6 +61,8 @@ from pydantic import BaseModel
 
 from open_ct600.companies_house.ixbrl_facts import Fact, UnreadableFactError, read_facts
 from open_ct600.companies_house.names import person_name
+from open_ct600.ct600 import MAX_PERIOD_OF_ACCOUNT_MONTHS
+from open_ct600.tax import add_months
 
 _DIRECTOR_MEMBER = re.compile(
     r"""(?x)
@@ -94,7 +101,11 @@ class Period(BaseModel):
 
 
 class FiledProfitAndLoss(BaseModel):
-    """A filed profit and loss account, in ``ProfitAndLoss`` terms (whole pounds)."""
+    """A filed profit and loss account, in ``ProfitAndLoss`` terms (whole pounds).
+
+    ``tax`` (negative for a credit) and ``profit_after_tax`` are ``None`` when the filing
+    doesn't show them; see the module docstring.
+    """
 
     turnover: int
     interest_income: int
@@ -102,8 +113,8 @@ class FiledProfitAndLoss(BaseModel):
     staff_costs: int
     depreciation: int
     other_expenses: int
-    tax: int
-    profit_after_tax: int
+    tax: int | None
+    profit_after_tax: int | None
 
 
 class FiledBalanceSheet(BaseModel):
@@ -142,20 +153,31 @@ def read_filed_accounts(xhtml: bytes) -> FiledAccounts:
     """Read a filed Inline XBRL accounts document.
 
     Raises:
-        AccountsNotReadableError: If the document is not Inline XBRL we can read.
+        AccountsNotReadableError: If the document is not Inline XBRL we can read, including
+            any malformed date, scale or figure in it.
     """
     parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=True)
     try:
         root = etree.fromstring(xhtml, parser)
     except etree.XMLSyntaxError as error:
         raise AccountsNotReadableError(f"the document is not valid XHTML ({error})") from error
+    try:
+        return _read(root)
+    except AccountsNotReadableError:
+        raise
+    except UnreadableFactError as error:
+        raise AccountsNotReadableError(str(error)) from error
+    except (ValueError, ArithmeticError) as error:
+        raise AccountsNotReadableError(
+            f"a date, scale or figure in it is malformed ({type(error).__name__})"
+        ) from error
+
+
+def _read(root: etree._Element) -> FiledAccounts:
     facts = read_facts(root)
     if not facts:
         raise AccountsNotReadableError("the document has no Inline XBRL facts")
-    try:
-        return _Filing(facts).read()
-    except UnreadableFactError as error:
-        raise AccountsNotReadableError(str(error)) from error
+    return _Filing(facts).read()
 
 
 @dataclass
@@ -251,6 +273,12 @@ def _own_period(facts: list[Fact]) -> Period:
     )
     if start is None or end is None:
         raise AccountsNotReadableError("the document has no period of account")
+    longest = add_months(start, MAX_PERIOD_OF_ACCOUNT_MONTHS) - timedelta(days=1)
+    if end < start or end > longest:
+        raise AccountsNotReadableError(
+            f"its period, {start:%-d %B %Y} to {end:%-d %B %Y}, isn't a period of account, "
+            f"which runs for at most {MAX_PERIOD_OF_ACCOUNT_MONTHS} months"
+        )
     return Period(start=start, end=end)
 
 
@@ -281,12 +309,27 @@ _OTHER_CHARGES = (
 """Expenses outside our named lines, used only when turnover itself was not tagged."""
 
 
+def _tax(tagged: Decimal | None, before: Decimal | None, after: Decimal | None) -> Decimal | None:
+    """The tax line, checked against the profits before and after tax (module docstring)."""
+    if before is None or after is None:
+        return tagged
+    if tagged is None:
+        return before - after
+    if before - tagged != after and before + tagged == after:
+        return -tagged
+    return tagged
+
+
 def _profit_and_loss(filing: _Filing) -> FiledProfitAndLoss | None:
-    tax = filing.number("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities") or Decimal(0)
     after_tax = filing.number("ProfitLoss")
     before_tax = filing.number("ProfitLossOnOrdinaryActivitiesBeforeTax", "ProfitLossBeforeTax")
+    tax = _tax(
+        filing.number("TaxTaxCreditOnProfitOrLossOnOrdinaryActivities"), before_tax, after_tax
+    )
     if before_tax is None and after_tax is not None:
-        before_tax = after_tax + tax
+        before_tax = after_tax + (tax or Decimal(0))
+    if after_tax is None and tax is not None and before_tax is not None:
+        after_tax = before_tax - tax
     if before_tax is None or all(filing.number(line) is None for line in _FACE_LINES):
         return None
     cost_of_sales = _amount(filing, "CostSales", "RawMaterialsConsumablesUsed")
@@ -315,8 +358,8 @@ def _profit_and_loss(filing: _Filing) -> FiledProfitAndLoss | None:
         staff_costs=_pounds(lines.staff),
         depreciation=_pounds(lines.depreciation),
         other_expenses=_pounds(lines.other),
-        tax=_pounds(tax),
-        profit_after_tax=_pounds(after_tax if after_tax is not None else before_tax - tax),
+        tax=_whole(tax),
+        profit_after_tax=_whole(after_tax),
     )
 
 

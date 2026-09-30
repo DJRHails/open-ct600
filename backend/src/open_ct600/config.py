@@ -20,6 +20,12 @@ class Settings(BaseSettings):
             to whoever runs this deployment; submission stays off without it.
         companies_house_api_key: A Companies House public data API key. Looking companies
             up is switched off without it.
+        trusted_proxies: How many reverse proxies in front of this service append to
+            ``X-Forwarded-For``. Per-client limits (on Companies House lookups) then take the
+            client's address from that header, as the last proxy's peer; with 0 (the
+            default) the header is ignored, since anyone can send it, and the connection's
+            address is used. If uvicorn already rewrites the client address
+            (``FORWARDED_ALLOW_IPS``), leave this at 0.
     """
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -28,3 +34,4 @@ class Settings(BaseSettings):
     hmrc_submission_enabled: bool = False
     hmrc_vendor_id: Annotated[str, Field(pattern=r"^[0-9]{4}$")] | None = None
     companies_house_api_key: Annotated[SecretStr, Field(min_length=1)] | None = None
+    trusted_proxies: Annotated[int, Field(ge=0, le=10)] = 0

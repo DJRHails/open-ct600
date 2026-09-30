@@ -299,6 +299,23 @@ describe("later sections from the Companies House record", () => {
     });
   });
 
+  it("counts a filed first period as the first period when the return is for it", () => {
+    stubCompaniesHouse();
+    withRecord({
+      ...RECORD,
+      incorporated_on: "2024-05-01",
+      accounts: { ...RECORD.accounts, last_made_up_to: "2025-04-30" },
+      suggested_period: { start: "2024-05-01", end: "2025-04-30", note: null },
+      previous_accounts: null,
+      previous_accounts_unavailable:
+        "This is the company's first period of account, so there are no previous figures.",
+    });
+    renderApp("/file/accounts-details");
+
+    const first = line("Is this the company’s first period of account?");
+    expect(within(first).getByLabelText("Yes")).toBeChecked();
+  });
+
   it("does not use a record for a different company", () => {
     stubCompaniesHouse();
     seedDraft({
@@ -438,6 +455,24 @@ describe("the previous period's figures (comparatives)", () => {
     const tax = screen.getByLabelText("Tax on profit in the previous period");
     expect(tax).toHaveValue("-1500");
     expect(tax).toHaveAccessibleDescription(/If it was a tax credit, put a minus sign in front/);
+  });
+
+  it("leave last period's tax for the user when the filed accounts don't show it", () => {
+    stubCompaniesHouse();
+    const filed = RECORD.previous_accounts as PreviousAccounts;
+    const record = {
+      ...RECORD,
+      previous_accounts: {
+        ...filed,
+        profit_and_loss: { ...filed.profit_and_loss, tax: null, profit_after_tax: null },
+      },
+    };
+    withRecord(record);
+    renderApp("/file/profit-and-loss");
+
+    expect(screen.getByLabelText("Tax on profit in the previous period")).toHaveValue("");
+    expect(within(line("Turnover")).getByLabelText("Previous period")).toHaveValue("120000");
+    expect(draftShapeProblem({ companies_house: record })).toBeNull();
   });
 
   describe("from accounts filed without a profit and loss account", () => {

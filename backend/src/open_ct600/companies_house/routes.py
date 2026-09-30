@@ -8,10 +8,11 @@ message in ``detail``.
 
 import re
 from collections.abc import AsyncIterator, Coroutine
+from datetime import date
 from typing import Annotated, Any
 
 import httpx2
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
 from pydantic import BaseModel
 
 from open_ct600.companies_house.client import (
@@ -51,12 +52,18 @@ async def companies_house_http() -> AsyncIterator[httpx2.AsyncClient]:
         yield client
 
 
+def current_date() -> date:
+    """Dependency: today, which decides the periods that have ended."""
+    return date.today()
+
+
 def companies_house_router(settings: Settings) -> APIRouter:
     """The lookup routes, sharing one cache and one rate limiter per process."""
     router = APIRouter(prefix="/api/companies-house", tags=["companies-house"])
     cache, limiter = ResponseCache(), RequestLimiter()
 
     def client(
+        request: Request,
         http: Annotated[httpx2.AsyncClient, Depends(companies_house_http)],
     ) -> CompaniesHouseClient:
         if settings.companies_house_api_key is None:
@@ -65,7 +72,10 @@ def companies_house_router(settings: Settings) -> APIRouter:
                 "Looking companies up at Companies House is switched off on this service. "
                 "Enter the company's details yourself.",
             )
-        return CompaniesHouseClient(settings.companies_house_api_key, http, cache, limiter)
+        requester = _requester(request, settings.trusted_proxies)
+        return CompaniesHouseClient(
+            settings.companies_house_api_key, http, cache, limiter, requester
+        )
 
     lookup_client = Annotated[CompaniesHouseClient, Depends(client)]
 
@@ -83,12 +93,34 @@ def companies_house_router(settings: Settings) -> APIRouter:
 
     @router.get("/companies/{number}")
     async def company(
-        companies_house: lookup_client, number: Annotated[str, Path(min_length=1, max_length=16)]
+        companies_house: lookup_client,
+        number: Annotated[str, Path(min_length=1, max_length=16)],
+        today: Annotated[date, Depends(current_date)],
     ) -> CompanyRecord:
-        """A company's record: details, current directors and its latest filed accounts."""
-        return await _answer(company_record(companies_house, _company_number(number)))
+        """A company's record: details, directors, the return due and the accounts before it."""
+        return await _answer(company_record(companies_house, _company_number(number), today))
 
     return router
+
+
+def _requester(request: Request, trusted_proxies: int) -> str:
+    """The client's address: the connection's, or as the outermost trusted proxy saw it.
+
+    Each proxy appends the address it was connected from to ``X-Forwarded-For``, so with ``n``
+    trusted proxies the client is the ``n``-th entry from the right; anything left of that was
+    sent by the client and may be made up. A header too short for the proxies it should have
+    passed through is ignored.
+    """
+    peer = request.client.host if request.client else "unknown"
+    if trusted_proxies == 0:
+        return peer
+    forwarded = [
+        address.strip()
+        for header in request.headers.getlist("x-forwarded-for")
+        for address in header.split(",")
+        if address.strip()
+    ]
+    return forwarded[-trusted_proxies] if len(forwarded) >= trusted_proxies else peer
 
 
 def _company_number(number: str) -> str:

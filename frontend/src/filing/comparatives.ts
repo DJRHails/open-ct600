@@ -187,9 +187,15 @@ export function comparativesFor(
 }
 
 /** The previous figures for a section's fields from the accounts last filed, as typed text. */
-function filedFigures(filed: Record<string, number>, fields: Field[]): Record<string, string> {
+function filedFigures(
+  filed: Record<string, number | null>,
+  fields: Field[],
+): Record<string, string> {
   return Object.fromEntries(
-    fields.filter(({ key }) => key in filed).map(({ key }) => [key, String(filed[key])]),
+    fields.flatMap(({ key }) => {
+      const figure = filed[key];
+      return figure === undefined || figure === null ? [] : [[key, String(figure)]];
+    }),
   );
 }
 
@@ -209,7 +215,7 @@ export function filedComparatives(
   return {
     period: { start: isoToDateParts(filed.period.start), end: isoToDateParts(filed.period.end) },
     [section]: figures ? filedFigures(figures, fields) : {},
-    ...(tax === undefined ? {} : { tax_on_profit: String(tax) }),
+    ...(tax === undefined || tax === null ? {} : { tax_on_profit: String(tax) }),
   };
 }
 
