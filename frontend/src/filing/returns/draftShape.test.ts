@@ -1,4 +1,9 @@
+import { afterEach, vi } from "vitest";
+
+import type { Draft } from "@/filing/model";
+import { EMPTY_RESEARCH } from "@/filing/reliefs";
 import { draftShapeProblem } from "@/filing/returns/draftShape";
+import { exportReturn, parseReturnFile, readReturnFile } from "@/filing/returns/returnFile";
 import { RECORD } from "@/test-companies-house";
 
 const PREVIOUS_PERIOD = {
@@ -80,4 +85,104 @@ describe("the shape of the Companies House record and comparatives", () => {
   ])("names where the comparatives are wrong when %s", (_case, comparatives, field) => {
     expect(draftShapeProblem({ comparatives })).toBe(`draft.comparatives.${field}`);
   });
+});
+
+/** Accounts details as saved before the legal form and first period were asked (#23). */
+const ACCOUNTS_BEFORE_LEGAL_FORM = {
+  standard: "micro",
+  directors: ["Jane Smith"],
+  signing_director: "Jane Smith",
+  approval_date: { day: "1", month: "6", year: "2026" },
+  average_employees: "1",
+  trading_status: "trading",
+  dormant: "no",
+};
+
+describe("returns saved before the legal form and first period were asked", () => {
+  it("imports them, with those two answers blank", async () => {
+    const { blob } = exportReturn({ accounts: ACCOUNTS_BEFORE_LEGAL_FORM } as Draft, "now");
+
+    const imported = parseReturnFile(await blob.text());
+
+    expect(imported).toEqual({
+      ok: true,
+      draft: { accounts: { ...ACCOUNTS_BEFORE_LEGAL_FORM, legal_form: "", first_period: "" } },
+    });
+  });
+
+  it("still refuses accounts missing any other answer", () => {
+    const { dormant: _dormant, ...withoutDormant } = ACCOUNTS_BEFORE_LEGAL_FORM;
+
+    expect(draftShapeProblem({ accounts: withoutDormant })).toBe("draft.accounts.dormant");
+  });
+});
+
+describe("import files that could hurt the page", () => {
+  it("refuses answers nested too deeply to check, with a clear error", () => {
+    const depth = 200_000;
+    const nested = `${"[".repeat(depth)}${"]".repeat(depth)}`;
+    const text = `{"format":"open-ct600-return","version":1,"draft":{"supplementary_pages":{"A":{"x":${nested}}}}}`;
+
+    const imported = parseReturnFile(text);
+
+    expect(imported.ok).toBe(false);
+    expect(!imported.ok && imported.error).toMatch(
+      /^The selected file has been changed or is damaged, so it cannot be imported\. The problem is in draft\.supplementary_pages\.A\.x(\.0)+$/,
+    );
+  });
+
+  it("says when the chosen file cannot be read", async () => {
+    const file = new File(["{}"], "return.json", { type: "application/json" });
+    vi.spyOn(file, "text").mockRejectedValue(
+      new DOMException("The file was moved.", "NotFoundError"),
+    );
+
+    expect(await readReturnFile(file)).toEqual({
+      ok: false,
+      error: "The selected file could not be read. Choose the file again",
+    });
+  });
+});
+
+describe("answers that must be one of the choices offered", () => {
+  it.each([
+    ["accounts", { ...ACCOUNTS_BEFORE_LEGAL_FORM, standard: "bogus" }, "standard"],
+    ["accounts", { ...ACCOUNTS_BEFORE_LEGAL_FORM, trading_status: "x" }, "trading_status"],
+    ["accounts", { ...ACCOUNTS_BEFORE_LEGAL_FORM, dormant: "maybe" }, "dormant"],
+    ["accounts", { ...ACCOUNTS_BEFORE_LEGAL_FORM, legal_form: "plc" }, "legal_form"],
+    ["accounts", { ...ACCOUNTS_BEFORE_LEGAL_FORM, first_period: "sometimes" }, "first_period"],
+    [
+      "company",
+      {
+        name: "Acme",
+        registration_number: "01234567",
+        utr: "",
+        company_type: "99",
+        principal_activity: "",
+      },
+      "company_type",
+    ],
+    ["research_and_development", { ...EMPTY_RESEARCH, scheme: "grant" }, "scheme"],
+    ["research_and_development", { ...EMPTY_RESEARCH, claiming: "y" }, "claiming"],
+    [
+      "creative_industries",
+      { additional_information_submitted: "Y" },
+      "additional_information_submitted",
+    ],
+  ])("refuses %s answers that are not a choice offered", (part, answers, field) => {
+    expect(draftShapeProblem({ [part]: answers })).toBe(`draft.${part}.${field}`);
+  });
+
+  it("accepts choices not yet made", () => {
+    expect(
+      draftShapeProblem({
+        accounts: { ...ACCOUNTS_BEFORE_LEGAL_FORM, standard: "", trading_status: "", dormant: "" },
+        research_and_development: EMPTY_RESEARCH,
+      }),
+    ).toBeNull();
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });

@@ -79,13 +79,23 @@
   }
 }
 
-// A company search suggestion's registered office, under its name.
 // The company search's menu uses the service's font, not the browser's default.
 .autocomplete__option,
 .autocomplete__hint {
   @include govuk.govuk-font($size: 19);
 }
 
+// The company search's input with an error, as .govuk-input--error. The autocomplete renders
+// the input and sets its classes itself, so the error comes from the form group instead.
+.govuk-form-group--error .autocomplete__input {
+  border-color: govuk.govuk-functional-colour(error);
+
+  &:focus {
+    border-color: govuk.govuk-functional-colour(input-border);
+  }
+}
+
+// A company search suggestion's registered office, under its name.
 .app-suggestion-detail {
   display: block;
   color: govuk.govuk-functional-colour(secondary-text);

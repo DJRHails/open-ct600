@@ -26,6 +26,7 @@ const YEAR_TO_MARCH_2025 = {
 };
 
 const ACME: Draft = { company: COMPANY, period: YEAR_TO_MARCH_2025 };
+const SUBMITTED_AT = "2026-09-02T09:00:00.000Z";
 const ACME_LABEL = "Acme Widgets Ltd — 1 April 2024 to 31 March 2025";
 
 const BETA: Draft = {
@@ -422,6 +423,36 @@ describe("importing a return", () => {
     expect(storedReturns().map((kept) => [kept.id, kept.draft])).toEqual([
       ["acme", changed],
       ["beta", BETA],
+    ]);
+  });
+
+  it("never replaces a submitted return: the import is kept alongside it", async () => {
+    const submitted = { ...saved("acme", ACME, SUBMITTED_AT), submitted_at: SUBMITTED_AT };
+    window.localStorage.setItem(
+      RETURNS_KEY,
+      JSON.stringify({ version: STORAGE_VERSION, currentId: null, returns: [submitted] }),
+    );
+    const changed: Draft = { ...ACME, profit_and_loss: { turnover: "100000" } };
+    const user = renderApp("/file/returns/import");
+
+    await importFile(user, jsonFile(returnFile(changed)));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "You have already submitted a return for this company and period",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText(/Do not submit it again/)).toBeVisible();
+    expect(screen.queryByRole("radio")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Import as a separate return" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      `You imported the return for ${ACME_LABEL}`,
+    );
+    expect(storedReturns().map((kept) => [kept.id, kept.submitted_at, kept.draft])).toEqual([
+      ["acme", SUBMITTED_AT, ACME],
+      [expect.any(String), undefined, changed],
     ]);
   });
 

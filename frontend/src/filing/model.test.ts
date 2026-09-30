@@ -160,6 +160,28 @@ describe("validateAccounts", () => {
     });
   });
 
+  it("treats an answer that is not one of the choices as not answered", () => {
+    const result = validateAccounts({
+      ...ACCOUNTS,
+      standard: "bogus",
+      trading_status: "x",
+      dormant: "maybe",
+      legal_form: "plc",
+      first_period: "sometimes",
+    } as unknown as typeof ACCOUNTS);
+
+    expect(result).toEqual({
+      ok: false,
+      errors: {
+        standard: "Select how the accounts were prepared",
+        dormant: "Select yes if the company was dormant during this period",
+        legal_form: "Select the company’s legal form",
+        first_period: "Select yes if this is the company’s first period of account",
+        trading_status: "Select whether the company traded",
+      },
+    });
+  });
+
   it("does not let a dormant company be trading", () => {
     const dormantTrading = validateAccounts({ ...ACCOUNTS, dormant: "yes" });
     const dormantStopped = validateAccounts({

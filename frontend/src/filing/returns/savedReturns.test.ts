@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 import type { Draft } from "@/filing/model";
 import {
   addReturn,
@@ -7,6 +9,7 @@ import {
   LEGACY_DRAFT_KEY,
   loadReturns,
   markSubmitted,
+  replaceReturn,
   returnLabel,
   RETURNS_KEY,
   returnStatus,
@@ -60,6 +63,29 @@ describe("loading saved returns", () => {
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBeNull();
   });
 
+  it("gives drafts saved before the legal form and first period were asked blank answers", () => {
+    const accounts = {
+      standard: "micro",
+      directors: ["Jane Smith"],
+      signing_director: "Jane Smith",
+      approval_date: { day: "1", month: "6", year: "2026" },
+      average_employees: "1",
+      trading_status: "trading",
+      dormant: "no",
+    };
+    const older = { ...addReturn(EMPTY_STORE, { accounts } as Draft, MONDAY, "a", { open: true }) };
+    writeReturns(window.localStorage, older);
+    window.localStorage.setItem(LEGACY_DRAFT_KEY, JSON.stringify({ accounts }));
+
+    const loaded = loadReturns(window.localStorage, MONDAY, "migrated");
+
+    const answered = { ...accounts, legal_form: "", first_period: "" };
+    expect(loaded.ok && loaded.store.returns.map((kept) => kept.draft.accounts)).toEqual([
+      answered,
+      answered,
+    ]);
+  });
+
   it("adds an old draft to returns already saved, keeping them", () => {
     const earlier = addReturn(EMPTY_STORE, { chosen_pages: [] }, MONDAY, "first", { open: false });
     writeReturns(window.localStorage, earlier);
@@ -81,16 +107,35 @@ describe("loading saved returns", () => {
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBeNull();
   });
 
-  it("keeps an old draft it cannot read, and says so", () => {
+  it("keeps an old draft it cannot read, and says so without blocking the returns", () => {
+    writeReturns(window.localStorage, addReturn(EMPTY_STORE, ACME, MONDAY, "a", { open: true }));
     window.localStorage.setItem(LEGACY_DRAFT_KEY, "{not json");
 
     const loaded = loadReturns(window.localStorage, MONDAY, "new");
 
     expect(loaded).toMatchObject({
-      ok: false,
-      problem: { kind: "unreadable", raw: "{not json" },
+      ok: true,
+      store: { currentId: "a", returns: [{ id: "a" }] },
+      damagedLegacy: "{not json",
     });
     expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe("{not json");
+  });
+
+  it("opens the moved draft even when it cannot be saved, and says why", () => {
+    window.localStorage.setItem(LEGACY_DRAFT_KEY, JSON.stringify(ACME));
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+    });
+
+    const loaded = loadReturns(window.localStorage, MONDAY, "new");
+    setItem.mockRestore();
+
+    expect(loaded).toMatchObject({
+      ok: true,
+      store: { currentId: "new", returns: [{ id: "new", draft: ACME }] },
+      unsaved: "The quota has been exceeded.",
+    });
+    expect(window.localStorage.getItem(LEGACY_DRAFT_KEY)).toBe(JSON.stringify(ACME));
   });
 
   it("refuses returns saved by a newer version rather than discarding them", () => {
@@ -99,7 +144,7 @@ describe("loading saved returns", () => {
 
     expect(loadReturns(window.localStorage, MONDAY, "new")).toEqual({
       ok: false,
-      problem: { kind: "newer-version", found: STORAGE_VERSION + 1, raw: newer },
+      problem: { kind: "newer-version", found: STORAGE_VERSION + 1, raw: newer, key: RETURNS_KEY },
     });
     expect(window.localStorage.getItem(RETURNS_KEY)).toBe(newer);
   });
@@ -131,6 +176,18 @@ describe("loading saved returns", () => {
 });
 
 describe("changing saved returns", () => {
+  it("never replaces a submitted return, keeping the replacement alongside it", () => {
+    const store = markSubmitted(addReturn(EMPTY_STORE, ACME, MONDAY, "s", { open: true }), MONDAY);
+    const imported: Draft = { ...ACME, chosen_pages: [] };
+
+    const after = replaceReturn(store, "s", imported, TUESDAY, "imported");
+
+    expect(after.returns).toEqual([
+      { id: "s", created_at: MONDAY, updated_at: MONDAY, submitted_at: MONDAY, draft: ACME },
+      { id: "imported", created_at: TUESDAY, updated_at: TUESDAY, draft: imported },
+    ]);
+  });
+
   it("starts a return with the first answer saved, then changes that return", () => {
     const started = updateCurrent(EMPTY_STORE, () => ACME, MONDAY, "acme");
     expect(started).toEqual({

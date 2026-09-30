@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
 import { api, ApiError, type CompanyRecord, type CompanySearchResult } from "@/api";
@@ -148,19 +148,24 @@ export function CompanyDetailsPage() {
   const [prefilled, setPrefilled] = useState(false);
   const [fetching, setFetching] = useState(false);
   const searching = lookup === "enabled" && !manual && !prefilled;
+  // The search stays usable while a record loads, so a second company can be chosen before the
+  // first answers: only the answer for the company chosen last is used.
+  const latestChoice = useRef(0);
 
   async function choose(company: CompanySearchResult) {
+    const choice = ++latestChoice.current;
     setFetching(true);
     setErrors({});
     try {
       const record = await api.company(company.number);
+      if (choice !== latestChoice.current) return;
       saveSection("companies_house", record);
       setValues((current) => fromRecord(current, record));
       setPrefilled(true);
     } catch (error) {
-      setErrors({ [SEARCH_ID]: companiesHouseError(error) });
+      if (choice === latestChoice.current) setErrors({ [SEARCH_ID]: companiesHouseError(error) });
     } finally {
-      setFetching(false);
+      if (choice === latestChoice.current) setFetching(false);
     }
   }
 

@@ -54,6 +54,14 @@ function renderSearch(search: (query: string) => Promise<CompanySearchResult[]>)
 }
 
 describe("the company search", () => {
+  it("describes the combobox with its hint, so screen readers announce it", () => {
+    renderSearch(async () => []);
+
+    expect(
+      screen.getByRole("combobox", { name: "Company name or number" }),
+    ).toHaveAccessibleDescription(/^For example, Acme Widgets Ltd or 01234567\. When autocomplete/);
+  });
+
   it("is a labelled combobox chosen from with the keyboard", async () => {
     const search = vi.fn<(query: string) => Promise<CompanySearchResult[]>>(async () => [
       ACME,

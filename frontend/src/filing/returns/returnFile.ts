@@ -3,7 +3,7 @@
  * The file is a versioned envelope around the draft, and is not encrypted.
  */
 import { draftShapeProblem } from "@/filing/returns/draftShape";
-import { type Draft, savedPeriod } from "@/filing/model";
+import { type Draft, savedPeriod, withAnswersAddedLater } from "@/filing/model";
 import { isRecord } from "@/filing/returns/savedReturns";
 
 export const FILE_FORMAT = "open-ct600-return";
@@ -82,7 +82,7 @@ export function parseReturnFile(text: string): Imported {
         `The problem is in ${problem}`,
     };
   }
-  return { ok: true, draft: parsed.draft as Draft };
+  return { ok: true, draft: withAnswersAddedLater(parsed.draft as Draft) };
 }
 
 /** Check the chosen file, then its contents. */
@@ -95,5 +95,13 @@ export async function readReturnFile(file: File | undefined): Promise<Imported> 
   if (file.size > MAX_FILE_BYTES) {
     return { ok: false, error: "The selected file must be smaller than 1MB" };
   }
-  return parseReturnFile(await file.text());
+  let text: string;
+  try {
+    text = await file.text();
+  } catch (error) {
+    // Moved, deleted or locked since it was chosen: the user can choose it again.
+    console.error("The chosen return file could not be read", error);
+    return { ok: false, error: "The selected file could not be read. Choose the file again" };
+  }
+  return parseReturnFile(text);
 }
