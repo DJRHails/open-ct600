@@ -19,6 +19,7 @@ import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
 import type { PlainHelp, QuestionHelp } from "@/content/help/types";
 import {
   BALANCE_SHEET,
+  COMPANY_TYPES,
   EMPTY_ACCOUNTS,
   EMPTY_COMPANY,
   PROFIT_AND_LOSS,
@@ -131,6 +132,28 @@ describe("help content", () => {
     expect(text).toMatch(/indexation allowance/);
     expect(text).toMatch(/December 2017/);
     expect(text).toMatch(/cannot create or increase a loss/);
+  });
+
+  it("gives HMRC's instruction for companies in liquidation: 0 in the first year, 3 after", () => {
+    const liquidation = COMPANY_TYPES.find((type) => type.value === "3");
+    expect(liquidation?.label).toBe("Company in liquidation, second or later year");
+    expect(liquidation?.hint).toMatch(/In the first, choose none of these/);
+    expect(liquidation?.hint).toMatch(/Pays the main rate on all profits/);
+
+    const help = COMPANY_HELP.company_type;
+    const effect = help.plain.effect.join(" ");
+    expect(effect).toMatch(/companies in their second or later year of liquidation/);
+    expect(effect).not.toMatch(/not a close company/);
+    const quotes = help.hmrc.flatMap((ref) => ("quote" in ref ? [ref.quote] : []));
+    expect(quotes).toContainEqual(
+      expect.objectContaining({
+        guide: "the-company-tax-return-guide",
+        paragraphs: [
+          "Enter 0, if the company is in the first year of liquidation, unless one of the other company types apply.",
+          "Enter 3, if the company is in the second or later year of liquidation.",
+        ],
+      }),
+    );
   });
 
   it("is written in GOV.UK style", () => {

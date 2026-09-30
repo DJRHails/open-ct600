@@ -6,8 +6,9 @@
  * https://www.gov.uk/pay-corporation-tax (the payment reference),
  * https://www.gov.uk/corporation-tax-rates (the main rate),
  * https://www.gov.uk/guidance/corporation-tax-trading-and-non-trading (what a company does) and
- * the Company Taxation Manual (CTM60710 for close investment-holding companies, CTM60780 and
- * CTA 2010 s34(5) for close companies in liquidation).
+ * the Company Taxation Manual (CTM60710 for close investment-holding companies). Type 3 follows
+ * the guide's box 4 instruction: 0 in the first year of liquidation, 3 from the second, which
+ * HMRC's business rule 9143 then charges at the main rate.
  */
 import type { QuestionHelp } from "@/content/help/types";
 import type { CompanyAnswers } from "@/filing/model";
@@ -104,10 +105,24 @@ export const COMPANY_HELP: Record<keyof CompanyAnswers, QuestionHelp> = {
         "Insurance companies and REIT C tax-exempt companies. This service cannot prepare their returns.",
       ],
       effect: [
-        "We enter the type's code in box 4. Close investment-holding companies, REIT C residual companies and non-resident companies pay the main rate of 25% on all their profits, and cannot use the 19% small profits rate or marginal relief. After its first year of liquidation, a close company can become a close investment-holding company, which is why HMRC's type for companies in their second or later year of liquidation pays the main rate. A company in liquidation that is not a close company keeps the small profits rate and marginal relief.",
+        "We enter the type's code in box 4. Close investment-holding companies, companies in their second or later year of liquidation, REIT C residual companies and non-resident companies pay the main rate of 25% on all their profits. They cannot use the 19% small profits rate or marginal relief.",
+        "HMRC's guide says to choose none of these in the first year of liquidation, unless another type applies, and the type for companies in liquidation from the second year on.",
       ],
     },
-    hmrc: [{ box: "4" }],
+    hmrc: [
+      {
+        quote: {
+          guide: "the-company-tax-return-guide",
+          heading:
+            "Company in liquidation which is chargeable at the main rate following the first period after liquidation",
+          paragraphs: [
+            "Enter 0, if the company is in the first year of liquidation, unless one of the other company types apply.",
+            "Enter 3, if the company is in the second or later year of liquidation.",
+          ],
+        },
+      },
+      { box: "4" },
+    ],
   },
   principal_activity: {
     topic: "the company's principal activity",

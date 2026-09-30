@@ -447,7 +447,9 @@ export const COMPANY_TYPES: { value: string; label: string; hint?: string }[] = 
   {
     value: "3",
     label: "Company in liquidation, second or later year",
-    hint: "Pays the main rate on all profits.",
+    hint:
+      "From the second accounting period after the liquidation starts. In the first, choose " +
+      "none of these unless another type applies. Pays the main rate on all profits.",
   },
   { value: "4", label: "Qualifying asset holding company" },
   { value: "6", label: "Members' club or voluntary association" },
