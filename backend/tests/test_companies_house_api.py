@@ -2,7 +2,8 @@
 
 import base64
 import logging
-from typing import get_args
+from datetime import date
+from typing import Any, get_args
 
 import httpx2
 import pytest
@@ -16,16 +17,20 @@ from companies_house_stub import (
 )
 from fastapi.testclient import TestClient
 
-from open_ct600.companies_house.routes import companies_house_http
+from open_ct600.companies_house.routes import companies_house_http, current_date
 from open_ct600.config import Settings
 from open_ct600.ct600 import LegalForm
 from open_ct600.main import create_app
 
 API_KEY = "placeholder-for-tests"
 ENABLED = Settings(companies_house_api_key=API_KEY)
+TODAY = date(2027, 5, 1)
+"""In the fixture, the period to 31 March 2027 has ended and its accounts aren't filed yet."""
 
 
-def client_for(stub: StubCompaniesHouse, settings: Settings = ENABLED) -> TestClient:
+def client_for(
+    stub: StubCompaniesHouse, settings: Settings = ENABLED, today: date = TODAY
+) -> TestClient:
     app = create_app(settings)
 
     async def stub_http():
@@ -33,11 +38,12 @@ def client_for(stub: StubCompaniesHouse, settings: Settings = ENABLED) -> TestCl
             yield http
 
     app.dependency_overrides[companies_house_http] = stub_http
+    app.dependency_overrides[current_date] = lambda: today
     return TestClient(app)
 
 
-def lookup(stub: StubCompaniesHouse, path: str, settings: Settings = ENABLED):
-    with client_for(stub, settings) as client:
+def lookup(stub: StubCompaniesHouse, path: str, settings: Settings = ENABLED, today: date = TODAY):
+    with client_for(stub, settings, today) as client:
         return client.get(f"/api/companies-house{path}")
 
 
@@ -120,13 +126,13 @@ def test_company_record():
         ],
         "accounts": {
             "reference_date": "03-31",
-            "last_made_up_to": "2025-03-31",
-            "next_period": {"start": "2025-04-01", "end": "2026-03-31"},
+            "last_made_up_to": "2026-03-31",
+            "next_period": {"start": "2026-04-01", "end": "2027-03-31"},
         },
-        "suggested_period": {"start": "2025-04-01", "end": "2026-03-31", "note": None},
+        "suggested_period": {"start": "2026-04-01", "end": "2027-03-31", "note": None},
         "previous_accounts_unavailable": None,
     }
-    assert previous["filed_on"] == "2025-11-02"
+    assert previous["filed_on"] == "2026-09-20"
     assert previous["period"] == {"start": "2025-04-01", "end": "2026-03-31"}
     assert previous["standard"] == "small"
     assert previous["profit_and_loss"]["turnover"] == 162336
@@ -174,33 +180,239 @@ def test_the_api_key_goes_only_to_companies_house():
             assert "authorization" not in request.headers
 
 
-def test_a_period_of_account_over_12_months_is_cut_to_12_with_a_note():
+def company(
+    *,
+    incorporated: str = "2019-05-01",
+    last: tuple[str, str] | None,
+    next_period: tuple[str, str] | None,
+    filings: list[tuple[str, str]],
+) -> StubCompaniesHouse:
+    """A stub whose profile has these periods and whose accounts filings are ``(made up to,
+    document id)``, newest first; the documents all hold the real filing to 31 March 2026."""
     stub = StubCompaniesHouse()
-    profile = fixture("company-profile.json")
-    profile["accounts"]["next_accounts"]["period_end_on"] = "2026-09-30"
+    profile: dict[str, Any] = fixture("company-profile.json")
+    profile["date_of_creation"] = incorporated
+    accounts = profile["accounts"]
+    for key, period in (("last_accounts", last), ("next_accounts", next_period)):
+        if period is None:
+            del accounts[key]
+        else:
+            accounts[key] |= {"period_start_on": period[0], "period_end_on": period[1]}
+    if last is not None:
+        accounts["last_accounts"]["made_up_to"] = last[1]
+    history = fixture("filing-history-accounts.json")
+    template = history["items"][1]
+    history["items"] = [
+        template
+        | {
+            "description_values": {"made_up_date": made_up},
+            "links": {"document_metadata": f"https://example/document/{document}"},
+        }
+        for made_up, document in filings
+    ]
     stub.answers[f"/company/{COMPANY}"] = json_answer(profile)
+    stub.answers[f"/company/{COMPANY}/filing-history"] = json_answer(history)
+    for _, document in filings:
+        stub.answers[f"/document/{document}"] = stub.answers[f"/document/{DOCUMENT}"]
+        stub.answers[f"/document/{document}/content"] = stub.answers[
+            f"/document/{DOCUMENT}/content"
+        ]
+    return stub
 
-    suggested = lookup(stub, f"/companies/{COMPANY}").json()["suggested_period"]
 
-    assert suggested["start"] == "2025-04-01"
-    assert suggested["end"] == "2026-03-31"
-    assert suggested["note"] == (
-        "The company's period of account runs from 1 April 2025 to 30 September 2026, which "
-        "is longer than 12 months. A Company Tax Return covers at most 12 months, so this one "
-        "ends on 31 March 2026; the rest of the period needs a second return."
+NEWER = "bmV3ZXJhY2NvdW50czIwMjc"
+OLDER = "b2xkZXJhY2NvdW50czIwMjQ"
+
+
+def test_accounts_due_but_not_filed_suggests_that_period_with_the_latest_as_comparatives():
+    record = lookup(StubCompaniesHouse(), f"/companies/{COMPANY}", today=date(2027, 5, 1)).json()
+
+    assert record["suggested_period"] == {"start": "2026-04-01", "end": "2027-03-31", "note": None}
+    assert record["previous_accounts"]["period"] == {"start": "2025-04-01", "end": "2026-03-31"}
+
+
+def test_accounts_filed_while_the_next_period_runs_suggests_the_filed_period():
+    stub = company(
+        last=("2026-04-01", "2027-03-31"),
+        next_period=("2027-04-01", "2028-03-31"),
+        filings=[("2027-03-31", NEWER), ("2026-03-31", DOCUMENT)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2027, 10, 1)).json()
+
+    assert record["suggested_period"] == {"start": "2026-04-01", "end": "2027-03-31", "note": None}
+    assert record["previous_accounts"]["period"] == {"start": "2025-04-01", "end": "2026-03-31"}
+    assert not any(NEWER in path for path in stub.paths())
+
+
+def test_the_period_being_returned_is_never_its_own_comparatives():
+    stub = company(
+        last=("2025-04-01", "2026-03-31"),
+        next_period=("2026-04-01", "2027-03-31"),
+        filings=[("2026-03-31", DOCUMENT)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2026, 9, 29)).json()
+
+    assert record["suggested_period"] == {"start": "2025-04-01", "end": "2026-03-31", "note": None}
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "Companies House has no accounts made up to 31 March 2025, the day before this period "
+        "starts."
+    )
+    assert not any(path.startswith("/document") for path in stub.paths())
+
+
+def test_a_first_period_still_running_has_nothing_to_suggest():
+    stub = company(
+        incorporated="2026-05-01", last=None, next_period=("2026-05-01", "2027-10-31"), filings=[]
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2027, 5, 1)).json()
+
+    assert record["suggested_period"] is None
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "Companies House has no accounts for this company yet."
     )
 
 
-def test_a_company_without_next_accounts_has_no_suggested_period():
-    stub = StubCompaniesHouse()
+def test_a_first_period_of_18_months_filed_is_cut_to_12_without_comparatives():
+    stub = company(
+        incorporated="2025-05-01",
+        last=("2025-05-01", "2026-10-31"),
+        next_period=("2026-11-01", "2027-10-31"),
+        filings=[("2026-10-31", NEWER)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2027, 5, 1)).json()
+
+    assert record["suggested_period"] == {
+        "start": "2025-05-01",
+        "end": "2026-04-30",
+        "note": (
+            "The company's period of account runs from 1 May 2025 to 31 October 2026, which "
+            "is longer than 12 months. A Company Tax Return covers at most 12 months, so this "
+            "one ends on 30 April 2026; the rest of the period needs a second return."
+        ),
+    }
+    assert record["previous_accounts_unavailable"] == (
+        "This is the company's first period of account, so there are no previous figures."
+    )
+
+
+def test_a_first_period_ended_but_not_filed_has_no_comparatives():
+    stub = company(
+        incorporated="2025-05-01", last=None, next_period=("2025-05-01", "2026-05-31"), filings=[]
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2027, 5, 1)).json()
+
+    assert record["suggested_period"]["start"] == "2025-05-01"
+    assert record["suggested_period"]["end"] == "2026-04-30"
+    assert record["previous_accounts_unavailable"] == (
+        "This is the company's first period of account, so there are no previous figures."
+    )
+
+
+def test_an_extended_period_after_a_change_of_reference_date_is_cut_to_12_months():
+    stub = company(
+        last=("2025-04-01", "2026-03-31"),
+        next_period=("2026-04-01", "2027-09-30"),
+        filings=[("2026-03-31", DOCUMENT)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2027, 10, 15)).json()
+
+    assert record["suggested_period"] == {
+        "start": "2026-04-01",
+        "end": "2027-03-31",
+        "note": (
+            "The company's period of account runs from 1 April 2026 to 30 September 2027, which "
+            "is longer than 12 months. A Company Tax Return covers at most 12 months, so this "
+            "one ends on 31 March 2027; the rest of the period needs a second return."
+        ),
+    }
+    assert record["previous_accounts"]["period"]["end"] == "2026-03-31"
+
+
+def test_a_shortened_period_takes_the_accounts_made_up_to_the_day_before():
+    stub = company(
+        last=("2025-04-01", "2025-12-31"),
+        next_period=("2026-01-01", "2026-12-31"),
+        filings=[("2025-12-31", NEWER), ("2025-03-31", OLDER)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2026, 9, 29)).json()
+
+    assert record["suggested_period"] == {"start": "2025-04-01", "end": "2025-12-31", "note": None}
+    assert not any(NEWER in path for path in stub.paths())
+    assert any(OLDER in path for path in stub.paths())
+
+
+def test_overdue_accounts_suggest_the_earliest_period_not_filed():
+    stub = company(
+        last=("2023-04-01", "2024-03-31"),
+        next_period=("2024-04-01", "2025-03-31"),
+        filings=[("2024-03-31", OLDER)],
+    )
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2026, 9, 29)).json()
+
+    assert record["suggested_period"] == {"start": "2024-04-01", "end": "2025-03-31", "note": None}
+    # The stub's document is the filing to 31 March 2026, so it can't be these comparatives.
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "The previous period's accounts give their period as 1 April 2025 to 31 March 2026, "
+        "but Companies House has them made up to 31 March 2024, so their figures can't be used."
+    )
+
+
+def test_the_filed_periods_start_comes_from_the_filing_before_when_not_given():
+    stub = company(
+        last=("2025-04-01", "2026-03-31"),
+        next_period=("2026-04-01", "2027-03-31"),
+        filings=[("2026-03-31", NEWER), ("2025-03-31", OLDER)],
+    )
     profile = fixture("company-profile.json")
-    del profile["accounts"]["next_accounts"]
+    del profile["accounts"]["last_accounts"]["period_start_on"]
     stub.answers[f"/company/{COMPANY}"] = json_answer(profile)
+
+    record = lookup(stub, f"/companies/{COMPANY}", today=date(2026, 9, 29)).json()
+
+    assert record["suggested_period"] == {"start": "2025-04-01", "end": "2026-03-31", "note": None}
+
+
+def test_a_company_without_periods_has_nothing_to_suggest():
+    stub = company(last=None, next_period=None, filings=[("2026-03-31", DOCUMENT)])
 
     record = lookup(stub, f"/companies/{COMPANY}").json()
 
     assert record["accounts"]["next_period"] is None
     assert record["suggested_period"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "Companies House doesn't show a period of account that has ended, so there's no "
+        "previous period to take figures from."
+    )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"description_values": {}}, {"date": "unknown"}, {"description_values": "2026-03-31"}],
+    ids=["no made-up date", "bad filing date", "malformed values"],
+)
+def test_accounts_filings_without_usable_dates_are_skipped(change, caplog):
+    stub = with_latest_filing(**change)
+
+    with caplog.at_level(logging.WARNING):
+        response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 200
+    assert response.json()["previous_accounts_unavailable"] == (
+        "Companies House has no accounts made up to 31 March 2026, the day before this period "
+        "starts."
+    )
+    assert "Skipped accounts filing" in caplog.text
 
 
 CIC = "community-interest-company"
@@ -251,11 +463,11 @@ def with_latest_filing(**changes) -> StubCompaniesHouse:
     [
         (
             with_latest_filing(paper_filed=True),
-            "The latest accounts were filed on paper, so their figures can't be read.",
+            "The previous period's accounts were filed on paper, so their figures can't be read.",
         ),
         (
             with_latest_filing(links={"self": "/company/01234567/filing-history/x"}),
-            "The latest accounts aren't available to download from Companies House yet.",
+            "The previous period's accounts aren't available to download from Companies House yet.",
         ),
     ],
     ids=["paper", "no document"],
@@ -278,7 +490,7 @@ def test_pdf_only_accounts_are_unavailable():
 
     assert record["previous_accounts"] is None
     assert record["previous_accounts_unavailable"] == (
-        "The latest accounts were filed as a PDF, so their figures can't be read."
+        "The previous period's accounts were filed as a PDF, so their figures can't be read."
     )
 
 
@@ -303,7 +515,7 @@ def test_unreadable_accounts_are_explained():
 
     assert record["previous_accounts"] is None
     assert record["previous_accounts_unavailable"].startswith(
-        "The latest accounts couldn't be read: the document is not valid XHTML"
+        "The previous period's accounts couldn't be read: the document is not valid XHTML"
     )
 
 
@@ -316,7 +528,7 @@ def test_document_api_failure_leaves_the_rest_of_the_record(caplog):
 
     assert response.status_code == 200
     assert response.json()["previous_accounts_unavailable"] == (
-        "Companies House couldn't provide the latest accounts just now. Try again later."
+        "Companies House couldn't provide the previous period's accounts just now. Try again later."
     )
     assert "ConnectTimeout" in caplog.text
     assert API_KEY not in caplog.text
@@ -370,7 +582,7 @@ def test_filing_history_failing_still_gives_the_record_without_previous_accounts
     assert len(record["directors"]) == 2
     assert record["previous_accounts"] is None
     assert record["previous_accounts_unavailable"] == (
-        "Companies House couldn't provide the latest accounts just now. Try again later."
+        "Companies House couldn't provide the previous period's accounts just now. Try again later."
     )
 
 

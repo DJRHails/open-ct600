@@ -8,7 +8,7 @@
   "items": [
     {
       "category": "accounts",
-      "date": "2025-11-10",
+      "date": "2019-06-10",
       "description": "change-account-reference-date-company-current-extended",
       "type": "AA01",
       "transaction_id": "MzQ1Njc4OTAxMmFkaXF6a2N4",
@@ -21,8 +21,9 @@
     },
     {
       "category": "accounts",
-      "date": "2025-11-02",
+      "date": "2026-09-20",
       "description": "accounts-with-accounts-type-small",
+      "description_values": {"made_up_date": "2026-03-31"},
       "type": "AA",
       "transaction_id": "MzQ1Njc4OTAxMWFkaXF6a2N4",
       "barcode": "XE0ZY9XW",
@@ -35,8 +36,9 @@
     },
     {
       "category": "accounts",
-      "date": "2024-10-20",
+      "date": "2025-10-20",
       "description": "accounts-with-accounts-type-small",
+      "description_values": {"made_up_date": "2025-03-31"},
       "type": "AA",
       "transaction_id": "MzQxMjM0NTY3OGFkaXF6a2N4",
       "barcode": "XD9ABCDE",

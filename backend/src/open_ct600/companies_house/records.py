@@ -7,7 +7,7 @@ import asyncio
 import logging
 import re
 from collections.abc import Coroutine
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from pydantic import BaseModel
@@ -25,9 +25,18 @@ from open_ct600.companies_house.filed_accounts import (
     read_filed_accounts,
 )
 from open_ct600.companies_house.names import person_name
+from open_ct600.companies_house.periods import (
+    AccountsFiling,
+    SuggestedPeriod,
+    accounts_filings,
+    day_or_none,
+    day_text,
+    filing_before,
+    last_period,
+    suggested_period,
+)
 from open_ct600.companies_house.sic import sic_description
 from open_ct600.ct600 import LegalForm
-from open_ct600.tax import twelve_month_period_end
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +63,24 @@ _DOCUMENT_ID = re.compile(
 )
 
 UNAVAILABLE_NO_ACCOUNTS = "Companies House has no accounts for this company yet."
-UNAVAILABLE_PAPER = "The latest accounts were filed on paper, so their figures can't be read."
-UNAVAILABLE_PDF = "The latest accounts were filed as a PDF, so their figures can't be read."
+UNAVAILABLE_NO_PERIOD = (
+    "Companies House doesn't show a period of account that has ended, so there's no previous "
+    "period to take figures from."
+)
+UNAVAILABLE_FIRST_PERIOD = (
+    "This is the company's first period of account, so there are no previous figures."
+)
+UNAVAILABLE_PAPER = (
+    "The previous period's accounts were filed on paper, so their figures can't be read."
+)
+UNAVAILABLE_PDF = (
+    "The previous period's accounts were filed as a PDF, so their figures can't be read."
+)
 UNAVAILABLE_NOT_PUBLISHED = (
-    "The latest accounts aren't available to download from Companies House yet."
+    "The previous period's accounts aren't available to download from Companies House yet."
 )
 UNAVAILABLE_FAILED = (
-    "Companies House couldn't provide the latest accounts just now. Try again later."
+    "Companies House couldn't provide the previous period's accounts just now. Try again later."
 )
 
 
@@ -113,14 +133,6 @@ class AccountsDates(BaseModel):
     next_period: Period | None
 
 
-class SuggestedPeriod(BaseModel):
-    """The return period to start from; ``note`` explains a shortened one."""
-
-    start: date
-    end: date
-    note: str | None
-
-
 class PreviousAccounts(FiledAccounts):
     """The latest accounts filed at Companies House, and when they were filed."""
 
@@ -162,38 +174,47 @@ async def search(client: CompaniesHouseClient, query: str) -> SearchResults:
     )
 
 
-async def company_record(client: CompaniesHouseClient, number: str) -> CompanyRecord:
-    """Assemble a company's record from its profile, officers and latest accounts.
+async def company_record(client: CompaniesHouseClient, number: str, today: date) -> CompanyRecord:
+    """Assemble a company's record from its profile, officers and accounts filings.
 
-    Only the profile is essential. If the officers can't be fetched (Companies House answers
-    404 for some companies without officer records), the record has no directors; if the
-    accounts can't, ``previous_accounts_unavailable`` says why.
+    The suggested period is the return due on ``today`` and the previous accounts are the
+    accounts for the period before it (see ``periods``). Only the profile is essential. If the
+    officers can't be fetched (Companies House answers 404 for some companies without officer
+    records), the record has no directors; if the accounts can't,
+    ``previous_accounts_unavailable`` says why.
 
     Raises:
         CompanyNotFoundError: If Companies House has no such company.
         CompaniesHouseUnavailableError: If the profile cannot be fetched.
     """
     profile = await client.company(number)
-    officers, (previous, unavailable) = await asyncio.gather(
-        _safely(client.officers(number), "Company officers"), _previous_accounts(client, number)
+    officers, history = await asyncio.gather(
+        _safely(client.officers(number), "Company officers"),
+        _safely(client.accounts_filings(number), "Previous accounts"),
     )
+    profile_accounts = profile.get("accounts") or {}
+    accounts = _accounts_dates(profile_accounts)
+    incorporated_on = day_or_none(profile.get("date_of_creation"))
+    filings = None if history is None else accounts_filings(history)
+    last = last_period(profile_accounts.get("last_accounts") or {}, filings or [], incorporated_on)
+    suggested = suggested_period(accounts.next_period, last, today)
+    previous, unavailable = await _previous_accounts(client, filings, suggested, incorporated_on)
     sic_codes = [
         SicCode(code=code, description=sic_description(code))
         for code in profile.get("sic_codes", [])
     ]
-    accounts = _accounts_dates(profile.get("accounts") or {})
     return CompanyRecord(
         number=profile["company_number"],
         name=profile.get("company_name", ""),
         status=profile.get("company_status"),
-        incorporated_on=profile.get("date_of_creation"),
+        incorporated_on=incorporated_on,
         legal_form=_legal_form(profile),
         registered_office=_address(profile.get("registered_office_address")),
         sic_codes=sic_codes,
         principal_activity=sic_codes[0].description if sic_codes else None,
         directors=_current_directors(officers or {}),
         accounts=accounts,
-        suggested_period=_suggested_period(accounts.next_period),
+        suggested_period=suggested,
         previous_accounts=previous,
         previous_accounts_unavailable=unavailable,
     )
@@ -251,46 +272,56 @@ def _accounts_dates(accounts: dict[str, Any]) -> AccountsDates:
     )
 
 
-def _suggested_period(next_period: Period | None) -> SuggestedPeriod | None:
-    """The next period of account, cut to the 12 months a Corporation Tax period can cover."""
-    if next_period is None:
-        return None
-    twelve_months = twelve_month_period_end(next_period.start)
-    if next_period.end <= twelve_months:
-        return SuggestedPeriod(start=next_period.start, end=next_period.end, note=None)
-    note = (
-        f"The company's period of account runs from {_day(next_period.start)} to "
-        f"{_day(next_period.end)}, which is longer than 12 months. A Company Tax Return covers "
-        f"at most 12 months, so this one ends on {_day(twelve_months)}; the rest of the period "
-        "needs a second return."
-    )
-    return SuggestedPeriod(start=next_period.start, end=twelve_months, note=note)
-
-
-def _day(day: date) -> str:
-    return f"{day.day} {day:%B %Y}"
-
-
 async def _previous_accounts(
-    client: CompaniesHouseClient, number: str
+    client: CompaniesHouseClient,
+    filings: list[AccountsFiling] | None,
+    period: SuggestedPeriod | None,
+    incorporated_on: date | None,
 ) -> tuple[PreviousAccounts | None, str | None]:
-    """The latest filed accounts' figures, or why there are none."""
-    filings = await _safely(client.accounts_filings(number), "Previous accounts")
+    """The figures of the accounts for the period before ``period``, or why there are none.
+
+    ``filings`` is ``None`` if the filing history couldn't be fetched.
+    """
     if filings is None:
         return None, UNAVAILABLE_FAILED
-    latest = next((item for item in filings.get("items", []) if item.get("type") == "AA"), None)
-    if latest is None:
-        return None, UNAVAILABLE_NO_ACCOUNTS
-    if latest.get("paper_filed"):
+    if period is None:
+        return None, UNAVAILABLE_NO_PERIOD if filings else UNAVAILABLE_NO_ACCOUNTS
+    filing = filing_before(filings, period.start)
+    if filing is None:
+        return None, _no_comparatives(filings, period.start, incorporated_on)
+    if filing.item.get("paper_filed"):
         return None, UNAVAILABLE_PAPER
-    match = _DOCUMENT_ID.search((latest.get("links") or {}).get("document_metadata", ""))
-    if match is None:
+    document_id = _document_id(filing)
+    if document_id is None:
         return None, UNAVAILABLE_NOT_PUBLISHED
-    return await _read_document(client, match.group("id"), filed_on=latest["date"])
+    return await _read_document(client, document_id, filing)
+
+
+def _no_comparatives(
+    filings: list[AccountsFiling], period_start: date, incorporated_on: date | None
+) -> str:
+    """Why no accounts are made up to the day before the period starts."""
+    if period_start == incorporated_on:
+        return UNAVAILABLE_FIRST_PERIOD
+    if not filings:
+        return UNAVAILABLE_NO_ACCOUNTS
+    day_before = day_text(period_start - timedelta(days=1))
+    return (
+        f"Companies House has no accounts made up to {day_before}, the day before this period "
+        "starts."
+    )
+
+
+def _document_id(filing: AccountsFiling) -> str | None:
+    """The Document API id from the filing's ``document_metadata`` link, if it has one."""
+    links = filing.item.get("links")
+    link = links.get("document_metadata") if isinstance(links, dict) else None
+    match = _DOCUMENT_ID.search(link) if isinstance(link, str) else None
+    return match.group("id") if match else None
 
 
 async def _read_document(
-    client: CompaniesHouseClient, document_id: str, *, filed_on: str
+    client: CompaniesHouseClient, document_id: str, filing: AccountsFiling
 ) -> tuple[PreviousAccounts | None, str | None]:
     metadata = await _safely(client.document_metadata(document_id), "Previous accounts")
     if metadata is None:
@@ -303,8 +334,14 @@ async def _read_document(
     try:
         filed = await run_in_threadpool(read_filed_accounts, content)
     except AccountsNotReadableError as error:
-        return None, f"The latest accounts couldn't be read: {error}."
-    return PreviousAccounts(**filed.model_dump(), filed_on=date.fromisoformat(filed_on)), None
+        return None, f"The previous period's accounts couldn't be read: {error}."
+    if filed.period.end != filing.made_up_to:
+        return None, (
+            f"The previous period's accounts give their period as {day_text(filed.period.start)} "
+            f"to {day_text(filed.period.end)}, but Companies House has them made up to "
+            f"{day_text(filing.made_up_to)}, so their figures can't be used."
+        )
+    return PreviousAccounts(**filed.model_dump(), filed_on=filing.filed_on), None
 
 
 async def _safely[T](request: Coroutine[Any, Any, T], part: str) -> T | None:

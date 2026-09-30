@@ -8,6 +8,7 @@ message in ``detail``.
 
 import re
 from collections.abc import AsyncIterator, Coroutine
+from datetime import date
 from typing import Annotated, Any
 
 import httpx2
@@ -51,6 +52,11 @@ async def companies_house_http() -> AsyncIterator[httpx2.AsyncClient]:
         yield client
 
 
+def current_date() -> date:
+    """Dependency: today, which decides the periods that have ended."""
+    return date.today()
+
+
 def companies_house_router(settings: Settings) -> APIRouter:
     """The lookup routes, sharing one cache and one rate limiter per process."""
     router = APIRouter(prefix="/api/companies-house", tags=["companies-house"])
@@ -87,10 +93,12 @@ def companies_house_router(settings: Settings) -> APIRouter:
 
     @router.get("/companies/{number}")
     async def company(
-        companies_house: lookup_client, number: Annotated[str, Path(min_length=1, max_length=16)]
+        companies_house: lookup_client,
+        number: Annotated[str, Path(min_length=1, max_length=16)],
+        today: Annotated[date, Depends(current_date)],
     ) -> CompanyRecord:
-        """A company's record: details, current directors and its latest filed accounts."""
-        return await _answer(company_record(companies_house, _company_number(number)))
+        """A company's record: details, directors, the return due and the accounts before it."""
+        return await _answer(company_record(companies_house, _company_number(number), today))
 
     return router
 

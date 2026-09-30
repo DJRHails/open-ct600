@@ -79,11 +79,15 @@ export function supportedLegalForm(record: CompanyRecord | null): LegalForm | ""
 }
 
 /**
- * Whether this is the company's first period of account, as far as the record shows: it has
- * never filed accounts. ``""`` when there is no record to go on.
+ * Whether this is the company's first period of account, as far as the record shows: the
+ * suggested period starts on incorporation or, without one, the company has never filed
+ * accounts. The suggested period can be the first even once its accounts are filed.
+ * ``""`` when there is no record to go on.
  */
 export function firstPeriodFromRecord(record: CompanyRecord | null): "yes" | "no" | "" {
   if (!record) return "";
+  const suggested = record.suggested_period;
+  if (suggested) return suggested.start === record.incorporated_on ? "yes" : "no";
   return record.accounts.last_made_up_to === null ? "yes" : "no";
 }
 
