@@ -54,7 +54,7 @@ export const PERIOD_HELP: Record<"start" | "end", QuestionHelp> = {
       ],
       effect: [
         "We show the date in box 35. The company must file this return within 12 months after this date, and usually pay its Corporation Tax 9 months and 1 day after it.",
-        "For a period ending on 31 March 2026, the tax is due by 1 January 2027 and the return by 31 March 2027. Companies with taxable profits of more than £1.5 million pay in instalments instead.",
+        "For a period ending on 31 March 2026, the tax is due by 1 January 2027 and the return by 31 March 2027. Companies with profits of more than £1.5 million usually pay in instalments instead. The £1.5 million is divided between the company and any associated companies, and reduced for a period shorter than 12 months. A company that was not over the limit in the previous 12 months usually does not pay in instalments if its profits are not more than £10 million.",
       ],
     },
     hmrc: [

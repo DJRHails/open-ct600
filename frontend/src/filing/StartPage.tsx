@@ -73,9 +73,10 @@ function WhatYoullNeed() {
           account and balance sheet, the directors' names and the date the accounts were approved.
         </li>
         <li>
-          <strong>Details for tax</strong>, if they apply: equipment or vehicles the company bought,
-          trading losses from earlier periods (on its last Company Tax Return), assets it sold,
-          donations to charity, dividends it received and other companies it is connected with.
+          <strong>Details for tax</strong>, if they apply: capital allowances on equipment or
+          vehicles (including writing down allowances on things bought before), trading losses from
+          earlier periods (on its last Company Tax Return), assets it sold, donations to charity,
+          dividends it received and other companies it is connected with.
         </li>
         {canSubmit ? (
           <li>

@@ -98,8 +98,9 @@ export type AmountField<K extends AmountSectionKey> = {
   /** Asked only when this holds for the answers; otherwise the amount is nil. */
   askedWhen?: (values: Record<string, string>, draft: Draft) => boolean;
   /**
-   * A yes or no question in everyday words asked first, like "Did the company buy equipment,
-   * tools or vehicles for the business?". The amount is asked on yes, and is nil on no.
+   * A yes or no question in everyday words asked first, like "Did the company sell property,
+   * shares or other major assets?". The amount is asked on yes, and is nil on no, so the
+   * question must cover everything the amount can include.
    */
   gate?: AmountGate;
 };
@@ -238,11 +239,17 @@ export const TAX_ADJUSTMENTS: AmountSection<"tax_adjustments"> = {
       label: "Capital allowances the company is claiming",
       summaryLabel: "Capital allowances",
       errorLabel: "the capital allowances",
-      hint: "For most equipment, tools and vans this is the full cost, under the Annual Investment Allowance.",
+      hint:
+        "The total for this period: for most equipment, tools and vans bought this period, their " +
+        "full cost under the Annual Investment Allowance, plus any writing down allowances on " +
+        "things bought before.",
       gate: {
-        question: "Did the company buy equipment, tools or vehicles for the business?",
-        hint: "Including computers, machinery and vans. Do not include things the company leases.",
-        error: "Select yes if the company bought equipment, tools or vehicles for the business",
+        question: "Can the company claim capital allowances this period?",
+        hint:
+          "Yes if it bought equipment, tools, machinery or vehicles for the business this period, " +
+          "or still has some from earlier periods that it claims writing down allowances on. Do " +
+          "not include things the company leases.",
+        error: "Select yes if the company can claim capital allowances this period",
       },
     },
     {
@@ -440,7 +447,9 @@ export const COMPANY_TYPES: { value: string; label: string; hint?: string }[] = 
   {
     value: "3",
     label: "Company in liquidation, second or later year",
-    hint: "Pays the main rate on all profits.",
+    hint:
+      "From the second accounting period after the liquidation starts. In the first, choose " +
+      "none of these unless another type applies. Pays the main rate on all profits.",
   },
   { value: "4", label: "Qualifying asset holding company" },
   { value: "6", label: "Members' club or voluntary association" },

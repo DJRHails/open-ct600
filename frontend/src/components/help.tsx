@@ -232,7 +232,11 @@ export function QuestionHelp({ id, help }: { id: string; help: Help }) {
  */
 export function boxHelpKey(box: string, index: GuidanceIndex | null): string | null {
   for (const id of boxLookups(box)) {
-    const hmrc = index?.forBox(id).some(({ entry }) => entry.boxes.includes(id));
+    // A pair like "N15/N20" is explained by each of its boxes' guidance.
+    const parts = id.split("/");
+    const hmrc = index
+      ?.forBox(id)
+      .some(({ entry }) => parts.some((part) => entry.boxes.includes(part)));
     if (PAGE_BOX_HELP[id] || hmrc) return id;
   }
   return null;

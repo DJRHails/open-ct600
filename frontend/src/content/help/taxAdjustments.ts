@@ -1,7 +1,12 @@
 /**
  * Help for the tax adjustments questions, written from HMRC's guidance:
  * https://www.gov.uk/corporation-tax-rates (the expenses, rates and associated companies),
- * https://www.gov.uk/capital-allowances, https://www.gov.uk/tax-limited-company-gives-to-charity,
+ * https://www.gov.uk/capital-allowances, https://www.gov.uk/work-out-capital-allowances (pools
+ * and writing down allowances: main pool 14% from 1 April 2026 for Corporation Tax, 18% before),
+ * https://www.gov.uk/tax-limited-company-gives-to-charity,
+ * https://www.gov.uk/government/collections/corporation-tax-on-chargeable-gains-indexation-allowance-rates
+ * and the Capital Gains Manual (CG17231: indexation frozen at December 2017 for companies'
+ * disposals of assets held before 2018; CG46100: indexation cannot create or increase a loss),
  * https://www.gov.uk/guidance/corporation-tax-calculating-and-claiming-a-loss,
  * https://www.gov.uk/guidance/corporation-tax-marginal-relief and the Company Taxation Manual
  * (CTM03940 and CTM03945 for associated companies).
@@ -39,11 +44,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       meaning: [
         "When a company buys equipment, tools, machinery, computers or vehicles to use in the business, it cannot take their cost off its profits as an expense. It claims capital allowances instead.",
         "Most items qualify for the Annual Investment Allowance (AIA), which lets the company deduct their full cost in the year it bought them, up to £1 million a year. Companies can also claim full expensing on most new equipment.",
-        "Cars do not qualify for the AIA. The company claims a percentage of their value each year instead, called a writing down allowance.",
+        "Cars do not qualify for the AIA. For cars, and for anything else whose full cost the company has not claimed, it claims a percentage of the value left each year, called a writing down allowance. It carries on claiming this in later years, even in a year it buys nothing new.",
       ],
       example: [
         "The company bought 2 laptops for £2,400 and a van for £18,000. It claims the AIA on both, so enter £20,400.",
-        "If it also has a car that is worth £10,000 for tax, it might claim a writing down allowance on that too. Your accountant or HMRC's guidance can tell you the rate for your car.",
+        "Another company bought nothing this period, but its main pool, the value left from equipment it bought in earlier years, is £40,000. For a period from 1 April 2026 to 31 March 2027 the main pool rate is 14%, so it claims a writing down allowance of £5,600. Answer yes and enter £5,600.",
       ],
       excludes: [
         "Depreciation in your accounts, which is not the same thing and is added back for you.",
@@ -53,6 +58,7 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       ],
       effect: [
         "We take the amount off the company's trading profits before working out the tax. If the allowances are more than the profits, the company makes a trading loss, which it can carry forward to later periods.",
+        "If you answer no, the company claims no capital allowances this period, not even writing down allowances on things bought before.",
       ],
     },
     hmrc: [{ box: "690" }, { box: "688" }, { box: "705" }],
@@ -73,10 +79,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Losses the company has already used or given to another company in its group.",
       ],
       effect: [
-        "We use as much of the loss as the company's trading profits allow, and show it in box 160. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward.",
+        "We use as much of the loss as the company's trading profits allow, and show the amount used in box 160, against trading profits. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward.",
+        "HMRC's guide puts losses from periods ending on or after 1 April 2017 in box 285 when they are set against total profits. This service only sets losses against trading profits, so it shows every loss it uses in box 160. The tax is the same. If the company wants to set later losses against its other profits, such as interest or gains, ask an accountant.",
       ],
     },
-    hmrc: [{ box: "160" }],
+    hmrc: [{ box: "160" }, { box: "285" }],
   },
   losses_brought_forward_before_april_2017: {
     topic: "losses from before 1 April 2017",
@@ -104,9 +111,11 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
       meaning: [
         "If the company sold or gave away an asset for more than it cost, the profit on it may be a chargeable gain. Companies pay Corporation Tax on these gains, not Capital Gains Tax.",
         "Assets include land and buildings, shares in other companies, and some other investments.",
+        "The gain is what the company got for the asset, minus what it cost and the costs of buying and selling it. If the company owned the asset before 1 January 2018, it also takes off indexation allowance, which allows for inflation up to December 2017 only. Indexation allowance can reduce a gain to nothing, but cannot create or increase a loss.",
       ],
       example: [
-        "The company bought a small office for £150,000 and sold it this year for £190,000, paying £5,000 in legal and estate agent fees. The gain is £190,000 minus £150,000 minus £5,000, which is £35,000. Enter £35,000.",
+        "The company bought a small office in 2019 for £150,000 and sold it this year for £190,000, paying £5,000 in legal and estate agent fees. It bought the office after 2017, so there is no indexation allowance. The gain is £190,000 minus £150,000 minus £5,000, which is £35,000. Enter £35,000.",
+        "If it had bought the office in 2010 instead, it would also take off indexation allowance: £150,000 times the factor in HMRC's December 2017 table for the month it bought it. If that factor were 0.250, the allowance would be £37,500. That is more than the £35,000 gain, so the gain is reduced to nothing, not turned into a loss. Enter 0.",
       ],
       excludes: [
         "Equipment and vehicles the company claimed capital allowances on. Selling those is dealt with through capital allowances.",
@@ -115,10 +124,23 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Most intangible assets, like goodwill, created or bought after 1 April 2002.",
       ],
       effect: [
-        "We add the gain to the company's taxable profits, in boxes 210 and 220. Enter the gain after taking off any capital losses the company can use against it.",
+        "We add the gain to the company's taxable profits, in boxes 210 and 220. Enter the gain after indexation allowance and after taking off any capital losses the company can use against it.",
       ],
     },
-    hmrc: [{ box: "210" }, { box: "215" }],
+    hmrc: [
+      { box: "210" },
+      { box: "215" },
+      { box: "220" },
+      {
+        quote: {
+          guide: "corporation-tax-on-chargeable-gains-indexation-allowance-rates",
+          heading: "Indexation Allowance rates for Corporation Tax on chargeable gains",
+          paragraphs: [
+            "From 1 January 2018 the capital gains Indexation Allowance has been frozen. When a company or organisation makes a capital gain on or after 1 January 2018, the Indexation Allowance that is applied in order to determine the amount of the chargeable gain will be calculated up to December 2017.",
+          ],
+        },
+      },
+    ],
   },
   qualifying_donations: {
     topic: "qualifying charitable donations",

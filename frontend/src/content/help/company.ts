@@ -4,8 +4,11 @@
  * https://www.gov.uk/find-utr-number,
  * https://www.tax.service.gov.uk/ask-for-copy-of-your-corporation-tax-utr,
  * https://www.gov.uk/pay-corporation-tax (the payment reference),
- * https://www.gov.uk/corporation-tax-rates (the main rate) and the Company Taxation Manual
- * (CTM60710 for close investment-holding companies).
+ * https://www.gov.uk/corporation-tax-rates (the main rate),
+ * https://www.gov.uk/guidance/corporation-tax-trading-and-non-trading (what a company does) and
+ * the Company Taxation Manual (CTM60710 for close investment-holding companies). Type 3 follows
+ * the guide's box 4 instruction: 0 in the first year of liquidation, 3 from the second, which
+ * HMRC's business rule 9143 then charges at the main rate.
  */
 import type { QuestionHelp } from "@/content/help/types";
 import type { CompanyAnswers } from "@/filing/model";
@@ -103,9 +106,23 @@ export const COMPANY_HELP: Record<keyof CompanyAnswers, QuestionHelp> = {
       ],
       effect: [
         "We enter the type's code in box 4. Close investment-holding companies, companies in their second or later year of liquidation, REIT C residual companies and non-resident companies pay the main rate of 25% on all their profits. They cannot use the 19% small profits rate or marginal relief.",
+        "HMRC's guide says to choose none of these in the first year of liquidation, unless another type applies, and the type for companies in liquidation from the second year on.",
       ],
     },
-    hmrc: [{ box: "4" }],
+    hmrc: [
+      {
+        quote: {
+          guide: "the-company-tax-return-guide",
+          heading:
+            "Company in liquidation which is chargeable at the main rate following the first period after liquidation",
+          paragraphs: [
+            "Enter 0, if the company is in the first year of liquidation, unless one of the other company types apply.",
+            "Enter 3, if the company is in the second or later year of liquidation.",
+          ],
+        },
+      },
+      { box: "4" },
+    ],
   },
   principal_activity: {
     topic: "the company's principal activity",
@@ -126,6 +143,22 @@ export const COMPANY_HELP: Record<keyof CompanyAnswers, QuestionHelp> = {
         "We use it in the directors' report in the company's accounts, and to describe the company's trade in the tax computations. It does not change the tax the company pays.",
       ],
     },
-    hmrc: [{ box: "80" }],
+    hmrc: [
+      {
+        quote: {
+          guide: "corporation-tax-trading-and-non-trading",
+          heading: "What is active for Corporation Tax purposes",
+          paragraphs: [
+            "Generally your company or organisation is considered to be active for Corporation Tax purposes when it is, for example:",
+            "carrying on a business activity such as a trade or professional activity",
+            "buying and selling goods with a view to making a profit or surplus",
+            "providing services",
+            "earning interest",
+            "managing investments",
+            "receiving any other income",
+          ],
+        },
+      },
+    ],
   },
 };

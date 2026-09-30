@@ -162,6 +162,15 @@ describe("box help", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows HMRC's guidance for both boxes of a pair", async () => {
+    const user = userEvent.setup();
+    render(<BoxHelp id="dates" box="N15/N20" />);
+
+    await user.click(await screen.findByText("HMRC's guidance for box N15/N20"));
+    expect(await screen.findByRole("heading", { name: "N15 From" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "N20 To" })).toBeInTheDocument();
+  });
+
   it("says when it only has HMRC's guidance", async () => {
     const user = userEvent.setup();
     render(<BoxHelp id="royalty" box="H5Ea" />);

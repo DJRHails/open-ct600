@@ -38,7 +38,7 @@ export function indexGuidance(guidance: Guidance): GuidanceIndex {
   }
   const bySlug = new Map(guidance.sources.map((source) => [source.guide, source]));
   const byForm = new Map(guidance.sources.map((source) => [source.form, source]));
-  const forBox = (box: string): BoxGuidance[] => {
+  const forOneBox = (box: string): BoxGuidance[] => {
     for (const id of boxLookups(box)) {
       const entries = byBox.get(id);
       if (!entries) continue;
@@ -50,6 +50,13 @@ export function indexGuidance(guidance: Guidance): GuidanceIndex {
       });
     }
     return [];
+  };
+  // A pair like "780/785" is two boxes: each one's guidance, once each.
+  const forBox = (box: string): BoxGuidance[] => {
+    const found = box.split("/").flatMap(forOneBox);
+    return found.filter(
+      ({ entry }, index) => found.findIndex((other) => other.entry === entry) === index,
+    );
   };
   return { forBox, source: (guide) => bySlug.get(guide) };
 }
