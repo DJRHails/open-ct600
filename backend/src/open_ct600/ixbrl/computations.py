@@ -359,6 +359,16 @@ def _trade_losses(
                 ),
                 deduction=True,
             ),
+            # Losses from April 2017 or later set against total profits (CTA 2010 s45A, box 285)
+            amount_row(
+                "Less: used against total profits of this period",
+                document.money(
+                    "ct-comp:LossesUsedAgainstTotalProfits",
+                    contexts.trade,
+                    boxes.get("285", Decimal(0)),
+                ),
+                deduction=True,
+            ),
             amount_row(
                 "Add: trading loss of this period",
                 document.money(
@@ -417,6 +427,12 @@ def _profits(
                 "ct-comp:ProfitsBeforeOtherDeductionsAndReliefs",
                 "235",
                 total=True,
+            ),
+            *given(
+                "Less: trading losses brought forward set against total profits",
+                "ct-comp:TradingLossesBroughtForwardSetAgainstTotalProfits",
+                "285",
+                deduction=True,
             ),
             row(
                 "Profits before qualifying donations and group relief",

@@ -464,3 +464,12 @@ def test_accounts_include_the_rdec_so_the_tax_charge_reconciles(validations, nam
     assert _only(accounts, "core:ProfitLossOnOrdinaryActivitiesBeforeTax") == str(
         summary.profit_before_tax
     )
+
+
+def test_losses_against_total_profits_are_tagged(validations):
+    # Losses from April 2017 or later relieve total profits (CTA 2010 s45A, box 285).
+    document = validations["trading-micro-computations"]
+    used = str(_box(COMPUTATIONS["trading-micro"], "285"))
+
+    assert _only(document, "ct-comp:TradingLossesBroughtForwardSetAgainstTotalProfits") == used
+    assert _only(document, "ct-comp:LossesUsedAgainstTotalProfits") == used

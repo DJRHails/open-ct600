@@ -67,7 +67,7 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
     topic: "trading losses brought forward",
     plain: {
       meaning: [
-        "If the company made a trading loss in an earlier accounting period and has not used it yet, it can use it to reduce this period's trading profits.",
+        "If the company made a trading loss in an earlier accounting period and has not used it yet, it can use it to reduce this period's profits.",
         "You can find the amount on the company's last Company Tax Return or tax computation, as losses carried forward.",
       ],
       example: [
@@ -79,8 +79,9 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Losses the company has already used or given to another company in its group.",
       ],
       effect: [
-        "We use as much of the loss as the company's trading profits allow, and show the amount used in box 160, against trading profits. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward.",
-        "HMRC's guide puts losses from periods ending on or after 1 April 2017 in box 285 when they are set against total profits. This service only sets losses against trading profits, so it shows every loss it uses in box 160. The tax is the same. If the company wants to set later losses against its other profits, such as interest or gains, ask an accountant.",
+        "Losses from before 1 April 2017 can only reduce trading profits. We use as much of them as the trading profits allow and show the amount in box 160.",
+        "Later losses can reduce all the company's profits, including interest and gains. We use as much of them as those profits allow and show the amount in box 285, as HMRC's guide says.",
+        "Whatever is not used is carried forward to next year. Very large amounts may be limited: only the first £5 million of profits can be fully covered by losses brought forward, and this service does not apply that limit, so ask an accountant if the company's profits are over £5 million.",
       ],
     },
     hmrc: [{ box: "160" }, { box: "285" }],
@@ -100,10 +101,10 @@ export const TAX_ADJUSTMENTS_HELP: Record<Key, QuestionHelp> = {
         "Losses that have already been used.",
       ],
       effect: [
-        "It limits how much group relief for carried-forward losses the company can claim on CT600C. It does not change the total losses brought forward.",
+        "We set these older losses against trading profits only, in box 160, and the rest of your losses brought forward against all the company's profits, in box 285. It also limits how much group relief for carried-forward losses the company can claim on CT600C. It does not change the total losses brought forward.",
       ],
     },
-    hmrc: [{ box: "160" }, { box: "312" }],
+    hmrc: [{ box: "160" }, { box: "285" }, { box: "312" }],
   },
   chargeable_gains: {
     topic: "chargeable gains",
