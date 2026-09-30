@@ -731,3 +731,19 @@ def test_malformed_filed_accounts_are_explained_and_logged(caplog):
     )
     assert "ValueError" in caplog.text
     assert API_KEY not in caplog.text
+
+
+def test_a_filed_period_over_18_months_gives_no_previous_accounts():
+    stub = StubCompaniesHouse()
+    long_period = ACCOUNTS_XHTML.replace(
+        b"<xbrli:startDate>2025-04-01", b"<xbrli:startDate>2023-04-01"
+    )
+    stub.answers["/docs/sample"] = lambda: httpx2.Response(200, content=long_period)
+
+    record = lookup(stub, f"/companies/{COMPANY}").json()
+
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "The previous period's accounts couldn't be read: its period, 1 April 2023 to 31 March "
+        "2026, isn't a period of account, which runs for at most 18 months."
+    )

@@ -47,7 +47,7 @@ sign.
 import re
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
@@ -56,6 +56,8 @@ from pydantic import BaseModel
 
 from open_ct600.companies_house.ixbrl_facts import Fact, UnreadableFactError, read_facts
 from open_ct600.companies_house.names import person_name
+from open_ct600.ct600 import MAX_PERIOD_OF_ACCOUNT_MONTHS
+from open_ct600.tax import add_months
 
 _DIRECTOR_MEMBER = re.compile(
     r"""(?x)
@@ -262,6 +264,12 @@ def _own_period(facts: list[Fact]) -> Period:
     )
     if start is None or end is None:
         raise AccountsNotReadableError("the document has no period of account")
+    longest = add_months(start, MAX_PERIOD_OF_ACCOUNT_MONTHS) - timedelta(days=1)
+    if end < start or end > longest:
+        raise AccountsNotReadableError(
+            f"its period, {start:%-d %B %Y} to {end:%-d %B %Y}, isn't a period of account, "
+            f"which runs for at most {MAX_PERIOD_OF_ACCOUNT_MONTHS} months"
+        )
     return Period(start=start, end=end)
 
 

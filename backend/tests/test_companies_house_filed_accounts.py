@@ -440,6 +440,24 @@ def test_malformed_figures_and_dates_make_the_filing_unreadable(document, reason
         read_filed_accounts(document)
 
 
+@pytest.mark.parametrize(
+    ("start", "readable"),
+    [("2024-07-01", True), ("2024-06-30", False), ("2022-01-01", False), ("2026-01-01", False)],
+    ids=["18 months", "a day over 18 months", "four years", "ends before it starts"],
+)
+def test_a_filings_period_must_be_a_period_of_account(start, readable):
+    document = minimal_filing(
+        '<ix:nonFraction name="core:NetAssetsLiabilities" contextRef="e" unitRef="u" '
+        'decimals="0">5</ix:nonFraction>'
+    ).replace(b"<xbrli:startDate>2025-01-01", f"<xbrli:startDate>{start}".encode())
+
+    if readable:
+        assert read_filed_accounts(document).period.start == date.fromisoformat(start)
+    else:
+        with pytest.raises(AccountsNotReadableError, match="isn't a period of account"):
+            read_filed_accounts(document)
+
+
 def test_balance_sheets_add_up_where_the_filer_tagged_consistently():
     consistent = [name for name in FILINGS if name != "Prod223_4316_16890562_20260831.html"]
     for name in consistent:
