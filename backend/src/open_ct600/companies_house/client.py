@@ -19,6 +19,7 @@ PUBLIC_DATA_API = "https://api.company-information.service.gov.uk"
 DOCUMENT_API = "https://document-api.company-information.service.gov.uk"
 CACHE_SECONDS = 600.0
 CACHE_ENTRIES = 2_000
+CACHE_BYTES = 64 * 1024 * 1024
 RATE_LIMIT_REQUESTS = 550
 RATE_LIMIT_SECONDS = 300.0
 """Stay under Companies House's 600 requests per 5 minutes per key, with room to spare."""
@@ -29,6 +30,7 @@ RESERVE_SHARE = 15
 """When the budget is down to its reserve, clients that have sent fewer than this still get
 enough for a lookup or two."""
 MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
+"""The largest answer read, checked while it downloads (the largest filing in a day is ~3 MB)."""
 TIMEOUT = httpx2.Timeout(10.0, connect=5.0)
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 
@@ -57,31 +59,49 @@ _TOO_MANY_FROM_YOU = (
 
 
 class ResponseCache:
-    """Public answers (found or not found) for ``CACHE_SECONDS``, in memory, least recent evicted.
+    """Public answers (found or not found) for ``CACHE_SECONDS``, in memory.
 
-    Not-found answers are kept too, so looking up unknown numbers again costs no requests.
+    Not-found answers are kept too, so looking up unknown numbers again costs no requests. The
+    cache holds at most ``CACHE_ENTRIES`` answers and ``CACHE_BYTES`` of bodies: expired
+    answers go first, then the least recently used.
     """
 
     def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         """Create an empty cache reading time from ``clock``."""
         self._clock = clock
         self._entries: OrderedDict[tuple[str, str], tuple[float, int, bytes]] = OrderedDict()
+        self._bytes = 0
 
     def get(self, key: tuple[str, str]) -> tuple[int, bytes] | None:
         """The cached status and body for ``key``, if still fresh."""
         entry = self._entries.get(key)
         if entry is None or self._clock() - entry[0] > CACHE_SECONDS:
-            self._entries.pop(key, None)
+            self._drop(key)
             return None
         self._entries.move_to_end(key)
         return entry[1], entry[2]
 
     def put(self, key: tuple[str, str], status_code: int, body: bytes) -> None:
-        """Keep the answer ``status_code`` with ``body`` for ``key``."""
-        self._entries[key] = (self._clock(), status_code, body)
-        self._entries.move_to_end(key)
-        while len(self._entries) > CACHE_ENTRIES:
-            self._entries.popitem(last=False)
+        """Keep the answer ``status_code`` with ``body`` for ``key``, if it fits at all."""
+        self._drop(key)
+        if len(body) > CACHE_BYTES:
+            return
+        now = self._clock()
+        for expired in [k for k, (at, _, _) in self._entries.items() if now - at > CACHE_SECONDS]:
+            self._drop(expired)
+        self._entries[key] = (now, status_code, body)
+        self._bytes += len(body)
+        while len(self._entries) > CACHE_ENTRIES or self._bytes > CACHE_BYTES:
+            self._drop(next(iter(self._entries)))
+
+    def size_in_bytes(self) -> int:
+        """The total size of the cached bodies."""
+        return self._bytes
+
+    def _drop(self, key: tuple[str, str]) -> None:
+        entry = self._entries.pop(key, None)
+        if entry is not None:
+            self._bytes -= len(entry[2])
 
 
 class RequestLimiter:
@@ -128,6 +148,13 @@ class RequestLimiter:
             theirs.popleft()
             if not theirs:
                 del self._sent_by[requester]
+
+
+@dataclass(frozen=True)
+class _Answer:
+    status_code: int
+    location: str
+    body: bytes
 
 
 @dataclass(frozen=True)
@@ -185,14 +212,10 @@ class CompaniesHouseClient:
         url = f"{DOCUMENT_API}/document/{document_id}/content"
         answer = self.cache.get((url, content_type))
         if answer is None:
-            response = await self._send(url, None, content_type)
-            if response.status_code in _REDIRECTS:
-                response = await self._stored_document(response.headers.get("location", ""))
-            answer = response.status_code, response.content
-            if len(answer[1]) > MAX_DOCUMENT_BYTES:
-                raise CompaniesHouseUnavailableError(
-                    f"{url} is larger than {MAX_DOCUMENT_BYTES} bytes"
-                )
+            sent = await self._send(url, None, content_type)
+            if sent.status_code in _REDIRECTS:
+                sent = await self._stored_document(sent.location)
+            answer = sent.status_code, sent.body
             self._remember((url, content_type), answer)
         return self._checked(url, *answer)
 
@@ -200,8 +223,8 @@ class CompaniesHouseClient:
         key = (str(httpx2.URL(url, params=params)), "application/json")
         answer = self.cache.get(key)
         if answer is None:
-            response = await self._send(url, params, "application/json")
-            answer = response.status_code, response.content
+            sent = await self._send(url, params, "application/json")
+            answer = sent.status_code, sent.body
             self._remember(key, answer)
         return self._parsed(url, self._checked(url, *answer))
 
@@ -222,30 +245,50 @@ class CompaniesHouseClient:
         if answer[0] in _CACHED_STATUSES:
             self.cache.put(key, *answer)
 
-    async def _send(self, url: str, params: dict[str, str] | None, accept: str) -> httpx2.Response:
+    async def _send(self, url: str, params: dict[str, str] | None, accept: str) -> _Answer:
         self.limiter.acquire(self.requester)
+        auth = httpx2.BasicAuth(self.api_key.get_secret_value(), "")
         failure: str | None = None
         try:
-            return await self.http.get(
-                url,
-                params=params,
-                headers={"Accept": accept},
-                auth=httpx2.BasicAuth(self.api_key.get_secret_value(), ""),
-                timeout=TIMEOUT,
-            )
+            return await self._download(url, params, {"Accept": accept}, auth)
         except httpx2.HTTPError as error:
             failure = f"{type(error).__name__} reaching {httpx2.URL(url).path}"
         raise CompaniesHouseUnavailableError(f"Companies House could not be reached ({failure})")
 
-    async def _stored_document(self, location: str) -> httpx2.Response:
+    async def _stored_document(self, location: str) -> _Answer:
         if not location.startswith("https://"):
             raise CompaniesHouseUnavailableError("Companies House redirected to a non-HTTPS URL")
         failure: str | None = None
         try:
-            return await self.http.get(location, timeout=TIMEOUT)
+            return await self._download(location, None, {}, None)
         except httpx2.HTTPError as error:
             failure = type(error).__name__
         raise CompaniesHouseUnavailableError(f"The document store could not be reached ({failure})")
+
+    async def _download(
+        self,
+        url: str,
+        params: dict[str, str] | None,
+        headers: dict[str, str],
+        auth: httpx2.BasicAuth | None,
+    ) -> _Answer:
+        """Read an answer, giving up as soon as it passes ``MAX_DOCUMENT_BYTES``."""
+        body = bytearray()
+        async with self.http.stream(
+            "GET", url, params=params, headers=headers, auth=auth, timeout=TIMEOUT
+        ) as response:
+            async for chunk in response.aiter_bytes():
+                body += chunk
+                if len(body) > MAX_DOCUMENT_BYTES:
+                    break
+            answer = _Answer(
+                response.status_code, response.headers.get("location", ""), bytes(body)
+            )
+        if len(body) > MAX_DOCUMENT_BYTES:
+            raise CompaniesHouseUnavailableError(
+                f"{httpx2.URL(url).path} is larger than {MAX_DOCUMENT_BYTES} bytes"
+            )
+        return answer
 
     @staticmethod
     def _checked(url: str, status_code: int, body: bytes) -> bytes:
