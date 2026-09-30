@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import type { UserEvent } from "@testing-library/user-event";
+import { vi } from "vitest";
 
 import type { CompanyRecord, PreviousAccounts } from "@/api";
 import { draftShapeProblem } from "@/filing/returns/draftShape";
@@ -33,6 +34,46 @@ async function chooseAcme(user: UserEvent) {
 }
 
 describe("company details from Companies House", () => {
+  it("keeps the company chosen last when an earlier choice answers later", async () => {
+    const beta = { ...SEARCH_RESULT, number: "07654321", name: "BETA GADGETS LTD" };
+    const betaRecord: CompanyRecord = { ...RECORD, number: beta.number, name: beta.name };
+    stubCompaniesHouse((path) => {
+      if (path.startsWith("/companies-house/search")) {
+        return { status: 200, body: { items: [SEARCH_RESULT, beta] } };
+      }
+      if (path === `/companies-house/companies/${beta.number}`) {
+        return { status: 200, body: betaRecord };
+      }
+      return undefined;
+    });
+    // Acme's record is slow: it answers only once Beta has been chosen and filled in.
+    let answerAcme = () => {};
+    const acmeAnswered = new Promise<void>((resolve) => {
+      answerAcme = resolve;
+    });
+    const stubbed = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith(`/companies/${RECORD.number}`)) await acmeAnswered;
+      return stubbed(input, init);
+    });
+    const user = renderApp("/file/company-details");
+
+    await chooseAcme(user);
+    const search = screen.getByRole("combobox", { name: /Find the company/ });
+    await user.clear(search);
+    await user.type(search, "beta");
+    await user.click(await screen.findByRole("option", { name: /BETA GADGETS LTD/ }));
+    expect(await screen.findByLabelText("Company name")).toHaveValue("BETA GADGETS LTD");
+
+    answerAcme();
+    await acmeAnswered;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByLabelText("Company name")).toHaveValue("BETA GADGETS LTD");
+    expect(screen.getByLabelText("Company registration number")).toHaveValue("07654321");
+    expect(openDraft().companies_house.number).toBe("07654321");
+  });
+
   it("fills in the company chosen from a search, and keeps its record for later", async () => {
     const fetchMock = stubCompaniesHouse();
     const user = renderApp("/file/company-details");

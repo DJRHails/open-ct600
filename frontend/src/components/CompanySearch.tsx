@@ -29,6 +29,19 @@ function suggestion(company: CompanySearchResult | string): string {
   return `${escapeHtml(company.name)} (${escapeHtml(company.number)})${address}`;
 }
 
+/** What the autocomplete says by default about using it, after the field's own hint. */
+const HOW_TO_USE =
+  "When autocomplete results are available use up and down arrows to review and enter to " +
+  "select. Touch device users, explore by touch or with swipe gestures.";
+
+/**
+ * The input's description. The autocomplete points ``aria-describedby`` at its own usage hint
+ * (and drops it once the user types), so the field's hint goes there too, or it is never read.
+ */
+export function assistiveHint(hint: string): string {
+  return `${hint.trim().replace(/\.?$/, ".")} ${HOW_TO_USE}`;
+}
+
 type CompanySearchProps = {
   id: string;
   label: string;
@@ -96,6 +109,7 @@ export function CompanySearch(props: CompanySearchProps) {
       tNoResults: noResults,
       tStatusQueryTooShort: (length) => `Type ${length} or more characters to search`,
       tStatusNoResults: noResults,
+      tAssistiveHint: () => assistiveHint(handlers.current.hint),
     });
     return () => {
       window.clearTimeout(timer);
