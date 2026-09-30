@@ -142,20 +142,31 @@ def read_filed_accounts(xhtml: bytes) -> FiledAccounts:
     """Read a filed Inline XBRL accounts document.
 
     Raises:
-        AccountsNotReadableError: If the document is not Inline XBRL we can read.
+        AccountsNotReadableError: If the document is not Inline XBRL we can read, including
+            any malformed date, scale or figure in it.
     """
     parser = etree.XMLParser(resolve_entities=False, no_network=True, huge_tree=True)
     try:
         root = etree.fromstring(xhtml, parser)
     except etree.XMLSyntaxError as error:
         raise AccountsNotReadableError(f"the document is not valid XHTML ({error})") from error
+    try:
+        return _read(root)
+    except AccountsNotReadableError:
+        raise
+    except UnreadableFactError as error:
+        raise AccountsNotReadableError(str(error)) from error
+    except (ValueError, ArithmeticError) as error:
+        raise AccountsNotReadableError(
+            f"a date, scale or figure in it is malformed ({type(error).__name__})"
+        ) from error
+
+
+def _read(root: etree._Element) -> FiledAccounts:
     facts = read_facts(root)
     if not facts:
         raise AccountsNotReadableError("the document has no Inline XBRL facts")
-    try:
-        return _Filing(facts).read()
-    except UnreadableFactError as error:
-        raise AccountsNotReadableError(str(error)) from error
+    return _Filing(facts).read()
 
 
 @dataclass

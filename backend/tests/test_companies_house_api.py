@@ -8,6 +8,7 @@ from typing import Any, get_args
 import httpx2
 import pytest
 from companies_house_stub import (
+    ACCOUNTS_XHTML,
     COMPANY,
     DOCUMENT,
     StubCompaniesHouse,
@@ -641,3 +642,92 @@ def test_repeat_lookups_come_from_the_cache():
 
     assert first == second
     assert len(stub.requests) == count
+
+
+def html_page() -> httpx2.Response:
+    return httpx2.Response(
+        200, content=b"<html>Service maintenance</html>", headers={"Content-Type": "text/html"}
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [f"/company/{COMPANY}/filing-history", f"/document/{DOCUMENT}", "/docs/sample"],
+    ids=["filing history", "document metadata", "document"],
+)
+def test_an_unexpected_page_in_place_of_the_accounts_leaves_the_rest_of_the_record(path, caplog):
+    stub = StubCompaniesHouse()
+    stub.answers[path] = html_page
+
+    with caplog.at_level(logging.WARNING):
+        response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 200
+    record = response.json()
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"]
+    assert caplog.text
+    assert API_KEY not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        html_page,
+        lambda: httpx2.Response(200, json=[]),
+        lambda: httpx2.Response(200, content=b'"text"'),
+    ],
+    ids=["html", "list", "string"],
+)
+def test_an_unexpected_profile_is_a_503(answer):
+    stub = StubCompaniesHouse()
+    stub.answers[f"/company/{COMPANY}"] = answer
+
+    response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 503
+    assert "unexpected answer" in response.json()["detail"]
+
+
+def test_search_skips_results_without_a_company_number():
+    stub = StubCompaniesHouse()
+    results = fixture("search-companies.json")
+    del results["items"][0]["company_number"]
+    stub.answers["/search/companies"] = json_answer(results)
+
+    response = lookup(stub, "/search?q=acme")
+
+    assert response.status_code == 200
+    assert [item["number"] for item in response.json()["items"]] == ["SC123456"]
+
+
+@pytest.mark.parametrize(
+    "reference", [{"day": "last", "month": 3}, {"day": 31, "month": 13}, "03-31"]
+)
+def test_a_malformed_reference_date_is_left_out(reference):
+    stub = StubCompaniesHouse()
+    profile = fixture("company-profile.json")
+    profile["accounts"]["accounting_reference_date"] = reference
+    stub.answers[f"/company/{COMPANY}"] = json_answer(profile)
+
+    response = lookup(stub, f"/companies/{COMPANY}")
+
+    assert response.status_code == 200
+    assert response.json()["accounts"]["reference_date"] is None
+
+
+def test_malformed_filed_accounts_are_explained_and_logged(caplog):
+    stub = StubCompaniesHouse()
+    malformed = ACCOUNTS_XHTML.replace(b'scale="0"', b'scale="0.0"', 1)
+    stub.answers["/docs/sample"] = lambda: httpx2.Response(200, content=malformed)
+
+    with caplog.at_level(logging.WARNING):
+        record = lookup(stub, f"/companies/{COMPANY}").json()
+
+    assert record["previous_accounts"] is None
+    assert record["previous_accounts_unavailable"] == (
+        "The previous period's accounts couldn't be read: a date, scale or figure in it is "
+        "malformed (ValueError)."
+    )
+    assert "ValueError" in caplog.text
+    assert API_KEY not in caplog.text

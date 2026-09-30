@@ -404,6 +404,42 @@ def test_unreadable_documents(document, reason):
         read_filed_accounts(document)
 
 
+SAMPLE = (FIXTURES / "Prod223_4316_02014751_20260331.html").read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("document", "reason"),
+    [
+        (
+            minimal_filing(
+                '<ix:nonFraction name="core:NetAssetsLiabilities" contextRef="e" unitRef="u" '
+                'decimals="0" scale="0.0">5</ix:nonFraction>'
+            ),
+            "malformed",
+        ),
+        (
+            minimal_filing(
+                '<ix:nonFraction name="core:NetAssetsLiabilities" contextRef="e" unitRef="u" '
+                'decimals="0" scale="999999999">5</ix:nonFraction>'
+            ),
+            "malformed",
+        ),
+        (
+            SAMPLE.replace(b"<xbrli:startDate>2025-", b"<xbrli:startDate>x2025-", 1),
+            "malformed",
+        ),
+        (
+            SAMPLE.replace(b"<xbrli:endDate>2026-", b"<xbrli:endDate>2026-13", 1),
+            "malformed",
+        ),
+    ],
+    ids=["non-integer scale", "huge scale", "bad context start", "bad context end"],
+)
+def test_malformed_figures_and_dates_make_the_filing_unreadable(document, reason):
+    with pytest.raises(AccountsNotReadableError, match=reason):
+        read_filed_accounts(document)
+
+
 def test_balance_sheets_add_up_where_the_filer_tagged_consistently():
     consistent = [name for name in FILINGS if name != "Prod223_4316_16890562_20260831.html"]
     for name in consistent:

@@ -158,18 +158,20 @@ class CompanyRecord(BaseModel):
 
 
 async def search(client: CompaniesHouseClient, query: str) -> SearchResults:
-    """Find companies by name or number."""
+    """Find companies by name or number; results without a company number are left out."""
     reply = await client.search(query, MAX_SEARCH_RESULTS)
+    items = reply.get("items")
     return SearchResults(
         items=[
             SearchResult(
                 number=item["company_number"],
-                name=item.get("title", ""),
+                name=str(item.get("title") or ""),
                 status=item.get("company_status"),
                 address=item.get("address_snippet"),
-                incorporated_on=item.get("date_of_creation"),
+                incorporated_on=day_or_none(item.get("date_of_creation")),
             )
-            for item in reply.get("items", [])[:MAX_SEARCH_RESULTS]
+            for item in (items if isinstance(items, list) else [])[:MAX_SEARCH_RESULTS]
+            if isinstance(item, dict) and isinstance(item.get("company_number"), str)
         ]
     )
 
@@ -204,7 +206,7 @@ async def company_record(client: CompaniesHouseClient, number: str, today: date)
         for code in profile.get("sic_codes", [])
     ]
     return CompanyRecord(
-        number=profile["company_number"],
+        number=str(profile.get("company_number") or number),
         name=profile.get("company_name", ""),
         status=profile.get("company_status"),
         incorporated_on=incorporated_on,
@@ -257,19 +259,26 @@ def _current_directors(officers: dict[str, Any]) -> list[Director]:
 
 
 def _accounts_dates(accounts: dict[str, Any]) -> AccountsDates:
-    reference = accounts.get("accounting_reference_date") or {}
-    reference_date = (
-        f"{int(reference['month']):02d}-{int(reference['day']):02d}"
-        if reference.get("day") and reference.get("month")
-        else None
-    )
+    """The profile's accounts dates; any that are missing or malformed are left out."""
     next_accounts = accounts.get("next_accounts") or {}
-    start, end = next_accounts.get("period_start_on"), next_accounts.get("period_end_on")
+    start = day_or_none(next_accounts.get("period_start_on"))
+    end = day_or_none(next_accounts.get("period_end_on"))
     return AccountsDates(
-        reference_date=reference_date,
-        last_made_up_to=(accounts.get("last_accounts") or {}).get("made_up_to"),
-        next_period=Period(start=start, end=end) if start and end else None,
+        reference_date=_reference_date(accounts.get("accounting_reference_date")),
+        last_made_up_to=day_or_none((accounts.get("last_accounts") or {}).get("made_up_to")),
+        next_period=Period(start=start, end=end) if start and end and start <= end else None,
     )
+
+
+def _reference_date(reference: Any) -> str | None:
+    """The accounting reference date as ``MM-DD``, if Companies House gives a real one."""
+    if not isinstance(reference, dict):
+        return None
+    try:
+        day = date(2000, int(reference["month"]), int(reference["day"]))  # a leap year
+    except (KeyError, TypeError, ValueError):
+        return None
+    return f"{day:%m-%d}"
 
 
 async def _previous_accounts(
@@ -334,6 +343,7 @@ async def _read_document(
     try:
         filed = await run_in_threadpool(read_filed_accounts, content)
     except AccountsNotReadableError as error:
+        logger.warning("Previous accounts %s unreadable: %s", document_id, error)
         return None, f"The previous period's accounts couldn't be read: {error}."
     if filed.period.end != filing.made_up_to:
         return None, (

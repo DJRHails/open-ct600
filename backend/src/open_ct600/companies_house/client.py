@@ -203,7 +203,20 @@ class CompaniesHouseClient:
             response = await self._send(url, params, "application/json")
             answer = response.status_code, response.content
             self._remember(key, answer)
-        return json.loads(self._checked(url, *answer))
+        return self._parsed(url, self._checked(url, *answer))
+
+    @staticmethod
+    def _parsed(url: str, body: bytes) -> dict[str, Any]:
+        """A JSON object, or unavailable (a maintenance page, say) if the body isn't one."""
+        try:
+            parsed = json.loads(body)
+        except ValueError:
+            parsed = None
+        if not isinstance(parsed, dict):
+            raise CompaniesHouseUnavailableError(
+                f"Companies House gave an unexpected answer for {httpx2.URL(url).path}"
+            )
+        return parsed
 
     def _remember(self, key: tuple[str, str], answer: tuple[int, bytes]) -> None:
         if answer[0] in _CACHED_STATUSES:
