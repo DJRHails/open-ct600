@@ -45,6 +45,7 @@ CREATIVE_PAYABLE_CREDIT = {
 }
 BANK = BANK_DETAILS
 DETAILS = "//ct:OverpaymentsAndRepayments/ct:BankAccountDetails"
+REPAYMENT_THIS_PERIOD = "//ct:ReturnInfoSummary/ct:ThisPeriod"  # box 40
 
 
 def problems_of(**overrides) -> dict[tuple, str]:
@@ -164,6 +165,23 @@ class TestTheReturn:
         ]
         assert text(envelope, "//ct:RepaymentsForThePeriodCoveredByThisReturn/ct:RandDTaxCredit")
         assert validate_return(envelope) == []
+
+    @pytest.mark.parametrize(
+        "shape",
+        [ERIS_PAYABLE_CREDIT, CREATIVE_PAYABLE_CREDIT],
+        ids=["ERIS payable credit", "creative payable credit"],
+    )
+    def test_ticks_box_40_when_money_is_due_back(self, shape):
+        """The guide: "Enter X in box 40 to alert HMRC that a repayment may be due"."""
+        envelope = build(make_return(**shape, repayment=BANK))
+
+        assert text(envelope, REPAYMENT_THIS_PERIOD) == "yes"
+        assert validate_return(envelope) == []
+
+    def test_leaves_box_40_blank_when_nothing_is_due_back(self):
+        envelope = build(make_return(repayment=BANK))
+
+        assert envelope.xpath(REPAYMENT_THIS_PERIOD, namespaces=NS) == []
 
     def test_hmrc_rules_alone_would_accept_the_return_without_them(self):
         """Only the service's check stops a payable credit being filed with no account."""
