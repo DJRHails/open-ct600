@@ -148,7 +148,7 @@ export function comparativesProblems(
   const figures = validatePreviousFigures(fields, draft.comparatives?.[section]);
   if (section !== "profit_and_loss") return figures.ok ? {} : figures.errors;
   const period = validatePreviousPeriod(draft.comparatives?.period, periodStart);
-  const tax = validateTaxOnProfit(draft.comparatives);
+  const tax = validateTaxOnProfit(draft.comparatives, previousTaxUnknown(draft));
   return {
     ...(figures.ok ? {} : figures.errors),
     ...(period.ok ? {} : period.errors),
@@ -156,9 +156,24 @@ export function comparativesProblems(
   };
 }
 
+/**
+ * Whether the accounts last filed at Companies House were read but did not give last period's
+ * tax charge: it must then be asked, not taken as £0 the way a blank figure usually is.
+ */
+export function previousTaxUnknown(draft: Draft): boolean {
+  const filed = draftRecord(draft)?.previous_accounts;
+  return filed !== undefined && filed !== null && (filed.profit_and_loss?.tax ?? null) === null;
+}
+
 /** The previous period's tax charge; a tax credit is negative. */
-function validateTaxOnProfit(answers: ComparativesAnswers | undefined) {
-  return parseSignedWholePounds(answers?.tax_on_profit ?? "", "previous period’s tax on profit");
+function validateTaxOnProfit(
+  answers: ComparativesAnswers | undefined,
+  required: boolean,
+): Parsed<number> {
+  const label = "previous period’s tax on profit";
+  const typed = answers?.tax_on_profit ?? "";
+  if (required && !typed.trim()) return { ok: false, error: `Enter the ${label}` };
+  return parseSignedWholePounds(typed, label);
 }
 
 /**
@@ -174,7 +189,7 @@ export function comparativesFor(
   const period = validatePreviousPeriod(draft.comparatives?.period, periodStart);
   const pnl = validatePreviousFigures(fields.profit_and_loss, draft.comparatives?.profit_and_loss);
   const sheet = validatePreviousFigures(fields.balance_sheet, draft.comparatives?.balance_sheet);
-  const tax = validateTaxOnProfit(draft.comparatives);
+  const tax = validateTaxOnProfit(draft.comparatives, previousTaxUnknown(draft));
   const employees = validatePreviousEmployees(draft.comparatives?.average_employees);
   if (!period.ok || !pnl.ok || !sheet.ok || !tax.ok || !employees.ok) return undefined;
   return {

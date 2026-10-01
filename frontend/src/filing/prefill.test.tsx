@@ -457,7 +457,7 @@ describe("the previous period's figures (comparatives)", () => {
     expect(tax).toHaveAccessibleDescription(/If it was a tax credit, put a minus sign in front/);
   });
 
-  it("leave last period's tax for the user when the filed accounts don't show it", () => {
+  it("ask for last period's tax, not taking it as £0, when the filed accounts don't show it", async () => {
     stubCompaniesHouse();
     const filed = RECORD.previous_accounts as PreviousAccounts;
     const record = {
@@ -468,11 +468,27 @@ describe("the previous period's figures (comparatives)", () => {
       },
     };
     withRecord(record);
-    renderApp("/file/profit-and-loss");
+    const user = renderApp("/file/profit-and-loss");
 
-    expect(screen.getByLabelText("Tax on profit in the previous period")).toHaveValue("");
+    const tax = screen.getByLabelText("Tax on profit in the previous period");
+    expect(tax).toHaveValue("");
     expect(within(line("Turnover")).getByLabelText("Previous period")).toHaveValue("120000");
     expect(draftShapeProblem({ companies_house: record })).toBeNull();
+    expect(
+      screen.getByText(
+        "We could not read last period’s tax charge from the accounts filed at Companies House. Enter it from the company’s accounts, or 0 if there was none.",
+      ),
+    ).toBeVisible();
+
+    await save(user);
+    expect(
+      screen.getByRole("link", { name: "Enter the previous period’s tax on profit" }),
+    ).toHaveAttribute("href", `#${tax.id}`);
+    expect(openDraft().comparatives).toBeUndefined();
+
+    await user.type(tax, "0");
+    await save(user);
+    expect(openDraft().comparatives).toMatchObject({ tax_on_profit: "0" });
   });
 
   describe("from accounts filed without a profit and loss account", () => {

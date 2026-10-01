@@ -18,6 +18,7 @@ import {
   PREVIOUS_END,
   PREVIOUS_START,
   previousFigureId,
+  previousTaxUnknown,
   TAX_ON_PROFIT,
   validatePreviousPeriod,
 } from "@/filing/comparatives";
@@ -141,24 +142,34 @@ type PreviousTaxProps = {
   value: string;
   onChange: (value: string) => void;
   error: string | undefined;
+  /** The filed accounts were read but gave no tax charge, so it must be entered. */
+  unknown: boolean;
 };
 
 /** Last period's tax charge, asked with the profit and loss account; this period's is worked out. */
-function PreviousTax({ value, onChange, error }: PreviousTaxProps) {
+function PreviousTax({ value, onChange, error, unknown }: PreviousTaxProps) {
   // A text keyboard, not a numeric one: some numeric keyboards have no minus sign.
   return (
-    <TextInput
-      id={previousFigureId(TAX_ON_PROFIT)}
-      label="Tax on profit in the previous period"
-      hint="The tax charge in last period’s profit and loss account. If it was a tax credit, put a minus sign in front, like -1200. We work out this period’s."
-      value={value}
-      onChange={onChange}
-      error={error}
-      prefix="£"
-      width="10"
-      spellCheck={false}
-      help={<QuestionHelp id="tax-on-profit-help" help={COMPARATIVES_HELP.tax_on_profit} />}
-    />
+    <>
+      {unknown ? (
+        <div className="govuk-inset-text">
+          We could not read last period’s tax charge from the accounts filed at Companies House.
+          Enter it from the company’s accounts, or 0 if there was none.
+        </div>
+      ) : null}
+      <TextInput
+        id={previousFigureId(TAX_ON_PROFIT)}
+        label="Tax on profit in the previous period"
+        hint="The tax charge in last period’s profit and loss account. If it was a tax credit, put a minus sign in front, like -1200. We work out this period’s."
+        value={value}
+        onChange={onChange}
+        error={error}
+        prefix="£"
+        width="10"
+        spellCheck={false}
+        help={<QuestionHelp id="tax-on-profit-help" help={COMPARATIVES_HELP.tax_on_profit} />}
+      />
+    </>
   );
 }
 
@@ -428,6 +439,7 @@ export function AmountSectionPage<K extends AmountSectionKey>({ section, help }:
           value={previous.tax_on_profit ?? ""}
           onChange={(value) => setPrevious((current) => ({ ...current, tax_on_profit: value }))}
           error={errors[previousFigureId(TAX_ON_PROFIT)]}
+          unknown={previousTaxUnknown(draft)}
         />
       ) : null}
     </SectionFrame>
