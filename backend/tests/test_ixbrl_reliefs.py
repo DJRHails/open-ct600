@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 import pytest
-from answers import PAYE_REFERENCE, RD_FORMS, boxes, make_return, period
+from answers import BANK_DETAILS, PAYE_REFERENCE, RD_FORMS, boxes, make_return, period
 from ixbrl_harness import Document, Rules, Validation, validate
 
 from open_ct600.ct600 import compute_return
@@ -59,17 +59,20 @@ RETURNS = {
         **LOSS_MAKING,
         research_and_development=research("sme", 100_000, claim_payable_credit=True),
         supplementary_pages={"L": paye("SME")},
+        repayment=BANK_DETAILS,
     ),
     "large-company-rdec-before-april-2024": make_return(
         **YEAR_TO_MARCH_2024,
         **LOSS_MAKING,
         research_and_development=research("rdec", 100_000, rd_workers_paye_and_nic=30_000),
         supplementary_pages={"L": {}},
+        repayment=BANK_DETAILS,
     ),
     "merged-rdec-payable": make_return(
         **LOSS_MAKING,
         research_and_development=research("rdec", 200_000, company_is_sme=True),
         supplementary_pages={"L": paye("Step3")},
+        repayment=BANK_DETAILS,
     ),
     "eris": make_return(
         **LOSS_MAKING,
@@ -77,6 +80,7 @@ RETURNS = {
             "eris", 50_000, intensity="35", claim_payable_credit=True
         ),
         supplementary_pages={"L": paye("SME")},
+        repayment=BANK_DETAILS,
     ),
 }
 COMPUTATIONS = {name: compute_return(ct600) for name, ct600 in RETURNS.items()}

@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 import pytest
-from answers import CREATIVES_FORM, boxes, compute, page_of, period, problems
+from answers import BANK_DETAILS, CREATIVES_FORM, boxes, compute, page_of, period, problems
 
 from open_ct600.pages.tonnage_tax import daily_profit
 
@@ -455,6 +455,7 @@ def test_avec_worked_example_for_a_loss_making_producer():
     # nine associated companies the limits are divided by ten, so all of it is taxed at 25%,
     # giving the research example's box 475 of 20,000.
     computation = compute(
+        repayment=BANK_DETAILS,
         **period("2025-04-01", "2026-03-31", "2026-06-01"),
         profit_and_loss={"turnover": 0, "other_expenses": 192_000},
         tax_adjustments={"associated_companies": 9},
@@ -506,6 +507,7 @@ def test_cultural_relief_worked_example():
     }
 
     computation = compute(
+        repayment=BANK_DETAILS,
         **period("2025-04-01", "2026-03-31", "2026-06-01"),
         profit_and_loss={"turnover": 100_000},
         supplementary_pages={"P": theatre},
@@ -531,7 +533,7 @@ def test_cultural_relief_worked_example():
 
 
 def test_creative_claims_need_the_additional_information_form():
-    found = problems(supplementary_pages={"P": HETV})
+    found = problems(supplementary_pages={"P": HETV}, repayment=BANK_DETAILS)
 
     assert list(found) == [("creative_industries", "additional_information_submitted")]
 

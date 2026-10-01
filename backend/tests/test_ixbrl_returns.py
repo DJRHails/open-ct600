@@ -4,6 +4,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 import pytest
+from answers import BANK_DETAILS
 from ixbrl_harness import Document, Problem, Rules, Validation, validate
 
 from open_ct600.ct600 import CT600Return, ReturnComputation, compute_return
@@ -179,6 +180,7 @@ RETURNS = {
             "claim_payable_credit": True,
         },
         supplementary_pages={"L": {}},
+        repayment=BANK_DETAILS,
     ),
     "merged-rdec": make_return(
         research_and_development={**RD_FORMS, "scheme": "rdec", "qualifying_expenditure": 50_000},
@@ -194,6 +196,7 @@ RETURNS = {
     "theatre-tax-relief": make_return(
         creative_industries={"additional_information_submitted": True},
         supplementary_pages={"P": THEATRE},
+        repayment=BANK_DETAILS,
     ),
     "ring-fence-trade": make_return(
         profit_and_loss={"interest_income": 10_000},

@@ -11,6 +11,14 @@ from open_ct600.ct600 import CT600Return, ReturnComputation, compute_return
 RD_FORMS = {"claimed_in_previous_three_years": True, "additional_information_submitted": True}
 PAYE_REFERENCE = [{"HMRCofficeNumber": "123", "EmployerPAYEreference": "AB12345"}]
 CREATIVES_FORM = {"creative_industries": {"additional_information_submitted": True}}
+# The account HMRC pays money due back into (boxes 920 to 940): needed whenever a return shows a
+# repayment or payable credit. Synthetic: sort code 00-00-00 is no real branch.
+BANK_DETAILS = {
+    "bank_name": "Synthetic Bank plc",
+    "sort_code": "00-00-00",
+    "account_number": "00000000",
+    "account_name": "Acme Widgets Ltd",
+}
 
 
 def answers(**overrides) -> dict:
