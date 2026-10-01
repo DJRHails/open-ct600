@@ -15,6 +15,7 @@ import {
   RESEARCH_HELP,
   SURRENDERER_HELP,
 } from "@/content/help/reliefs";
+import { REPAYMENT_HELP } from "@/content/help/repayment";
 import { TAX_ADJUSTMENTS_HELP } from "@/content/help/taxAdjustments";
 import type { PlainHelp, QuestionHelp } from "@/content/help/types";
 import {
@@ -26,6 +27,7 @@ import {
   TAX_ADJUSTMENTS,
 } from "@/filing/model";
 import { EMPTY_RESEARCH } from "@/filing/reliefs";
+import { EMPTY_REPAYMENT } from "@/filing/repayment";
 
 const INDEX = indexGuidance(guidanceJson as Guidance);
 
@@ -47,6 +49,7 @@ const QUESTIONS: [section: string, help: Record<string, QuestionHelp>, asked: st
     ["surrenderable_amount", "surrendered_to_others", "consortium_share"],
   ],
   ["loan dates", { loan_date: LOAN_DATE_HELP }, ["loan_date"]],
+  ["bank details for repayment", REPAYMENT_HELP, Object.keys(EMPTY_REPAYMENT)],
   ["supplementary pages", { pages: CHOOSE_PAGES_HELP }, ["pages"]],
   [
     "previous period",

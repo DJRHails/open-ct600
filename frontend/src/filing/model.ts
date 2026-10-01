@@ -18,6 +18,7 @@ import type {
 } from "@/api";
 import type { DateParts } from "@/components/forms";
 import type { CreativeAnswers, ResearchAnswers, SurrendererAnswers } from "@/filing/reliefs";
+import type { RepaymentAnswers } from "@/filing/repayment";
 import { LEGAL_FORMS } from "@/filing/companiesHouse";
 import {
   type ComparativesAnswers,
@@ -82,6 +83,8 @@ export type Draft = {
   creative_industries?: CreativeAnswers;
   /** Last period's figures and dates, typed on the profit and loss and balance sheet pages. */
   comparatives?: ComparativesAnswers;
+  /** The account HMRC pays money due back into, asked when the computation shows any. */
+  repayment?: RepaymentAnswers;
 };
 
 export type FieldErrors = Record<string, string>;

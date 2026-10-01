@@ -15,6 +15,7 @@ import { BALANCE_SHEET, PROFIT_AND_LOSS, TAX_ADJUSTMENTS } from "@/filing/model"
 import { RELIEF_TASKS } from "@/filing/payload";
 import { CreativeFormPage } from "@/filing/reliefs/CreativeFormPage";
 import { LoanDatesPage } from "@/filing/reliefs/LoanDatesPage";
+import { RepaymentPage } from "@/filing/reliefs/RepaymentPage";
 import { ResearchAndDevelopmentPage } from "@/filing/reliefs/ResearchAndDevelopmentPage";
 import { SurrenderersPage } from "@/filing/reliefs/SurrenderersPage";
 import { DeleteReturnPage } from "@/filing/returns/DeleteReturnPage";
@@ -78,6 +79,7 @@ function FilingPages() {
       <Route path={RELIEF_TASKS.participator_loan_dates.slug} element={<LoanDatesPage />} />
       <Route path={RELIEF_TASKS.group_relief_surrenderers.slug} element={<SurrenderersPage />} />
       <Route path={RELIEF_TASKS.creative_industries.slug} element={<CreativeFormPage />} />
+      <Route path={RELIEF_TASKS.repayment.slug} element={<RepaymentPage />} />
       <Route path="supplementary-pages" element={<ChoosePagesPage />} />
       <Route path="supplementary-pages/:code" element={<PageAnswersPage />} />
       <Route path="supplementary-pages/:code/:screen" element={<PageScreenPage />} />

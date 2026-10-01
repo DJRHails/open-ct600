@@ -27,6 +27,7 @@ import {
   schemesFor,
   type SurrendererFigures,
 } from "@/filing/reliefs";
+import { EMPTY_REPAYMENT } from "@/filing/repayment";
 import { isRecord } from "@/filing/returns/savedReturns";
 
 /** Where the shape is wrong, like ``draft.company.name``; ``null`` if it is right. */
@@ -293,6 +294,7 @@ const DRAFT_CHECKS: { [K in keyof Required<Draft>]: Check } = {
     tax_on_profit: optional(isText),
     average_employees: optional(isText),
   }),
+  repayment: fieldsLike(EMPTY_REPAYMENT),
 };
 
 function hasCheck(key: string): key is keyof Draft {

@@ -19,6 +19,7 @@ import {
 import { type ReliefTask, RELIEF_TASKS, reliefComplete, reliefTasks } from "@/filing/payload";
 import { pageName } from "@/filing/supplementary/content";
 import { useSchemaPages } from "@/filing/supplementary/schema";
+import { useRepaymentDue } from "@/filing/useRepaymentDue";
 
 type Task = { id: string; title: string; to: string; completed: boolean };
 
@@ -78,12 +79,13 @@ function CheckTask({ canStart }: { canStart: boolean }) {
  * The reliefs and supplementary pages tasks: the R&D claim, choosing the pages, then each page
  * chosen, followed by any relief answers it needs that it has no box for.
  */
-function useSupplementaryTasks(): Task[] {
+function useSupplementaryTasks(): { supplementary: Task[]; repayment: Task[] } {
   const { draft } = useDraft();
   const schema = useSchemaPages(needsSchema(draft));
   const pages = schema.status === "ready" ? schema.pages : undefined;
   const chosen = draft.chosen_pages ?? [];
   const reliefs = reliefTasks(draft, pages);
+  const due = useRepaymentDue(draft, pages);
   const reliefTask = (task: ReliefTask): Task => ({
     id: task,
     title: RELIEF_TASKS[task].title,
@@ -96,7 +98,7 @@ function useSupplementaryTasks(): Task[] {
     to: CHOOSE_PAGES,
     completed: draft.chosen_pages !== undefined,
   };
-  return [
+  const supplementary = [
     reliefTask("research_and_development"),
     choose,
     ...chosen.flatMap((code) => {
@@ -111,20 +113,24 @@ function useSupplementaryTasks(): Task[] {
       return [pageTask, ...extras.map(reliefTask)];
     }),
   ];
+  // Asked once the computation shows money due back, and kept once given.
+  const repayment = due || reliefs.includes("repayment") ? [reliefTask("repayment")] : [];
+  return { supplementary, repayment };
 }
 
 export function TaskListPage() {
   usePageTitle("Company Tax Return");
   const { draft, receipt } = useDraft();
-  const supplementary = useSupplementaryTasks();
+  const { supplementary, repayment } = useSupplementaryTasks();
   const sections: Task[] = SECTION_ORDER.map((section) => ({
     id: section,
     title: SECTION_TITLES[section],
     to: `/file/${SECTION_SLUGS[section]}`,
     completed: sectionComplete(draft, section),
   }));
-  const total = sections.length + supplementary.length;
-  const completed = completedCount(draft) + supplementary.filter((task) => task.completed).length;
+  const extras = [...supplementary, ...repayment];
+  const total = sections.length + extras.length;
+  const completed = completedCount(draft) + extras.filter((task) => task.completed).length;
   const started = completed > 0 || Object.keys(draft).length > 0;
   const periodEnd = savedPeriod(draft)?.end;
 
@@ -150,6 +156,17 @@ export function TaskListPage() {
           <TaskItem key={task.id} task={task} />
         ))}
       </ul>
+
+      {repayment.length > 0 ? (
+        <>
+          <h2 className="govuk-heading-m">Money due back to the company</h2>
+          <ul className="govuk-task-list">
+            {repayment.map((task) => (
+              <TaskItem key={task.id} task={task} />
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       <h2 className="govuk-heading-m">Submit</h2>
       <ul className="govuk-task-list">

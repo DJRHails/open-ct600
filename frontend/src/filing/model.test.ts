@@ -354,6 +354,7 @@ describe("toReturn", () => {
       participator_loan_dates: null,
       group_relief_surrenderers: [],
       creative_industries: null,
+      repayment: null,
     });
   });
 
