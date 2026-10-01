@@ -23,6 +23,7 @@ from open_ct600.ct600 import (
     SignatoryCapacity,
 )
 from open_ct600.hmrc.xmldoc import CT_NS
+from open_ct600.repayment import BankDetails
 from open_ct600.schema.spec import PAGE_DEFINITIONS, RETURN_PATH, SpecNode, load_spec
 
 SCHEMA_VERSION = "2025-v1.994"
@@ -149,11 +150,27 @@ def _return_tree(
     given = {box.box for box in computation.boxes if box.value}
     for box in computation.boxes:
         _place_box(tree, box, given)
+    if ct600.repayment is not None:
+        _bank_details(tree, ct600.repayment)
     for code, page in computation.pages.items():
         tree[_PAGE_ELEMENT_BY_CODE[code]] = page
         if code in _TICKED_BY_PAGE:
             _put(tree, _main_return_boxes()[_TICKED_BY_PAGE[code]], "yes")
     return tree
+
+
+def _bank_details(tree: Tree, details: BankDetails) -> None:
+    """Boxes 920 to 940, the account a repayment or payable credit is paid into."""
+    values = {
+        "920": details.bank_name,
+        "925": details.sort_code,
+        "930": details.account_number,
+        "935": details.account_name,
+        "940": details.building_society_reference,
+    }
+    for box, value in values.items():
+        if value is not None:
+            _put(tree, _main_return_boxes()[box], value)
 
 
 def _return_info(computation: ReturnComputation) -> Tree:

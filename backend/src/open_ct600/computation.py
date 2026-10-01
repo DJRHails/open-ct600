@@ -1084,6 +1084,28 @@ def _check_creative_form(run: _Evaluation) -> None:
         )
 
 
+REPAYMENT_BOXES = (605, 875, 880, 885, 886)
+"""Boxes that show money due back: tax overpaid (including surplus credits) and the payable
+R&D and creative credits."""
+
+
+def _check_repayment_account(run: _Evaluation) -> None:
+    """Money due back needs the account to pay it into (``open_ct600.repayment``)."""
+    if run.ct600.repayment is not None:
+        return
+    if all(run.value(box) <= 0 for box in REPAYMENT_BOXES):
+        return
+    run.problems.append(
+        Problem(
+            ("repayment",),
+            "Enter the bank details for HMRC to pay the money due back to the company into: "
+            "HMRC pays payable credits and repayments only into the account given on the "
+            "return (boxes 920 to 940)",
+            "920",
+        )
+    )
+
+
 def _check_completed_pages(run: _Evaluation) -> None:
     """Check each completed page against the schema, as HMRC will."""
     spec = load_spec()
@@ -1250,6 +1272,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     rd_used = redemption.used_against_other_liabilities if redemption else ZERO
     _check_other_liabilities(run, rd_used + creative_used)
     _check_creative_form(run)
+    _check_repayment_account(run)
     if ct600.accounts.dormant and run.value(510) > 0:
         run.problems.append(
             Problem(

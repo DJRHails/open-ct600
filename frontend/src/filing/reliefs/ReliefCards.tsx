@@ -1,8 +1,9 @@
-import type { CT600Return, ResearchAndDevelopment, SchemaPage } from "@/api";
+import type { BankDetails, CT600Return, ResearchAndDevelopment, SchemaPage } from "@/api";
 import { Card, SummaryList, type SummaryRow } from "@/components/content";
 import { useDraft } from "@/filing/draft";
 import { RELIEF_TASKS, type ReliefTask, reliefTasks } from "@/filing/payload";
 import { LOAN_TABLES, loanRows, surrenderingCompanies } from "@/filing/reliefs";
+import { formatSortCode } from "@/filing/repayment";
 import { formatDate, formatPounds } from "@/format";
 
 const SCHEME_NAMES: Record<ResearchAndDevelopment["scheme"], string> = {
@@ -77,6 +78,20 @@ function surrendererRows(ct600: CT600Return): SummaryRow[] {
   }));
 }
 
+function bankRows(details: BankDetails | null | undefined): SummaryRow[] {
+  if (!details) return [];
+  const rows: (SummaryRow | null)[] = [
+    { key: "Name of bank or building society", value: details.bank_name },
+    { key: "Name on the account", value: details.account_name },
+    { key: "Sort code", value: formatSortCode(details.sort_code) },
+    { key: "Account number", value: details.account_number },
+    details.building_society_reference
+      ? { key: "Building society roll number", value: details.building_society_reference }
+      : null,
+  ];
+  return rows.filter((row): row is SummaryRow => row !== null);
+}
+
 function rowsFor(task: ReliefTask, ct600: CT600Return, pages: SchemaPage[]): SummaryRow[] {
   switch (task) {
     case "research_and_development":
@@ -87,6 +102,8 @@ function rowsFor(task: ReliefTask, ct600: CT600Return, pages: SchemaPage[]): Sum
       return surrendererRows(ct600);
     case "creative_industries":
       return [{ key: "Additional information form submitted", value: "Yes" }];
+    case "repayment":
+      return bankRows(ct600.repayment);
   }
 }
 

@@ -5,6 +5,7 @@ from dataclasses import replace
 from decimal import Decimal
 
 import pytest
+from answers import BANK_DETAILS
 from lxml import etree
 
 from open_ct600.ct600 import CT600Box, CT600Return, Declaration, compute_return
@@ -144,6 +145,8 @@ SHIP = {
 }
 ADDRESS = {"Line": ["1 Dock Road", "Tilbury"]}
 CREATIVES_FORM = {"creative_industries": {"additional_information_submitted": True}}
+# Returns with a payable credit or repayment need the account to pay it into (boxes 920-940).
+REPAYMENT = {"repayment": BANK_DETAILS}
 
 RELIEF_SHAPES = {
     "merged RDEC, profit-making (CT600L)": {
@@ -155,6 +158,7 @@ RELIEF_SHAPES = {
         "supplementary_pages": {"L": {}},
     },
     "merged RDEC, loss-making to step 7 (CT600L)": {
+        **REPAYMENT,
         **LOSS_MAKING,
         "research_and_development": {
             **RD_FORMS,
@@ -172,6 +176,7 @@ RELIEF_SHAPES = {
         },
     },
     "ERIS payable credit (CT600L)": {
+        **REPAYMENT,
         **LOSS_MAKING,
         "research_and_development": {
             **RD_FORMS,
@@ -192,6 +197,7 @@ RELIEF_SHAPES = {
         },
     },
     "SME scheme before April 2024 (CT600L)": {
+        **REPAYMENT,
         "period": {"start": "2023-04-01", "end": "2024-03-31"},
         "accounts": {"approval_date": "2024-06-01"},
         **LOSS_MAKING,
@@ -205,6 +211,7 @@ RELIEF_SHAPES = {
         "supplementary_pages": {"L": SME_PAYE},
     },
     "large-company RDEC straddling April 2023 (CT600L)": {
+        **REPAYMENT,
         "period": {"start": "2023-01-01", "end": "2023-12-31"},
         "accounts": {"approval_date": "2024-06-01"},
         **LOSS_MAKING,
@@ -408,6 +415,7 @@ RELIEF_SHAPES = {
         "profit_and_loss": {"turnover": 60_000},
     },
     "trading loss with surrender for ERIS credit": {
+        **REPAYMENT,
         **LOSS_MAKING,
         "research_and_development": {
             **RD_FORMS,
@@ -460,6 +468,7 @@ RELIEF_SHAPES = {
         }
     },
     "audio-visual expenditure credit (CT600P)": {
+        **REPAYMENT,
         **LOSS_MAKING,
         **CREATIVES_FORM,
         "supplementary_pages": {
@@ -482,6 +491,7 @@ RELIEF_SHAPES = {
         },
     },
     "theatre tax relief (CT600P)": {
+        **REPAYMENT,
         **LOSS_MAKING,
         **CREATIVES_FORM,
         "supplementary_pages": {

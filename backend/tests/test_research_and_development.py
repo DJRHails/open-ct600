@@ -3,7 +3,16 @@
 from decimal import Decimal
 
 import pytest
-from answers import PAYE_REFERENCE, RD_FORMS, boxes, compute, page_of, period, problems
+from answers import (
+    BANK_DETAILS,
+    PAYE_REFERENCE,
+    RD_FORMS,
+    boxes,
+    compute,
+    page_of,
+    period,
+    problems,
+)
 
 CALENDAR_2025 = period("2025-01-01", "2025-12-31", "2026-06-01")
 YEAR_TO_MARCH_2024 = period("2023-04-01", "2024-03-31", "2024-06-01")
@@ -75,6 +84,7 @@ def test_r1_merged_rdec_for_a_profit_making_company_is_set_against_its_tax():
 
 def test_r2_merged_rdec_for_a_loss_maker_is_paid_after_notional_tax_at_19_percent():
     computation = compute(
+        repayment=BANK_DETAILS,
         **CALENDAR_2025,
         profit_and_loss={"turnover": 10_000, "other_expenses": 100_000},
         research_and_development=rd("rdec", 200_000, company_is_sme=True),
@@ -108,6 +118,7 @@ def test_r2_merged_rdec_for_a_loss_maker_is_paid_after_notional_tax_at_19_percen
 
 def test_merged_rdec_notional_tax_is_25_percent_for_main_rate_companies():
     computation = compute(
+        repayment=BANK_DETAILS,
         profit_and_loss={"turnover": 260_000},
         research_and_development=rd("rdec", 2_000_000),
         supplementary_pages={"L": paye(100_000, "Step3")},
@@ -127,6 +138,7 @@ def test_merged_rdec_notional_tax_is_25_percent_for_main_rate_companies():
 
 def test_r3_eris_payable_credit():
     computation = compute(
+        repayment=BANK_DETAILS,
         profit_and_loss={"turnover": 50_000, "other_expenses": 100_000},
         research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
         supplementary_pages={"L": paye(10_000)},
@@ -150,6 +162,7 @@ def test_r3_eris_payable_credit():
 def test_eris_credit_is_limited_to_the_loss_other_profits_cannot_absorb():
     # CIRD122000 Company B: 100,000 of other profits leaves 36,000 unrelieved; 14.5% = 5,220
     computation = compute(
+        repayment=BANK_DETAILS,
         profit_and_loss={"turnover": 50_000, "other_expenses": 100_000, "interest_income": 100_000},
         research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
         supplementary_pages={"L": paye(10_000)},
@@ -161,6 +174,7 @@ def test_eris_credit_is_limited_to_the_loss_other_profits_cannot_absorb():
 def test_eris_credit_is_capped_by_paye_with_the_allowance_reduced_for_a_short_period():
     # 1 October 2024 to 31 March 2025 is 182 days: cap 20,000 x 182/365 = 9,972.60
     computation = compute(
+        repayment=BANK_DETAILS,
         **period("2024-10-01", "2025-03-31", "2025-06-01"),
         profit_and_loss={"turnover": 50_000, "other_expenses": 100_000},
         research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
@@ -183,6 +197,7 @@ def test_the_paye_cap_exception_needs_limited_connected_person_spending():
     }
 
     found = problems(
+        repayment=BANK_DETAILS,
         profit_and_loss={"turnover": 50_000, "other_expenses": 100_000},
         research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
         supplementary_pages={"L": exception},
@@ -200,6 +215,7 @@ def test_r4_sme_scheme_before_april_2024():
         **YEAR_TO_MARCH_2024,
         "profit_and_loss": {"turnover": 80_000, "other_expenses": 100_000},
         "supplementary_pages": {"L": paye(10_000)},
+        "repayment": BANK_DETAILS,
     }
     claim = rd("sme", 100_000, claim_payable_credit=True)
 
@@ -231,6 +247,7 @@ def test_sme_additional_deduction_straddling_1_april_2023_is_weighted_by_days():
 
 def test_large_company_rdec_straddling_1_april_2023():
     computation = compute(
+        repayment=BANK_DETAILS,
         **CALENDAR_2023,
         profit_and_loss={"turnover": 10_000, "other_expenses": 100_000},
         research_and_development=rd("rdec", 100_000, rd_workers_paye_and_nic=5_000),
@@ -384,6 +401,7 @@ def test_paye_needs_its_employer_reference():
     step_3 = {"Step3": {"PAYENICsForWhichTheCompanyIsLiableInThisAP": "30000"}}
 
     found = problems(
+        repayment=BANK_DETAILS,
         **CALENDAR_2025,
         profit_and_loss={"turnover": 10_000, "other_expenses": 100_000},
         research_and_development=rd("rdec", 200_000),
@@ -442,6 +460,7 @@ def test_accounts_include_the_rdec_income_the_tax_charge_is_on():
 def test_a_payable_rd_tax_credit_is_a_credit_in_the_accounts_tax_line():
     # ERIS: no Corporation Tax, and a 19,720 payable credit, shown as a tax credit.
     computation = compute(
+        repayment=BANK_DETAILS,
         profit_and_loss={"turnover": 50_000, "other_expenses": 100_000},
         research_and_development=rd("eris", 100_000, intensity="35", claim_payable_credit=True),
         supplementary_pages={"L": paye(10_000)},

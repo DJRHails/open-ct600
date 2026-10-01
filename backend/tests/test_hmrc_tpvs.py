@@ -11,6 +11,7 @@ from pathlib import Path
 
 import httpx2
 import pytest
+from answers import BANK_DETAILS
 
 from open_ct600.ct600 import CT600Return, Declaration, compute_return
 from open_ct600.hmrc.client import BusinessErrors, IRmarkRejectedError, TransactionEngineClient
@@ -179,6 +180,20 @@ AUTHORISED = {
         "Status": "Director",
     }
 }
+ERIS_PAYABLE_CREDIT = {
+    "period": {"start": "2025-04-01", "end": "2026-03-31"},
+    "accounts": {"approval_date": "2026-06-30"},
+    **LOSS_MAKING,
+    "research_and_development": {
+        **RD_FORMS,
+        "scheme": "eris",
+        "qualifying_expenditure": 50_000,
+        "intensity": "35",
+        "claim_payable_credit": True,
+    },
+    "supplementary_pages": {"L": SME_PAYE},
+    "repayment": BANK_DETAILS,
+}
 RELIEFS = {
     "group relief claimant (CT600C)": (
         {
@@ -231,6 +246,7 @@ RELIEFS = {
                 "claim_payable_credit": True,
             },
             "supplementary_pages": {"L": SME_PAYE},
+            "repayment": BANK_DETAILS,
         },
         "//ct:RepaymentsForThePeriodCoveredByThisReturn/ct:RandDTaxCredit",
         "13485.00",
@@ -248,21 +264,15 @@ RELIEFS = {
         "10000.00",
     ),
     "ERIS payable credit, period ending March 2026 (CT600L)": (
-        {
-            "period": {"start": "2025-04-01", "end": "2026-03-31"},
-            "accounts": {"approval_date": "2026-06-30"},
-            **LOSS_MAKING,
-            "research_and_development": {
-                **RD_FORMS,
-                "scheme": "eris",
-                "qualifying_expenditure": 50_000,
-                "intensity": "35",
-                "claim_payable_credit": True,
-            },
-            "supplementary_pages": {"L": SME_PAYE},
-        },
+        ERIS_PAYABLE_CREDIT,
         "//ct:RepaymentsForThePeriodCoveredByThisReturn/ct:RandDTaxCredit",
         "13485.00",
+    ),
+    # Synthetic bank details (sort code 00-00-00 is no real branch) for the payable credit.
+    "bank details for a payable credit (boxes 920 to 940)": (
+        ERIS_PAYABLE_CREDIT,
+        "//ct:OverpaymentsAndRepayments/ct:BankAccountDetails/ct:SortCode",
+        "000000",
     ),
     "tax avoidance scheme (CT600J)": (
         {

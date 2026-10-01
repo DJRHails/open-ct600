@@ -390,6 +390,17 @@ export type CT600Return = {
   group_relief_surrenderers?: SurrenderingCompany[];
   participator_loan_dates?: ParticipatorLoanDates | null;
   creative_industries?: { additional_information_submitted: boolean } | null;
+  /** The account HMRC pays money due back into (boxes 920 to 940). */
+  repayment?: BankDetails | null;
+};
+
+/** CT600 boxes 920 to 940: digits only in the sort code (6) and account number (8). */
+export type BankDetails = {
+  bank_name: string;
+  sort_code: string;
+  account_number: string;
+  account_name: string;
+  building_society_reference: string | null;
 };
 
 export type SignatoryCapacity = "director" | "company_secretary" | "authorised_agent";

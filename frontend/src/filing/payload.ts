@@ -13,13 +13,15 @@ import {
   validateResearch,
   validateSurrenderers,
 } from "@/filing/reliefs";
+import { validateRepayment } from "@/filing/repayment";
 import { convertPage } from "@/filing/supplementary/answers";
 
 export type ReliefTask =
   | "research_and_development"
   | "participator_loan_dates"
   | "group_relief_surrenderers"
-  | "creative_industries";
+  | "creative_industries"
+  | "repayment";
 
 /** Each relief task's title, its path under ``/file``, and the page it belongs with, if any. */
 export const RELIEF_TASKS: Record<
@@ -46,6 +48,11 @@ export const RELIEF_TASKS: Record<
     slug: "creative-industries-form",
     page: "P",
   },
+  repayment: {
+    title: "Bank details for repayment",
+    slug: "repayment-bank-details",
+    page: null,
+  },
 };
 
 type ReliefFields = Required<
@@ -55,6 +62,7 @@ type ReliefFields = Required<
     | "participator_loan_dates"
     | "group_relief_surrenderers"
     | "creative_industries"
+    | "repayment"
   >
 >;
 
@@ -78,13 +86,18 @@ function needsLoanDates(draft: Draft, pages: SchemaPage[] | undefined): boolean 
   return Object.values(loanRows(ct600a)).some((rows) => rows.length > 0);
 }
 
-/** The relief tasks that apply: R&D always; the others when their page needs them. */
+/**
+ * The relief tasks that apply: R&D always; the others when their page needs them; the bank
+ * details once given. Whether the bank details are needed depends on the computation, which
+ * the task list asks for (``useRepaymentDue``).
+ */
 export function reliefTasks(draft: Draft, pages: SchemaPage[] | undefined): ReliefTask[] {
   const ct600c = pageTree(draft, pages, "C");
   const tasks: ReliefTask[] = ["research_and_development"];
   if (needsLoanDates(draft, pages)) tasks.push("participator_loan_dates");
   if (ct600c && surrenderingCompanies(ct600c).length > 0) tasks.push("group_relief_surrenderers");
   if (draft.chosen_pages?.includes("P")) tasks.push("creative_industries");
+  if (draft.repayment !== undefined) tasks.push("repayment");
   return tasks;
 }
 
@@ -112,6 +125,8 @@ export function checkRelief(
     }
     case "creative_industries":
       return draft.creative_industries ? validateCreative(draft.creative_industries) : null;
+    case "repayment":
+      return draft.repayment ? validateRepayment(draft.repayment) : null;
   }
 }
 
@@ -130,6 +145,7 @@ function reliefFields(draft: Draft, pages: SchemaPage[] | undefined): ReliefFiel
     participator_loan_dates: null,
     group_relief_surrenderers: [],
     creative_industries: null,
+    repayment: null,
   };
   for (const task of reliefTasks(draft, pages)) {
     const checked = checkRelief(draft, task, pages);

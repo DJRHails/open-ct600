@@ -41,6 +41,7 @@ from open_ct600.problems import InvalidReturnError, Problem
 from open_ct600.reliefs.group_relief import SurrenderingCompany
 from open_ct600.reliefs.loans_to_participators import ParticipatorLoanDates
 from open_ct600.reliefs.research_and_development import ResearchAndDevelopment
+from open_ct600.repayment import BankDetails
 from open_ct600.schema.spec import PageCode, load_spec
 from open_ct600.schema.trees import validate_tree
 from open_ct600.tax import (
@@ -440,6 +441,8 @@ class CT600Return(StrictModel):
         participator_loan_dates: When the loans on CT600A were made, needed only when the s455
             rate changes during the period.
         creative_industries: Answers for CT600P claims.
+        repayment: The account HMRC pays money due back into (boxes 920 to 940), needed when
+            the return shows a repayment or payable credit (see ``open_ct600.repayment``).
     """
 
     company: CompanyDetails
@@ -453,6 +456,7 @@ class CT600Return(StrictModel):
     group_relief_surrenderers: list[SurrenderingCompany] = Field(default_factory=list)
     participator_loan_dates: ParticipatorLoanDates | None = None
     creative_industries: CreativeIndustries | None = None
+    repayment: BankDetails | None = None
 
     @model_validator(mode="after")
     def _check_dormant_company_has_no_activity(self) -> Self:
