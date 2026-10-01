@@ -281,6 +281,7 @@ class ReturnComputation:
 
 
 BOX_LABELS: dict[int, str] = {
+    40: "Repayments this period",
     65: "Notice of disclosable avoidance schemes",
     95: "Loans and arrangements to participators by close companies - form CT600A",
     96: "Creative industries - form CT600P",
@@ -1089,11 +1090,16 @@ REPAYMENT_BOXES = (605, 875, 880, 885, 886)
 R&D and creative credits."""
 
 
-def _check_repayment_account(run: _Evaluation) -> None:
-    """Money due back needs the account to pay it into (``open_ct600.repayment``)."""
-    if run.ct600.repayment is not None:
-        return
+def _repayment_claim(run: _Evaluation) -> None:
+    """Money due back ticks box 40 and needs the account to pay it into.
+
+    The guide: "Enter X in box 40 to alert HMRC that a repayment may be due". The account is
+    ``open_ct600.repayment``.
+    """
     if all(run.value(box) <= 0 for box in REPAYMENT_BOXES):
+        return
+    run.tick(40)
+    if run.ct600.repayment is not None:
         return
     run.problems.append(
         Problem(
@@ -1272,7 +1278,7 @@ def evaluate(ct600: "CT600Return") -> tuple[ReturnComputation | None, list[Probl
     rd_used = redemption.used_against_other_liabilities if redemption else ZERO
     _check_other_liabilities(run, rd_used + creative_used)
     _check_creative_form(run)
-    _check_repayment_account(run)
+    _repayment_claim(run)
     if ct600.accounts.dormant and run.value(510) > 0:
         run.problems.append(
             Problem(

@@ -6,7 +6,7 @@ details ("you need to enter account details if you are claiming payable research
 development [or] creative industries credit"), and that a repayment of £100 or less is held
 against later periods without them; HMRC's schema and business rules never require them. So
 the computation asks for them whenever the return shows money due back
-(``computation._check_repayment_account``).
+(``computation._repayment_claim``).
 
 The lengths and characters allowed come from the schema spec (``BankAccountDetails`` in
 CT-2014-v1-994.xsd), so a value accepted here is one HMRC's schema accepts. The messages follow
