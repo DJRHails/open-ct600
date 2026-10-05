@@ -143,6 +143,7 @@ function prefilledAccounts(record: CompanyRecord | null): AccountsAnswers | null
   const officers = currentDirectors(record);
   return {
     ...EMPTY_ACCOUNTS,
+    standard: record.previous_accounts?.standard ?? "",
     directors: officers.length > 0 ? officers : EMPTY_ACCOUNTS.directors,
     legal_form: supportedLegalForm(record),
     first_period: firstPeriodFromRecord(record),
