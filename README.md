@@ -153,6 +153,16 @@ hooks (`prek install`). The design is in [`docs/design/filing-with-hmrc.md`](doc
 The official material it is built against is in [`specs/`](specs/README.md): HMRC schemas and
 business rules, the box map, samples, taxonomy pins and research notes.
 
+The maintainers' development secrets (the Companies House API key) are in `.env.shared`,
+encrypted with [glassine](https://github.com/DJRHails/glassine); its recipients are listed in
+`.sops.yaml`. A recipient runs `glassine init` once in a clone, then loads the file to run the
+live Companies House tests or look companies up locally:
+
+```sh
+set -a; . ./.env.shared; set +a
+cd backend && uv run pytest -m companies_house_live
+```
+
 ### Design system notes
 
 The site uses `govuk-frontend` components and patterns. It is not a GOV.UK service, so it follows the
