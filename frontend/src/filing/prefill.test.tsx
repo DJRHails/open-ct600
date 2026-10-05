@@ -391,6 +391,26 @@ describe("later sections from the Companies House record", () => {
     expect(draftShapeProblem(openDraft())).toBeNull();
   });
 
+  it("chooses how the accounts are prepared as in the accounts last filed", () => {
+    stubCompaniesHouse();
+    withRecord({
+      ...RECORD,
+      previous_accounts: { ...RECORD.previous_accounts!, standard: "small" },
+    });
+    renderApp("/file/accounts-details");
+
+    expect(screen.getByLabelText(/Small company accounts/)).toBeChecked();
+  });
+
+  it("leaves how the accounts are prepared unchosen without filed accounts", () => {
+    stubCompaniesHouse();
+    withRecord({ ...RECORD, previous_accounts: null });
+    renderApp("/file/accounts-details");
+
+    expect(screen.getByLabelText(/Micro-entity accounts/)).not.toBeChecked();
+    expect(screen.getByLabelText(/Small company accounts/)).not.toBeChecked();
+  });
+
   it("types directors in when the record lists none", () => {
     stubCompaniesHouse();
     withRecord({ ...RECORD, directors: [] });
