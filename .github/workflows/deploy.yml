@@ -1,0 +1,117 @@
+name: Deploy
+
+# Build and push the image to GHCR on taffy's pool, then bonbon's deploy runner pulls the pinned
+# tag and runs deploy/deploy.sh: up, health-gate the container, publish the Caddy fragment and
+# reload the shared host Caddy (https://open-ct600.hails.info). Pushed code never builds on the
+# prod host. Only trusted events trigger it (push to main, manual dispatch), so it needs no fork
+# guard.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "Dockerfile"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-open-ct600
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: >-
+      ${{ vars.CI_FALLBACK == 'true'
+      && 'ubuntu-latest'
+      || fromJSON('["self-hosted", "linux", "x64", "taffy"]') }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compute image tag
+        id: meta
+        run: echo "tag=sha-${GITHUB_SHA::12}" >>"$GITHUB_OUTPUT"
+
+      # Persistent taffy runner: keep the builder and GHCR token out of the shared ~/.docker.
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/.docker
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/.docker
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/.docker
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/djrhails/open-ct600:${{ steps.meta.outputs.tag }}
+            ghcr.io/djrhails/open-ct600:latest
+          cache-from: type=gha,scope=open-ct600
+          cache-to: type=gha,scope=open-ct600,mode=max
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, deploy]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/.docker
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Deploy (pull pinned tag)
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/.docker
+          TAG: ${{ needs.build.outputs.tag }}
+          COMPANIES_HOUSE_API_KEY: ${{ secrets.COMPANIES_HOUSE_API_KEY }}
+        run: |
+          : "${TAG:?build job produced no image tag}"
+          bash deploy/deploy.sh
+
+      # Through the shared Caddy (route + TLS certificate), reached on the `caddy` docker network:
+      # the runner container cannot hairpin to bonbon's own public IP. The runner image's curl
+      # predates --retry-all-errors, so retry by hand while Caddy may still be obtaining the cert.
+      - name: Verify the public site
+        run: |
+          set -euo pipefail
+          caddy_ip=$(getent hosts caddy | cut -d' ' -f1)
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsS --max-time 10 --resolve "open-ct600.hails.info:443:${caddy_ip}" \
+              https://open-ct600.hails.info/api/health && exit 0
+            echo "attempt $attempt failed; retrying in 10s"
+            sleep 10
+          done
+          exit 1

@@ -1,0 +1,40 @@
+# The public site (https://open-ct600.hails.info) on bonbon, behind the shared host Caddy, which
+# reaches the container by name on the external `caddy` network. Run through deploy/deploy.sh.
+name: open-ct600
+
+services:
+  open-ct600-web:
+    image: ghcr.io/djrhails/open-ct600:${TAG:-latest}
+    container_name: open-ct600-web
+    restart: unless-stopped
+    environment:
+      COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:?COMPANIES_HOUSE_API_KEY is not set}
+      # Caddy is the only proxy (the DNS record is not proxied by Cloudflare). It replaces any
+      # X-Forwarded-For a client sends, so the last entry is the client's own address.
+      TRUSTED_PROXIES: "1"
+    # HMRC submission stays off (HMRC_SUBMISSION_ENABLED unset): this deployment has no vendor
+    # ID and never handles Government Gateway credentials.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    networks:
+      - caddy
+
+networks:
+  caddy:
+    external: true
