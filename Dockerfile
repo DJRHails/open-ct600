@@ -5,6 +5,8 @@ RUN npm install --global pnpm@12.6.0
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
+# The build type-checks the tests too; the deadline cases are shared with the backend's tests.
+COPY backend/tests/fixtures/deadlines.json /backend/tests/fixtures/deadlines.json
 RUN pnpm build
 
 # Serve the API and the built frontend from one FastAPI process.

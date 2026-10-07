@@ -2,7 +2,8 @@
 
 A free, open-source website for preparing and filing a UK Company Tax Return (CT600). It takes the place
 of HMRC's old online filing service for small companies, which closed on 31 March 2026, and replicates
-[taxpipe.co.uk](https://taxpipe.co.uk/) as open source.
+[taxpipe.co.uk](https://taxpipe.co.uk/) as open source. Try it at
+[open-ct600.hails.info](https://open-ct600.hails.info).
 
 - **Frontend:** React 19 + TypeScript (Vite), built on the [GOV.UK Design System](https://design-system.service.gov.uk/)
   (`govuk-frontend` 6).
@@ -120,6 +121,15 @@ One image serves both the API and the built frontend:
 docker build -t open-ct600 .
 docker run --rm -p 8000:8000 open-ct600
 ```
+
+### The public site
+
+[open-ct600.hails.info](https://open-ct600.hails.info) runs this image with Companies House lookup on
+and HMRC submission off. Each push to `main` that changes the app deploys it
+(`.github/workflows/deploy.yml`): CI builds and pushes the image to GHCR, then a deploy runner on the
+host runs [`deploy/deploy.sh`](deploy/deploy.sh). That script starts the container, waits for its
+health check, and installs the Caddy site in [`deploy/`](deploy/). The key comes from the repository's
+`COMPANIES_HOUSE_API_KEY` Actions secret.
 
 ## API
 

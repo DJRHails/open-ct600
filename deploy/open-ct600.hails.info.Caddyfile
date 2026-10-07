@@ -1,0 +1,11 @@
+# Host-Caddy fragment for Open CT600. Installed into the shared Caddy sites dir by deploy.sh,
+# which then reloads Caddy. The container joins the external `caddy` network, reached by name.
+open-ct600.hails.info {
+	encode gzip zstd
+	header Strict-Transport-Security "max-age=31536000"
+	request_body {
+		# The service refuses bodies over 2 MiB itself (security.MAX_BODY_BYTES).
+		max_size 2MiB
+	}
+	reverse_proxy open-ct600-web:8000
+}
