@@ -44,8 +44,9 @@ recognition process.
 - **Some cases are refused or not calculated**, including insurance companies, periods longer than
   12 months and the £5 million losses restriction. See [Known limitations](#known-limitations).
 
-Confidence tags are an assessment of the evidence in this repo (sample sizes, seeds, intervals),
-added in a 2026-10 README audit; they are not new measurements. For a tool like this they mean "how
+Confidence tags are an assessment of the evidence in this repo (offline tests against HMRC's schema
+and business rules, commit records of TPVS runs, worked examples from HMRC guidance), added in a
+2026-10 README audit; they are not new measurements. For a tool like this they mean "how
 likely the claim holds for a typical user's return", judged from the test suite, the commit history
 and the design docs.
 
