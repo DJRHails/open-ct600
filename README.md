@@ -5,16 +5,72 @@ of HMRC's old online filing service for small companies, which closed on 31 Marc
 [taxpipe.co.uk](https://taxpipe.co.uk/) as open source. Try it at
 [open-ct600.hails.info](https://open-ct600.hails.info).
 
+**Status:** active and early (version 0.1.0). It was built between 28 September and 7 October 2026
+in 33 pull requests. The public site prepares and checks returns but **does not file them with
+HMRC**: submission is switched off there, and the project has not been through HMRC's software
+recognition process.
+
+> **Open CT600 is not HMRC-recognised software, and it is not tax advice.** It is not a substitute
+> for an accountant or tax adviser, and nobody with a professional tax qualification has reviewed
+> its calculations. You are responsible for the return your company files: check every figure, and
+> get professional advice if your company's affairs are anything other than simple. HMRC's checks
+> (below) confirm that a return is well formed and internally consistent. They do not confirm that
+> the figures are right for your company. A deployment submits returns to HMRC only when its
+> operator holds an HMRC vendor ID and switches submission on (see
+> [Submitting to HMRC](#submitting-to-hmrc)). Otherwise it prepares and checks your return, gives you
+> the files, and issues a demonstration receipt.
+
+## Key takeaways
+
+- **It prepares a complete CT600 for a small UK company**, covering the main return, supplementary
+  pages A–P, iXBRL accounts and computations, and the CT600 XML. See
+  [What it does](#what-it-does).
+- **The files it produces pass HMRC's own checks for every return shape that is tested**
+  [confidence: ~90%]. The tests run HMRC's XSD and 1,072 business rules offline, and Arelle validates
+  the iXBRL. 906 backend and 683 frontend tests passed on a fresh clone during this audit. See
+  [How it is verified](#how-it-is-verified).
+- **HMRC's validation service has accepted generated returns** [confidence: ~85%]. The evidence is
+  commit messages, not a stored run log: commit `1610511` records all 18 TPVS cases then in the
+  suite as accepted on 2026-09-29, and later commits record TPVS accepting the cases they added. This
+  audit did not re-run them, because they call HMRC's network service. See
+  [How it is verified](#how-it-is-verified).
+- **The tax figures are probably right for straightforward small-company cases, but nobody has
+  independently checked them** [confidence: ~75% for a simple trading company; lower for reliefs
+  and unusual cases]. They rest on worked examples from HMRC guidance, encoded as unit tests by the
+  same author who wrote the code. See [What the project's value rests on](#what-the-projects-value-rests-on).
+- **Live filing with HMRC has never been exercised.** The submit, poll and delete flow is tested
+  only against a stub Transaction Engine [confidence that it works first time against HMRC: ~60%].
+  See [Submitting to HMRC](#submitting-to-hmrc).
+- **Some cases are refused or not calculated**, including insurance companies, periods longer than
+  12 months and the £5 million losses restriction. See [Known limitations](#known-limitations).
+
+Confidence tags are an assessment of the evidence in this repo (sample sizes, seeds, intervals),
+added in a 2026-10 README audit; they are not new measurements. For a tool like this they mean "how
+likely the claim holds for a typical user's return", judged from the test suite, the commit history
+and the design docs.
+
+## Contents
+
+- [Stack](#stack)
+- [What it does](#what-it-does)
+- [What the project's value rests on](#what-the-projects-value-rests-on)
+- [How it is verified](#how-it-is-verified)
+- [Submitting to HMRC](#submitting-to-hmrc)
+- [Looking companies up at Companies House](#looking-companies-up-at-companies-house)
+- [Known limitations](#known-limitations)
+- [How it was built](#how-it-was-built)
+- [Running it](#running-it)
+- [API](#api)
+- [Development](#development)
+- [Licence](#licence)
+
+## Stack
+
 - **Frontend:** React 19 + TypeScript (Vite), built on the [GOV.UK Design System](https://design-system.service.gov.uk/)
   (`govuk-frontend` 6).
 - **Backend:** Python 3.13 + FastAPI. It computes Corporation Tax, reliefs and every CT600 box. It also
   produces the iXBRL accounts and computations and the CT600 XML, validates them against HMRC's own
   rules, and can submit them to HMRC.
-
-> **Open CT600 is not HMRC-recognised software, and it is not tax advice.** A deployment submits
-> returns to HMRC only when its operator holds an HMRC vendor ID and switches submission on (see
-> [Submitting to HMRC](#submitting-to-hmrc)). Otherwise it prepares and checks your return, gives you
-> the files, and issues a demonstration receipt.
 
 ![Home page](docs/screenshots/home.png)
 
@@ -37,16 +93,46 @@ Drafts are kept only in the user's browser (`localStorage`). The API stores noth
 | --- | --- | --- | --- |
 | ![Task list](docs/screenshots/task-list.png) | ![CT600A loans, generated from HMRC's schema](docs/screenshots/supplementary-page.png) | ![Check your answers, with HMRC's rules passing](docs/screenshots/check-answers.png) | ![Declaration on a deployment without submission](docs/screenshots/declaration.png) |
 
+## What the project's value rests on
+
+Two things carry almost all the weight. Read the rest of this README with them in mind.
+
+1. **The tax computation must match HMRC's rules.** Nothing downstream can catch a wrong figure
+   that is internally consistent. HMRC's XSD, business rules and TPVS check a return's form and
+   arithmetic, not whether the profit, reliefs or rates are right for the company. The only
+   evidence for the figures is the unit tests built from HMRC's worked examples
+   ([How it is verified](#how-it-is-verified)). Their author also wrote the code, and no tax
+   professional has reviewed either. This is the most important missing piece.
+2. **HMRC's own validators are the acceptance test for the files.** The project runs HMRC's
+   published schema and schematron offline and sends test returns to TPVS rather than writing its own
+   checks. So a pass means what HMRC's checks mean, no more. Those checks cover only the return
+   shapes in the test suite.
+
 ## How it is verified
 
 | What | How |
 | --- | --- |
-| Tax, reliefs and pages | Unit tests using worked examples from HMRC guidance and manuals for each relief and page, checked by hand. Mutation checks on the core formulas. |
+| Tax, reliefs and pages | Unit tests using worked examples from HMRC guidance and manuals for each relief and page, checked by hand. Mutation checks on the core formulas (no mutation-testing tool or record of these runs is in the repo; the in-repo mutation tests break iXBRL documents to prove the Arelle validator rejects them). |
 | CT600 XML | Every return shape in the tests passes HMRC's v1.994 XSD and HMRC's schematron offline with zero problems. |
 | IRmark | Reproduces HMRC's published worked example byte for byte. |
 | iXBRL | Every generated document passes [Arelle](https://arelle.org/) offline, with the UK plugin and the HMRC disclosure system, against the FRC and HMRC taxonomy packages pinned by SHA-256 in `specs/ixbrl/taxonomies.tsv`. Any warning fails the test. |
 | End to end with HMRC | `pytest -m hmrc_tpvs` sends synthetic returns with real iXBRL to HMRC's third-party validation service (TPVS) and expects a signed receipt whose digest equals our IRmark. The returns are micro-entity, small company, net liabilities, group relief, s455 loans, SME R&D, merged RDEC, ERIS and a tax avoidance scheme disclosure. All pass. |
 | Transaction Engine | Submit → poll → delete and every HMRC error class are tested against a stub Transaction Engine that replays HMRC's messages. |
+
+How much each row supports:
+
+- **Offline checks (XSD, schematron, IRmark, Arelle):** strong evidence that the files are well
+  formed for the tested shapes [confidence: ~90%]. These run in CI on every push and pull request
+  (`.github/workflows/ci.yml`). On 2026-10-17 a fresh clone passed 906 backend tests (`uv run pytest`,
+  with 23 network tests deselected by default) and 683 frontend tests (`pnpm test`). Return shapes
+  that no test covers are not covered by this evidence.
+- **TPVS:** the strongest outside evidence that HMRC accepts the message [confidence: ~85%]. It is
+  opt-in and needs the network, so CI does not run it. Acceptance is recorded only in commit
+  messages (for example `1610511`: "all 18 TPVS cases were accepted on 2026-09-29").
+- **Tax and relief figures:** moderate evidence [confidence: ~75% for a simple trading company;
+  lower for reliefs, group relief and ring fence trades]. The tests check the code against HMRC's
+  worked examples, which cover the common paths. They cannot show that every combination of
+  reliefs and periods is handled correctly.
 
 ## Submitting to HMRC
 
@@ -80,6 +166,11 @@ behind your own rate limiting too.
 
 ## Known limitations
 
+- **Not professional advice, and not reviewed by a professional.** See the warning at the top. The
+  service asks questions in plain English and computes the boxes. It does not judge whether your
+  answers are right, for example whether an expense is allowable or a relief applies.
+- **Financial years 2017 to 2026 only.** Corporation Tax rates are modelled for periods from
+  1 April 2017 to 31 March 2027 (`RATES` in `backend/src/open_ct600/tax.py`).
 - **Computations for periods ending after 31 March 2026.** HMRC accepts its 2024 computations
   taxonomy only for these earlier periods, and has not yet published the 2025 one. For later periods the
   service explains this and does not submit; the accounts and CT600 XML are still produced.
@@ -97,9 +188,24 @@ behind your own rate limiting too.
 - **No PDF attachments.** Answers that HMRC requires a PDF for are rejected, for example CT600C
   "notices of consent attached" (HMRC rule 9552). Use the simplified arrangements authorisation
   instead.
-- **Accounts are single-period.** There are no prior-year comparatives, and the legal form is always
-  private limited company. HMRC's ct-comp 2024 taxonomy has no elements for marginal relief or the
-  merged RDEC and ERIS steps, so those appear in the computation text untagged.
+- **Some computation steps are untagged.** HMRC's ct-comp 2024 taxonomy has no elements for
+  marginal relief or the merged RDEC and ERIS steps, so those appear in the computation text
+  untagged. (Earlier versions of this README also said the accounts had no prior-year comparatives
+  and always used private limited company as the legal form. Both have been supported since
+  [#19](https://github.com/DJRHails/open-ct600/pull/19).)
+
+## How it was built
+
+One author built the project in 33 pull requests between 28 September and 7 October 2026. The design
+is in [`docs/design/`](docs/design/), and the official material it was built against is in
+[`specs/`](specs/README.md): HMRC's schemas and business rules, the box map, samples, taxonomy pins
+and research notes on submission, iXBRL and the supplementary pages. Rules came from HMRC's
+published guidance, manuals and worked examples. Correctness was checked by HMRC's own validators
+and TPVS, not by an accountant. Several later PRs fixed tax rules found wrong on review, for example
+company types, group relief limits, ERIS, loss boxes and s458 timing
+([#15](https://github.com/DJRHails/open-ct600/pull/15)), and post-2017 losses in box 285
+([#27](https://github.com/DJRHails/open-ct600/pull/27)). Expect more errors of this kind in paths
+that the tests do not reach.
 
 ## Running it
 
